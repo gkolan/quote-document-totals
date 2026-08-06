@@ -504,7 +504,7 @@ private class QuoteDocumentGeneratorTest {
     private static Id amendmentQuoteId() {
         Account account = [SELECT Id FROM Account LIMIT 1];
         Map<String, Id> productByCode = new Map<String, Id>();
-        for (Product2 p : [SELECT Id, ProductCode FROM Product2]) {
+        for (Product2 p : [SELECT Id, ProductCode FROM Product2 WHERE IsActive = true]) {
             productByCode.put(p.ProductCode, p.Id);
         }
 

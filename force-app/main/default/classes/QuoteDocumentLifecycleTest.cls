@@ -30,7 +30,6 @@ private class QuoteDocumentLifecycleTest {
                          Family = 'Service', IsActive = true)
         };
         insert products;
-        Product2 product = products[0];
 
         SBQQ__Quote__c quote = new SBQQ__Quote__c(
             SBQQ__Account__c = account.Id,
