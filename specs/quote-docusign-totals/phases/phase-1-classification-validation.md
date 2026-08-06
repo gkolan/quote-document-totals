@@ -1,7 +1,13 @@
 # Phase 1 — Validate transaction classification against real amendment data, and settle the revenue-taxonomy question
 
-**Status: BLOCKED (code change applied in source; real validation requires an org with amendment quotes, which does not exist in this environment or, per the architecture doc, in `gkCPQDev` today)**
-**Blocked by:** nothing structurally, but genuinely blocked on two things this environment cannot provide: (a) a Salesforce org/CLI connection, (b) a real amendment/renewal quote to test against
+**Status: BLOCKED — narrowed 2026-08-06. The code change is *not* applied; `classify()` still has its original five branches (an earlier version of this line claimed otherwise and was wrong — §10 was correct).**
+**Blocked by:** originally two things. Reassessed 2026-08-06:
+- ~~(a) a Salesforce org/CLI connection~~ — **resolved.** `sf` is installed and authenticated; `gkCpqDevHub` (Developer Edition) is connected, and the full suite runs against it (78 passing).
+- (b) a real amendment/renewal quote — **still true.** The org holds 62 quotes, all `SBQQ__Type__c = 'Quote'`, and exactly one line with `SBQQ__Existing__c = true`. No amendment or renewal quote exists.
+
+**What the resolved half changes:** §10's reasoning for not applying the remap was "no way to run or verify it." That no longer holds — a check-only deploy with `RunLocalTests` now verifies any change to `classify()` before it touches the org. What remains blocked is *validation against real amendment data*, which is a different and weaker claim than the original status implied.
+
+**One acceptance criterion may be unreachable by test data alone.** `QuoteDocumentGeneratorTest` records that the Termination branch (existing line, negative Net Total) cannot be reached by any hand-built fixture: `SBQQ__NetTotal__c` is a managed-package formula field that cannot be assigned, and CPQ will not store a negative Net Total from a negative Net Price on a plain quote. Under the §4 remap this branch merges into Churn, so the remap would *remove* a branch that is currently untestable here — an argument for it independent of taxonomy vocabulary. Worth weighing in §3's decision.
 **Blocks:** nothing else in this spec — no other phase depends on Phase 1 finishing, but no table using `CHANGE` measures (`TRANSACTION_SUMMARY`) should be trusted on a real amendment quote until this closes
 **Owner decision needed:** yes — see §3. Made the call below (adopt the standard taxonomy) so work could proceed; flagged clearly so it's easy to override.
 
@@ -75,7 +81,21 @@ Hand-check each classified row against the scenario script's own expected values
 
 ## 10. Verification status (honest)
 
-**Not started at the code level; blocked on org access.** No CLI/org connection exists in this environment, and no real amendment quote exists to validate against even if one did. The taxonomy *decision* in §3 is made and documented; the *implementation* of that decision (remapping `classify()`) is deliberately not applied yet, because applying an untested change to the one piece of logic that can put a wrong number on a signed document, without any way to run or verify it, would be worse than leaving the current provisional-but-documented behavior in place. This phase stays open until someone with org access can execute §6.
+**Not started at the code level. Reassessed 2026-08-06 — the original reason no longer applies, but a new one does.**
+
+The original reason was "no way to run or verify it." Org access now exists, so that reason is void. `classify()` is still unchanged, and the taxonomy *decision* in §3 remains made-but-unconfirmed.
+
+**The remaining reason not to apply it is the decision itself, not the tooling.** §3 adopted the six-category ARR taxonomy explicitly "to keep moving," flagged as needing finance/RevOps confirmation. Applying it now would mean:
+
+- new measure fields for Expansion / Contraction / Renewal across two objects, the permission set, and the report type (§6.3 forbids renaming the existing `Amount_Cancellation__c` / `Amount_Termination__c`, so this is additive schema, not a relabel);
+- picklist changes to `Transaction_Type__c`;
+- a category vocabulary printed on signed documents.
+
+That is a large, schema-touching change built on an unconfirmed business decision — cheap to write, expensive to reverse once a report or template is built against the new field names. The gate is now a stakeholder answer, not org access.
+
+**Recommended sequencing:** get the §3 taxonomy confirmed or overridden first, then implement and validate in one pass. Building the amendment fixture before that answer is safe and useful — the scenario data is needed under either taxonomy — but `classify()` itself should not be remapped until the vocabulary is settled.
+
+The four tables consuming `CHANGE` measures are all `Is_Active__c = false` as of 2026-08-06, so nothing publishes provisional classification while this stays open.
 
 ## 11. Close-out record
 
