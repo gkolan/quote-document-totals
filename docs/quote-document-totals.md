@@ -161,7 +161,9 @@ public Boolean countsIn(String lineFilter) {
 
 ### Transaction classification — PROVISIONAL, read this before trusting it
 
-`classify()` decides which change measure a line feeds. **It has never been validated against real data**, because `gkCPQDev` contains no amendment or renewal quotes — every live line classifies as Net New. The branches are covered by tests only.
+`classify()` decides which change measure a line feeds. **It has never been validated against real data**, because `gkCPQDev` contains no amendment or renewal quotes — every live line classifies as Net New.
+
+There is now a hand-built amendment fixture (`handBuiltAmendmentProducesEveryReachableClassification` in `QuoteDocumentGeneratorTest`), but be precise about what it proves. It sets `SBQQ__Existing__c`, `SBQQ__PriorQuantity__c` and the subscription lookups *by hand* and checks that `classify()` reads them consistently. It cannot prove CPQ's amend/renewal engine writes those same fields the same way. **Self-consistent arithmetic is a weaker claim than agreement with real CPQ output, and only the second one makes this safe to trust.**
 
 Current rules:
 
@@ -178,7 +180,21 @@ Two things a maintainer must know:
 1. **A cancelled amendment line ends at quantity zero, so its own Net Total is zero.** The value leaving the deal is the prior quantity at the current price. That is why the code reads `SBQQ__PriorQuantity__c` rather than the line total. Using the line total would silently report every cancellation as £0.
 2. **CPQ will not store a negative Net Total from a negative Net Price** in a plain quote — discovered while writing the test. Do not build a rule on "the removed side is negative"; use quantity going to zero.
 
-Before this feature is used on amendment quotes, build a real amendment in a sandbox and check these five branches by hand.
+Where each branch stands:
+
+| Branch | Fixture coverage | Still needed |
+|---|---|---|
+| Net New | yes | confirm against a real amendment |
+| Cancellation | yes — asserts `−(PriorQuantity × NetPrice)`, not the line's own zero total | confirm against a real amendment |
+| Replacement Removed | yes — same valuation rule | confirm against a real amendment |
+| Replacement Added | yes | confirm against a real amendment |
+| Termination | **none — unreachable by any fixture** | only a real amendment can reach it |
+
+**Termination cannot be tested here at all.** It needs `Existing__c` and a negative Net Total, and `SBQQ__NetTotal__c` is a managed-package formula field that cannot be assigned even on an unsaved record — while CPQ will not store a negative Net Total from a negative Net Price on a plain quote (trap 2 below). The branch is unreachable by construction, not merely uncovered.
+
+A renewal has no branch of its own: with `SBQQ__RenewedSubscription__c` populated it currently classifies as **Replacement Added**, asserted by `aRenewalCurrentlyHasNoBranchOfItsOwn`. That test records current behaviour rather than endorsing it — it is the evidence for the open taxonomy question in [`phase-1-classification-validation.md`](../specs/quote-docusign-totals/phases/phase-1-classification-validation.md) §3, which proposes remapping these five onto the six-category ARR vocabulary. Do not implement that remap before finance/RevOps confirm it; it means additive measure fields across both objects, the permission set, and the report type.
+
+Before this feature is used on amendment quotes, amend a real contracted quote in a sandbox and hand-check every line's classification against CPQ's own output.
 
 **Every table that consumes these measures is deactivated until that happens.** `classify()` runs for every line regardless of table, but only `Measure_Set__c = CHANGE` tables publish its output as totals. All four are `Is_Active__c = false`:
 
@@ -189,7 +205,7 @@ Before this feature is used on amendment quotes, build a real amendment in a san
 | `BUNDLE_SUMMARY` | CHANGE measures |
 | `BUNDLE_PRODUCT_GRID` | CHANGE measures |
 
-Deactivating only `TRANSACTION_SUMMARY` is not sufficient — the other three publish the same unvalidated numbers under different groupings. Reactivate all four together, and only after the five branches above are confirmed against a real amendment.
+Deactivating only `TRANSACTION_SUMMARY` is not sufficient — the other three publish the same unvalidated numbers under different groupings. Reactivate all four together, and only after the branches above are confirmed against a real amendment. A green test suite is not that confirmation.
 
 Deactivation closes this completely for generated data. `classify()` still runs in memory for every line, but `QuoteDocumentRowBuilder` writes `Transaction_Type__c` only when `definition.usesChangeMeasures()` — so with all four tables off, no provisional classification reaches a row, a report, or a template.
 
