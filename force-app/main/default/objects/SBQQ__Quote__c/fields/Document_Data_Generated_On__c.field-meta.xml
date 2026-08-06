@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Document_Data_Generated_On__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>When the document tables for this Quote were last generated successfully.</inlineHelpText>
+    <label>Document Data Generated On</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

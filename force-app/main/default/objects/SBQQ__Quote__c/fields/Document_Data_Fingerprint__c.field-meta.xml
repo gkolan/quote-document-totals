@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Document_Data_Fingerprint__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>SHA-256 hex digest of the canonical input that produced this Quote's current document tables (definitions, groupings, quote and line values). A fresh digest matching this one means nothing that affects output has changed, so generation can safely reuse the existing Ready tables instead of rebuilding them. See specs/quote-docusign-launch/spec.md Increment 2.</inlineHelpText>
+    <label>Document Data Fingerprint</label>
+    <length>64</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

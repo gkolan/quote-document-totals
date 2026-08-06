@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Document_Data_Status__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Whether the generated document tables for this Quote are safe to print. This is the single answer a document action needs - per-table status cannot tell you whether every table belongs to the same generation. Only generate a document when this reads Ready.</inlineHelpText>
+    <label>Document Data Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Not Generated</fullName>
+                <default>true</default>
+                <label>Not Generated</label>
+            </value>
+            <value>
+                <fullName>Stale</fullName>
+                <default>false</default>
+                <label>Stale</label>
+            </value>
+            <value>
+                <fullName>Generating</fullName>
+                <default>false</default>
+                <label>Generating</label>
+            </value>
+            <value>
+                <fullName>Ready</fullName>
+                <default>false</default>
+                <label>Ready</label>
+            </value>
+            <value>
+                <fullName>Failed</fullName>
+                <default>false</default>
+                <label>Failed</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

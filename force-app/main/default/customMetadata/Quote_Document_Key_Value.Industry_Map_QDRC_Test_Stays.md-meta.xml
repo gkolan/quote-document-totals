@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <label>Industry Map - QDRC Test Stays</label>
+    <protected>false</protected>
+    <values><field>Category__c</field><value xsi:type="xsd:string">Industry Map</value></values>
+    <values><field>Key__c</field><value xsi:type="xsd:string">QDRC Test Stays Product</value></values>
+    <values><field>Value__c</field><value xsi:type="xsd:string">Test Stays Industry</value></values>
+</CustomMetadata>

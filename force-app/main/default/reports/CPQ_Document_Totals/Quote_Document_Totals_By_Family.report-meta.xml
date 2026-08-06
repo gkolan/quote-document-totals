@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Display_Label__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Charge_Type__c</field>
+    </columns>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_List__c</field>
+    </columns>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Discount__c</field>
+    </columns>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net__c</field>
+    </columns>
+    <description>Detail rows that count, grouped by product family, with real column sums. Excluding subtotal and grand total rows is what makes the arithmetic safe. The report total should equal the Quote Net Amount.</description>
+    <filter>
+        <criteriaItems>
+            <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>true</isUnlocked>
+            <operator>equals</operator>
+            <value>BUNDLE_DETAIL</value>
+        </criteriaItems>
+        <criteriaItems>
+            <column>SBQQ__Quote__c.DocumentTables__r.Rows__r$Row_Type__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>true</isUnlocked>
+            <operator>equals</operator>
+            <value>Detail</value>
+        </criteriaItems>
+        <criteriaItems>
+            <column>SBQQ__Quote__c.DocumentTables__r.Rows__r$Include_In_Grand_Total__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>true</isUnlocked>
+            <operator>equals</operator>
+            <value>true</value>
+        </criteriaItems>
+    </filter>
+    <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>SBQQ__Quote__c$Name</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Product_Family__c</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Quote Document - Totals by Family</name>
+    <reportType>Quote_Document_Tables_and_Rows__c</reportType>
+    <showDetails>true</showDetails>
+</Report>
+

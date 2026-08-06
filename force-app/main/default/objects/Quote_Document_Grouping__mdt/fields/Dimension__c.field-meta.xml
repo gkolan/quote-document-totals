@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Dimension__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>A named dimension: PRODUCT_FAMILY, CHARGE_TYPE, QUOTE_LINE_GROUP, BUNDLE, TRANSACTION_TYPE or INDUSTRY. Use this for values the generator computes rather than reads - BUNDLE and TRANSACTION_TYPE have no single field behind them. For anything that is a plain field, set Field Path instead and avoid the Apex change. Set one or the other, not both.</inlineHelpText>
+    <label>Dimension</label>
+    <length>40</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

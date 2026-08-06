@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <baseObject>SBQQ__Quote__c</baseObject>
+    <category>other</category>
+    <deployed>true</deployed>
+    <description>Every Quote with its document generation readiness fields - no join to Quote_Document_Table__c, so a Quote that has never successfully generated even once (nothing to join to yet) still appears. Use Quote_Document_Tables_and_Rows__c instead for anything that needs the actual generated tables or rows.</description>
+    <label>Quote Document Status</label>
+    <sections>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Name</field>
+            <table>SBQQ__Quote__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>SBQQ__Account__c</field>
+            <table>SBQQ__Quote__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>SBQQ__NetAmount__c</field>
+            <table>SBQQ__Quote__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Document_Data_Status__c</field>
+            <table>SBQQ__Quote__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Document_Data_Generated_On__c</field>
+            <table>SBQQ__Quote__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Document_Data_Error__c</field>
+            <table>SBQQ__Quote__c</table>
+        </columns>
+        <masterLabel>Quote</masterLabel>
+    </sections>
+</ReportType>

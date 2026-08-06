@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Aggregate_Excluded_From_Totals</fullName>
+    <active>true</active>
+    <description>Aggregate rows are outputs of aggregation, never inputs. Counting one would double-count everything beneath it.</description>
+    <errorConditionFormula>AND(
+  ISPICKVAL(Row_Type__c, &quot;Group Header&quot;)
+    || ISPICKVAL(Row_Type__c, &quot;Subtotal&quot;)
+    || ISPICKVAL(Row_Type__c, &quot;Section Total&quot;)
+    || ISPICKVAL(Row_Type__c, &quot;Grand Total&quot;),
+  OR(Include_In_Subtotal__c, Include_In_Grand_Total__c)
+)</errorConditionFormula>
+    <errorMessage>Group Header, Subtotal, Section Total and Grand Total rows must have both inclusion flags cleared - they are the result of aggregation, not an input to it.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Line_Filter__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Which Quote Lines this table was built from, such as EXCLUDE_OPTIONAL or OPTIONAL_ONLY. Two tables can group identically and still show different totals because they started from different lines.</inlineHelpText>
+    <label>Line Filter</label>
+    <length>40</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

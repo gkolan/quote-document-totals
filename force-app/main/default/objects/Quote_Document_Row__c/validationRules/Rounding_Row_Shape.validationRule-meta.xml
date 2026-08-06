@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Rounding_Row_Shape</fullName>
+    <active>true</active>
+    <description>A Rounding row exists only to make the grand total match a target value, so it must count toward the grand total, must not be folded into any group's subtotal a second time, and sits at the table level rather than under any grouping node.</description>
+    <errorConditionFormula>AND(
+  ISPICKVAL(Row_Type__c, &quot;Rounding&quot;),
+  OR(
+    NOT(Include_In_Grand_Total__c),
+    Include_In_Subtotal__c,
+    Group_Level__c &lt;&gt; 0
+  )
+)</errorConditionFormula>
+    <errorMessage>A Rounding row must have Include_In_Grand_Total__c = true, Include_In_Subtotal__c = false, and Group_Level__c = 0.</errorMessage>
+</ValidationRule>

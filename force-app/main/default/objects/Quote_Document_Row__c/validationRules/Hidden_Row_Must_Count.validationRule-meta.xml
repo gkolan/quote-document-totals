@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Hidden_Row_Must_Count</fullName>
+    <active>true</active>
+    <description>A row that is neither shown nor counted should never have been generated.</description>
+    <errorConditionFormula>AND(
+  NOT(Is_Displayed__c),
+  NOT(Include_In_Subtotal__c),
+  NOT(Include_In_Grand_Total__c)
+)</errorConditionFormula>
+    <errorMessage>A row that is not displayed must still contribute to a subtotal or the grand total, otherwise it serves no purpose.</errorMessage>
+</ValidationRule>

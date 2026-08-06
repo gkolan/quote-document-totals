@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Composite_Separator__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>What joins the parts of a composite group label. Only used where two groupings share a Level. LEAVE BLANK for the default " / " giving "Hardware / Recurring" - Salesforce trims leading and trailing spaces from a text value, so a separator entered here cannot have spaces around it and will read "Hardware/Recurring".</inlineHelpText>
+    <label>Composite Separator</label>
+    <length>10</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>One generated table, described as configuration. Adding a table is a new record here rather than new Apex - the generator only ever sees a QuoteDocumentTableDefinition, so it does not care where the definition came from.</description>
+    <label>Quote Document Table Definition</label>
+    <pluralLabel>Quote Document Table Definitions</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

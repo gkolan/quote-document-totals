@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>SBQQ__Quote__c$Name</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c$SBQQ__Account__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c$SBQQ__NetAmount__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c$Document_Data_Status__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c$Document_Data_Generated_On__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c$Document_Data_Error__c</field>
+    </columns>
+    <description>Every Quote whose last document generation attempt failed, with the exact reason - check here first before opening Setup or writing a query.</description>
+    <filter>
+        <criteriaItems>
+            <column>SBQQ__Quote__c$Document_Data_Status__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>true</isUnlocked>
+            <operator>equals</operator>
+            <value>Failed</value>
+        </criteriaItems>
+    </filter>
+    <format>Tabular</format>
+    <name>Quote Document Generation Failures</name>
+    <reportType>Quote_Document_Status__c</reportType>
+    <showDetails>true</showDetails>
+    <sortColumn>SBQQ__Quote__c$Document_Data_Generated_On__c</sortColumn>
+    <sortOrder>Desc</sortOrder>
+</Report>

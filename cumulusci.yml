@@ -1,0 +1,25 @@
+minimum_cumulusci_version: '4.10.0'
+project:
+    name: cpqRules
+    package:
+        name: cpqRules
+        namespace: cpqRules
+        api_version: '66.0'
+    git:
+    source_format: sfdx
+
+tasks:
+    robot:
+        options:
+            suites: robot/cpqRules/tests
+            options:
+                outputdir: robot/cpqRules/results
+
+    robot_testdoc:
+        options:
+            path: robot/cpqRules/tests
+            output: robot/cpqRules/doc/cpqRules_tests.html
+
+    run_tests:
+        options:
+            required_org_code_coverage_percent: 98

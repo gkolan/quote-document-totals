@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Amount_Regular__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Total after discount schedules but before manual and additional discounts. Sum of SBQQ__RegularTotal__c.</inlineHelpText>
+    <label>Regular Amount</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Currency</type>
+</CustomField>

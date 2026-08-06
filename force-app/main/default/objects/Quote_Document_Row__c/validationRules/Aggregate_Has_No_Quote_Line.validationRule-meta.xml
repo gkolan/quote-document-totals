@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Aggregate_Has_No_Quote_Line</fullName>
+    <active>true</active>
+    <description>A total spans many lines, so pointing it at one of them is always wrong. Same for a Rounding row - a whole-table adjustment, not derived from one line. Discount is excluded here; a discount is normally tied to the one line it discounts.</description>
+    <errorConditionFormula>AND(
+  ISPICKVAL(Row_Type__c, &quot;Group Header&quot;)
+    || ISPICKVAL(Row_Type__c, &quot;Subtotal&quot;)
+    || ISPICKVAL(Row_Type__c, &quot;Section Total&quot;)
+    || ISPICKVAL(Row_Type__c, &quot;Grand Total&quot;)
+    || ISPICKVAL(Row_Type__c, &quot;Rounding&quot;),
+  NOT(ISBLANK(Quote_Line__c))
+)</errorConditionFormula>
+    <errorMessage>Aggregate rows and Rounding adjustments must not reference a Source Quote Line.</errorMessage>
+</ValidationRule>

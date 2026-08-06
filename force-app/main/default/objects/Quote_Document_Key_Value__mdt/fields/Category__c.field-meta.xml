@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Category__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Which lookup table this row belongs to, e.g. "Industry Map". Apex reads a whole category at once via QuoteDocumentKeyValueMap.get(category) - rows in other categories are invisible to that call.</inlineHelpText>
+    <label>Category</label>
+    <length>80</length>
+    <required>true</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

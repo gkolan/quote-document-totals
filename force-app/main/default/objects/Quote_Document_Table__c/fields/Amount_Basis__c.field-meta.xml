@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Amount_Basis__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>The financial basis of all amounts in this table. Two tables with the same structure can carry different meanings, so this value must accompany the generated data.</inlineHelpText>
+    <label>Amount Basis</label>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Net Change</fullName>
+                <default>true</default>
+                <label>Net Change</label>
+            </value>
+            <value>
+                <fullName>Final Value</fullName>
+                <default>false</default>
+                <label>Final Value</label>
+            </value>
+            <value>
+                <fullName>TCV</fullName>
+                <default>false</default>
+                <label>TCV</label>
+            </value>
+            <value>
+                <fullName>ACV</fullName>
+                <default>false</default>
+                <label>ACV</label>
+            </value>
+            <value>
+                <fullName>First-Year Value</fullName>
+                <default>false</default>
+                <label>First-Year Value</label>
+            </value>
+            <value>
+                <fullName>Remaining-Term Value</fullName>
+                <default>false</default>
+                <label>Remaining-Term Value</label>
+            </value>
+            <value>
+                <fullName>Recurring Value</fullName>
+                <default>false</default>
+                <label>Recurring Value</label>
+            </value>
+            <value>
+                <fullName>One-Time Value</fullName>
+                <default>false</default>
+                <label>One-Time Value</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
