@@ -202,4 +202,94 @@ public class QuoteDocumentTestData {
         }
         return null;
     }
+
+    // -----------------------------------------------------------------------
+    // The two-family quote used by the lifecycle and grouping suites
+    //
+    // Deliberately a different fixture from setup() above: two products in two
+    // families, and nothing bundled or optional, so a grouping assertion has
+    // exactly two buckets to split on and nothing incidental to explain away.
+    // -----------------------------------------------------------------------
+
+    public static void setupLifecycle() {
+        Account account = new Account(Name = 'Lifecycle Test', Industry = 'Technology');
+        insert account;
+
+        Opportunity opportunity = new Opportunity(
+            Name = 'Lifecycle Test',
+            AccountId = account.Id,
+            StageName = 'Prospecting',
+            CloseDate = Date.today().addDays(30)
+        );
+        insert opportunity;
+
+        // Two products in different families, so grouping tests have something
+        // to actually split on.
+        List<Product2> products = new List<Product2>{
+            new Product2(Name = 'Lifecycle Product', ProductCode = 'LIFECYCLE',
+                         Family = 'Hardware', IsActive = true),
+            new Product2(Name = 'Lifecycle Service', ProductCode = 'LIFECYCLE-SV',
+                         Family = 'Service', IsActive = true)
+        };
+        insert products;
+
+        SBQQ__Quote__c quote = new SBQQ__Quote__c(
+            SBQQ__Account__c = account.Id,
+            SBQQ__Opportunity2__c = opportunity.Id,
+            SBQQ__Type__c = 'Quote',
+            SBQQ__Status__c = 'Draft'
+        );
+        insert quote;
+
+        insert new List<SBQQ__QuoteLine__c>{
+            new SBQQ__QuoteLine__c(
+                SBQQ__Quote__c = quote.Id, SBQQ__Product__c = products[0].Id,
+                SBQQ__Number__c = 1, SBQQ__Quantity__c = 2,
+                SBQQ__ListPrice__c = 500, SBQQ__RegularPrice__c = 500,
+                SBQQ__NetPrice__c = 450, SBQQ__CustomerPrice__c = 450
+            ),
+            new SBQQ__QuoteLine__c(
+                SBQQ__Quote__c = quote.Id, SBQQ__Product__c = products[1].Id,
+                SBQQ__Number__c = 2, SBQQ__Quantity__c = 1,
+                SBQQ__ListPrice__c = 1200, SBQQ__RegularPrice__c = 1200,
+                SBQQ__NetPrice__c = 1200, SBQQ__CustomerPrice__c = 1200
+            )
+        };
+    }
+
+    public static SBQQ__Quote__c lifecycleQuote() {
+        return [
+            SELECT Id, Name, Document_Data_Status__c, Document_Data_Generated_On__c, Document_Data_Error__c
+            FROM SBQQ__Quote__c LIMIT 1
+        ];
+    }
+
+    /**
+     * Normalized lines for the seeded quote, ready to hand to a row builder.
+     * The field list mirrors the generator's, plus the paths these tests group
+     * by - a path that is not queried resolves to Not Specified rather than
+     * throwing, which would make the assertions meaningless.
+     */
+    public static List<QuoteDocumentLine> normalizedLines() {
+        SBQQ__Quote__c q = [SELECT Id, AccountIndustry__c FROM SBQQ__Quote__c LIMIT 1];
+
+        List<QuoteDocumentLine> lines = new List<QuoteDocumentLine>();
+        for (SBQQ__QuoteLine__c raw : [
+            SELECT Id, SBQQ__Number__c, SBQQ__Product__c, SBQQ__ProductName__c, SBQQ__ProductCode__c,
+                   SBQQ__Product__r.Family, SBQQ__Product__r.Name, SBQQ__ChargeType__c,
+                   SBQQ__Bundle__c, SBQQ__Bundled__c, SBQQ__Optional__c, SBQQ__OptionLevel__c,
+                   SBQQ__RequiredBy__c, SBQQ__RequiredBy__r.SBQQ__ProductName__c,
+                   SBQQ__Group__c, SBQQ__Group__r.Name, SBQQ__Quantity__c,
+                   SBQQ__ListTotal__c, SBQQ__RegularTotal__c, SBQQ__TotalDiscountAmount__c,
+                   SBQQ__NetTotal__c, SBQQ__CustomerTotal__c, SBQQ__NetPrice__c,
+                   SBQQ__Existing__c, SBQQ__PriorQuantity__c,
+                   SBQQ__UpgradedSubscription__c, SBQQ__RenewedSubscription__c,
+                   SBQQ__Quote__r.SBQQ__Account__r.Industry
+            FROM SBQQ__QuoteLine__c
+            WHERE SBQQ__Quote__c = :q.Id
+        ]) {
+            lines.add(new QuoteDocumentLine(raw, q));
+        }
+        return lines;
+    }
 }
