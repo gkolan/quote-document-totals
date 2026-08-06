@@ -368,21 +368,40 @@ private class QuoteDocumentGeneratorTest {
         Assert.isTrue(subtotalLevels.contains(2), 'Inner grouping should produce a level-2 subtotal');
     }
 
+    /**
+     * Drives an injected definition rather than the real TRANSACTION_SUMMARY
+     * record, which is inactive until classify() is validated against a genuine
+     * amendment (docs/quote-document-totals.md §3). The classification
+     * arithmetic still needs covering while the table itself stays off, and a
+     * test that depended on the active flag would go quiet exactly when the
+     * flag was flipped for safety.
+     */
     @IsTest
-    static void transactionSummaryClassifiesNewBusinessAsNetNew() {
+    static void changeMeasuresClassifyNewBusinessAsNetNew() {
         Decimal counted = expectedCountedNet();
+
+        QuoteDocumentTableDefinition probe = QuoteDocumentTableDefinition.build(
+            'TRANSACTION_SUMMARY_PROBE',
+            new List<String>{ QuoteDocumentTableDefinition.DIM_TRANSACTION_TYPE },
+            new List<Integer>{ 1 },
+            QuoteDocumentTableDefinition.FILTER_EXCLUDE_OPTIONAL
+        );
+        probe.measureSet = QuoteDocumentTableDefinition.MEASURES_CHANGE;
+        QuoteDocumentTableDefinition.useDefinitions(
+            new List<QuoteDocumentTableDefinition>{ probe }
+        );
 
         Test.startTest();
         QuoteDocumentGenerator.generate(new Set<Id>{ quoteId() });
         Test.stopTest();
 
-        Quote_Document_Row__c total = grandTotal('TRANSACTION_SUMMARY');
+        Quote_Document_Row__c total = grandTotal('TRANSACTION_SUMMARY_PROBE');
 
         Assert.areEqual(counted, total.Amount_Net_New__c, 'A plain quote is all net new business');
         Assert.areEqual(counted, total.Amount_Net_Change__c,
             'Net change equals net new when nothing is removed');
-        Assert.areEqual('CHANGE', table('TRANSACTION_SUMMARY').Measure_Set__c,
-            'The transaction table declares the change measure set');
+        Assert.areEqual('CHANGE', table('TRANSACTION_SUMMARY_PROBE').Measure_Set__c,
+            'The probe declares the change measure set');
     }
 
     // NOTE: the Termination branch in QuoteDocumentLine.classify() (existing

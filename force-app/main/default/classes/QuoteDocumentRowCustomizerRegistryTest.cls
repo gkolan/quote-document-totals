@@ -93,55 +93,52 @@ private class QuoteDocumentRowCustomizerRegistryTest {
     }
 
     // -----------------------------------------------------------------------
-    // The four real, migrated CMDT records generate identically through the
-    // registry - proves the migration in specs/quote-docusign-launch/spec.md
-    // Increment 4 is behavior preserving, not just that resolve() works alone.
+    // The four customizer-backed CMDT records stay wired to a resolvable code.
     // -----------------------------------------------------------------------
 
+    /**
+     * All four of these definitions are deliberately inactive - three are
+     * demonstration tables and ROW_CUSTOMIZER_EXAMPLE is one too - so nothing
+     * generates from them and the old end-to-end assertion here could no longer
+     * hold. What it uniquely proved was the Increment 4 migration's wiring: that
+     * each record still names a code the registry can resolve. That survives the
+     * active flag and is asserted directly below.
+     *
+     * Each customizer's actual behaviour is covered against an injected
+     * definition by its own test class - QuoteDocumentDiscountRowCustomizerTest,
+     * QuoteDocumentIndustryRowCustomizerTest, QuoteDocumentRoundingRowCustomizerTest,
+     * and QuoteDocumentRowCustomizerTest for ESTIMATED_TAX - so no coverage is
+     * lost by not generating here.
+     */
     @IsTest
-    static void theFourMigratedCmdtRecordsStillGenerateCorrectlyThroughTheRegistry() {
-        Test.startTest();
-        QuoteDocumentGenerator.generate(new Set<Id>{ quoteId() });
-        Test.stopTest();
+    static void everyCustomizerBackedCmdtRecordNamesAResolvableCode() {
+        Map<String, String> expectedCodeByTable = new Map<String, String>{
+            'DISCOUNT_EXAMPLE'       => 'DISCOUNT_EXAMPLE',
+            'INDUSTRY_ALLEGIANCE'    => 'INDUSTRY_ALLEGIANCE',
+            'ROUNDING_EXAMPLE'       => 'ROUNDING_EXAMPLE',
+            'ROW_CUSTOMIZER_EXAMPLE' => 'ESTIMATED_TAX'
+        };
 
-        Map<String, Quote_Document_Table__c> tablesByCode = new Map<String, Quote_Document_Table__c>();
-        for (Quote_Document_Table__c table : [
-            SELECT Id, Table_Code__c, Status__c
-            FROM Quote_Document_Table__c
-            WHERE Table_Code__c IN ('DISCOUNT_EXAMPLE', 'INDUSTRY_ALLEGIANCE', 'ROUNDING_EXAMPLE', 'ROW_CUSTOMIZER_EXAMPLE')
+        Map<String, String> actualCodeByTable = new Map<String, String>();
+        for (Quote_Document_Table_Def__mdt record : [
+            SELECT Table_Code__c, Row_Customizer_Code__c
+            FROM Quote_Document_Table_Def__mdt
+            WHERE Table_Code__c IN :expectedCodeByTable.keySet()
         ]) {
-            tablesByCode.put(table.Table_Code__c, table);
+            actualCodeByTable.put(record.Table_Code__c, record.Row_Customizer_Code__c);
         }
 
-        Assert.areEqual(4, tablesByCode.size(), 'All four migrated table definitions must still generate a table');
-        for (Quote_Document_Table__c table : tablesByCode.values()) {
-            Assert.areEqual('Complete', table.Status__c,
-                table.Table_Code__c + ' must still complete generation and verification through the registry');
+        Assert.areEqual(expectedCodeByTable.size(), actualCodeByTable.size(),
+            'Every customizer-backed definition must still exist, active or not');
+
+        for (String tableCode : expectedCodeByTable.keySet()) {
+            String customizerCode = actualCodeByTable.get(tableCode);
+            Assert.areEqual(expectedCodeByTable.get(tableCode), customizerCode,
+                tableCode + ' must still name its customizer code');
+            Assert.isNotNull(
+                QuoteDocumentRowCustomizerRegistry.resolve(customizerCode),
+                customizerCode + ' must still resolve through the registry'
+            );
         }
-
-        Integer discountRows = [
-            SELECT COUNT() FROM Quote_Document_Row__c
-            WHERE Quote_Document_Table__c = :tablesByCode.get('DISCOUNT_EXAMPLE').Id AND Row_Type__c = 'Discount'
-        ];
-        Assert.areEqual(1, discountRows, 'DISCOUNT_EXAMPLE must still add its Discount row via the registry');
-
-        Integer industrySubtotals = [
-            SELECT COUNT() FROM Quote_Document_Row__c
-            WHERE Quote_Document_Table__c = :tablesByCode.get('INDUSTRY_ALLEGIANCE').Id
-              AND Row_Type__c = 'Subtotal' AND Group_Dimension__c = 'INDUSTRY_ALLEGIANCE'
-        ];
-        Assert.isTrue(industrySubtotals > 0, 'INDUSTRY_ALLEGIANCE must still re-bucket rows via the registry');
-
-        Integer roundingRows = [
-            SELECT COUNT() FROM Quote_Document_Row__c
-            WHERE Quote_Document_Table__c = :tablesByCode.get('ROUNDING_EXAMPLE').Id AND Row_Key__c = 'ROUNDING_ADJUSTMENT'
-        ];
-        Assert.areEqual(1, roundingRows, 'ROUNDING_EXAMPLE must still add its Rounding row via the registry for a non-round total');
-
-        Integer taxRows = [
-            SELECT COUNT() FROM Quote_Document_Row__c
-            WHERE Quote_Document_Table__c = :tablesByCode.get('ROW_CUSTOMIZER_EXAMPLE').Id AND Row_Key__c = 'ESTIMATED_TAX'
-        ];
-        Assert.areEqual(1, taxRows, 'ROW_CUSTOMIZER_EXAMPLE must still add its Estimated Tax row via the registry');
     }
 }
