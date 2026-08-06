@@ -809,7 +809,7 @@ private class QuoteDocumentGeneratorTest {
         Quote_Document_Table__c table = new Quote_Document_Table__c(Table_Code__c = 'VERIFY_MISMATCH_PROBE');
 
         try {
-            QuoteDocumentGenerator.verify(
+            QuoteDocumentVerification.verify(
                 new SBQQ__Quote__c(), table, definition,
                 new List<Quote_Document_Row__c>{ detail, grandTotal }
             );
@@ -834,7 +834,7 @@ private class QuoteDocumentGeneratorTest {
         };
 
         try {
-            QuoteDocumentGenerator.verify(new SBQQ__Quote__c(), table, definition, rows);
+            QuoteDocumentVerification.verify(new SBQQ__Quote__c(), table, definition, rows);
             Assert.fail('A table built without a Grand Total row must fail verification');
         } catch (QuoteDocumentGenerator.QuoteDocumentException e) {
             Assert.isTrue(e.getMessage().contains('Grand Total'), 'Message: ' + e.getMessage());

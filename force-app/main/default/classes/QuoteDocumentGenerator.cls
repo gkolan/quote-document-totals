@@ -16,24 +16,14 @@
  */
 public with sharing class QuoteDocumentGenerator {
 
-    public class QuoteDocumentException extends Exception {}
-
-    /** Amounts are compared to the cent, not exactly - these are Currency(16,2). */
-    private static final Decimal TOLERANCE = 0.01;
-
     /**
-     * Row types that are themselves the OUTPUT of aggregation - a Group
-     * Header, Subtotal, Section Total or Grand Total never represents money
-     * that exists independently of the rows beneath it. Everything else
-     * (Detail, and any customizer-added type such as Discount or Rounding)
-     * is a LEAF contribution: real money that has to be accounted for in
-     * verify()'s two independent reconciliation paths. This is what lets a
-     * customizer introduce a new counted row type without touching verify()
-     * itself.
+     * Stays on this class despite the split - QuoteDocumentQuery,
+     * QuoteDocumentVerification, QuoteDocumentTableDefinition,
+     * QuoteDocumentLine, QuoteDocumentRowBuilder and the customizer registry
+     * all throw it by this name, and so do the tests that catch it. Moving it
+     * would be a rename across the whole framework for no gain.
      */
-    private static final Set<String> AGGREGATE_ROW_TYPES = new Set<String>{
-        'Group Header', 'Subtotal', 'Section Total', 'Grand Total'
-    };
+    public class QuoteDocumentException extends Exception {}
 
     // -----------------------------------------------------------------------
     // Entry points
@@ -100,7 +90,7 @@ public with sharing class QuoteDocumentGenerator {
      * from a button or flow; use generateAsync for anything larger.
      */
     public static void generate(Set<Id> quoteIds) {
-        List<SBQQ__Quote__c> quotes = queryQuotes(quoteIds);
+        List<SBQQ__Quote__c> quotes = QuoteDocumentQuery.quotesWithLines(quoteIds);
 
         // Silently doing nothing for an id that does not resolve is how a flow
         // ends up reporting success over an empty document.
@@ -209,7 +199,7 @@ public with sharing class QuoteDocumentGenerator {
                     Table_Code__c = inserted.Table_Code__c
                 );
                 stampTable(table, definition, rows);
-                verify(quote, table, definition, rows);
+                QuoteDocumentVerification.verify(quote, table, definition, rows);
                 stamped.add(table);
             }
             update stamped;
@@ -349,110 +339,11 @@ public with sharing class QuoteDocumentGenerator {
     }
 
     // -----------------------------------------------------------------------
-    // Query and normalize
+    // Normalize
+    //
+    // The query itself, and the schema validation that makes its dynamic SOQL
+    // safe, live in QuoteDocumentQuery.
     // -----------------------------------------------------------------------
-
-    /**
-     * Fields QuoteDocumentLine always reads, whatever the configuration says.
-     */
-    private static final List<String> BASE_LINE_FIELDS = new List<String>{
-        'Id', 'SBQQ__Number__c', 'SBQQ__Product__c', 'SBQQ__ProductName__c',
-        'SBQQ__ProductCode__c', 'SBQQ__Product__r.Family', 'SBQQ__ChargeType__c',
-        'SBQQ__Bundle__c', 'SBQQ__Bundled__c', 'SBQQ__Optional__c', 'SBQQ__OptionLevel__c',
-        'SBQQ__RequiredBy__c', 'SBQQ__RequiredBy__r.SBQQ__ProductName__c',
-        'SBQQ__Group__c', 'SBQQ__Group__r.Name', 'SBQQ__Quantity__c',
-        'SBQQ__ListTotal__c', 'SBQQ__RegularTotal__c', 'SBQQ__TotalDiscountAmount__c',
-        'SBQQ__NetTotal__c', 'SBQQ__CustomerTotal__c', 'SBQQ__NetPrice__c',
-        'SBQQ__Existing__c', 'SBQQ__PriorQuantity__c',
-        'SBQQ__UpgradedSubscription__c', 'SBQQ__RenewedSubscription__c'
-    };
-
-    /**
-     * Built dynamically so a grouping configured as a field path is fetched
-     * without an Apex change. Every configured path is validated against the
-     * schema first, so a typo fails here with a readable message instead of an
-     * opaque QueryException, and USER_MODE means a configured path cannot be
-     * used to read a field the running user has no access to.
-     *
-     * FOR UPDATE locks the Quote row for the rest of this transaction. Without
-     * it, two near-simultaneous generation requests for the same Quote (a
-     * doubled button click, or two platform-event-driven refreshes once
-     * automatic generation ships) can interleave: both read the same starting
-     * state, both delete, both insert, and the second writer's commit is the
-     * only one anyone can trust - but nothing stops the first writer's
-     * in-flight DML from also landing. The lock serializes them: the second
-     * transaction blocks until the first commits or rolls back, then proceeds
-     * against post-commit state. SOQL rejects an explicit ORDER BY combined
-     * with FOR UPDATE - lock acquisition order is Id order automatically -
-     * which is exactly the property that avoids a deadlock between two
-     * transactions each locking a different subset of the same two Quotes in
-     * opposite order.
-     */
-    private static List<SBQQ__Quote__c> queryQuotes(Set<Id> quoteIds) {
-        Set<String> lineFields = new Set<String>(BASE_LINE_FIELDS);
-
-        for (String path : QuoteDocumentTableDefinition.allFieldPaths()) {
-            validateFieldPath(path);
-            lineFields.add(path);
-        }
-
-        // CurrencyIsoCode only exists as a field when multi-currency is on, and
-        // a static reference to it will not compile in a single-currency org -
-        // same guard as copyCurrency, applied to the SELECT list instead.
-        String currencyField = UserInfo.isMultiCurrencyOrganization() ? ', CurrencyIsoCode' : '';
-
-        String soql =
-            'SELECT Id, Name, SBQQ__NetAmount__c, AccountIndustry__c, Document_Data_Status__c, '
-            + 'Document_Data_Fingerprint__c' + currencyField + ', '
-            + '(SELECT ' + String.join(new List<String>(lineFields), ', ')
-            + ' FROM SBQQ__LineItems__r ORDER BY SBQQ__Number__c) '
-            + 'FROM SBQQ__Quote__c WHERE Id IN :quoteIds WITH USER_MODE FOR UPDATE';
-
-        return Database.query(soql);
-    }
-
-    /**
-     * Walks a dot path through the describe layer so a bad configuration is
-     * caught at generation time, naming the segment that does not exist.
-     */
-    private static void validateFieldPath(String path) {
-        SObjectType current = SBQQ__QuoteLine__c.SObjectType;
-        List<String> segments = path.split('\\.');
-
-        for (Integer i = 0; i < segments.size(); i++) {
-            String segment = segments[i];
-            Boolean isLast = (i == segments.size() - 1);
-            String fieldName = isLast ? segment : segment.replace('__r', '__c');
-
-            Map<String, SObjectField> fields = current.getDescribe().fields.getMap();
-            SObjectField field = fields.get(fieldName.toLowerCase());
-
-            // Standard relationships such as Account or Owner end in Id rather
-            // than __c, so fall back before giving up.
-            if (field == null && !isLast) {
-                field = fields.get((segment + 'Id').toLowerCase());
-            }
-
-            if (field == null) {
-                throw new QuoteDocumentException(
-                    'Grouping field path "' + path + '" is not valid: no field "' + segment
-                    + '" on ' + current.getDescribe().getName()
-                    + '. Fix the Field Path on the Quote Document Grouping record.'
-                );
-            }
-
-            if (!isLast) {
-                List<SObjectType> references = field.getDescribe().getReferenceTo();
-                if (references.isEmpty()) {
-                    throw new QuoteDocumentException(
-                        'Grouping field path "' + path + '": "' + segment
-                        + '" is not a relationship, so nothing can follow it.'
-                    );
-                }
-                current = references[0];
-            }
-        }
-    }
 
     private static List<QuoteDocumentLine> normalize(SBQQ__Quote__c quote) {
         List<QuoteDocumentLine> lines = new List<QuoteDocumentLine>();
@@ -535,9 +426,9 @@ public with sharing class QuoteDocumentGenerator {
         QuoteDocumentTableDefinition definition,
         List<Quote_Document_Row__c> rows
     ) {
-        Quote_Document_Row__c grandTotal = findGrandTotal(rows);
+        Quote_Document_Row__c grandTotal = QuoteDocumentVerification.findGrandTotal(rows);
 
-        for (String field : measureFields(definition.measureSet)) {
+        for (String field : QuoteDocumentTableDefinition.measureFields(definition.measureSet)) {
             table.put(field, grandTotal.get(field));
         }
 
@@ -557,169 +448,4 @@ public with sharing class QuoteDocumentGenerator {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Verification
-    //
-    // No validation rule can see sibling records, so the checks that actually
-    // stop a signed document carrying a wrong number have to live here.
-    // -----------------------------------------------------------------------
-
-    @TestVisible
-    private static void verify(
-        SBQQ__Quote__c quote,
-        Quote_Document_Table__c table,
-        QuoteDocumentTableDefinition definition,
-        List<Quote_Document_Row__c> rows
-    ) {
-        Quote_Document_Row__c grandTotal = findGrandTotal(rows);
-        List<String> fields = measureFields(definition.measureSet);
-
-        // 0. Row_Key__c is only meaningful if it is actually unique within this
-        //    table. The field itself cannot enforce that declaratively - the
-        //    same key text (e.g. GRAND_TOTAL) is legitimately reused across
-        //    different Quotes' tables, so the field is externalId but not
-        //    unique - which means nothing stops two different group values
-        //    from sanitizing to the same key (buildGroupKey uppercases and
-        //    strips to [A-Z0-9_], so "R&D" and "R D" both become "R_D") and
-        //    silently inserting as two rows sharing one key. Caught here,
-        //    before Complete, rather than discovered later as a row a
-        //    consuming template can no longer address unambiguously.
-        assertUniqueRowKeys(rows, table);
-
-        // 1. The grand total equals the sum of the included detail rows.
-        // 2. It also equals the sum of the outermost subtotals. Two independent
-        //    paths to the same number; if they disagree, the grouping dropped
-        //    or duplicated a line.
-        for (String field : fields) {
-            Decimal fromDetails = 0;
-            Decimal fromSubtotals = 0;
-
-            for (Quote_Document_Row__c row : rows) {
-                Decimal value = (Decimal) row.get(field);
-                if (value == null) { continue; }
-
-                // A leaf contribution always feeds the detail-rows path. A
-                // Detail row also always sits inside a group, so it reaches
-                // the subtotal path through that group's own Subtotal row -
-                // counting it again here would double it. A leaf with no
-                // group of its own (Group_Level__c 0 - a table-wide
-                // adjustment such as a Rounding row) has no Subtotal to be
-                // captured by, so it has to feed both paths directly or the
-                // two paths would never agree.
-                Boolean isLeaf = !AGGREGATE_ROW_TYPES.contains(row.Row_Type__c) && row.Include_In_Grand_Total__c;
-
-                if (isLeaf) {
-                    fromDetails += value;
-                }
-                if ((row.Row_Type__c == 'Subtotal' && row.Group_Level__c == 1)
-                    || (isLeaf && row.Group_Level__c == 0)) {
-                    fromSubtotals += value;
-                }
-            }
-
-            Decimal stated = (Decimal) grandTotal.get(field);
-            stated = stated == null ? 0 : stated;
-
-            if (definition.showDetails) {
-                assertClose(stated, fromDetails, table, field + ' grand total vs detail rows');
-            }
-            assertClose(stated, fromSubtotals, table, field + ' grand total vs level-1 subtotals');
-        }
-
-        // 3. The table's own measures match its grand total row.
-        for (String field : fields) {
-            assertClose((Decimal) table.get(field), (Decimal) grandTotal.get(field),
-                        table, field + ' table measure vs grand total row');
-        }
-
-        // 4. The check that matters commercially: a price-waterfall table built
-        //    from everything except optional products has to land on the same
-        //    Net Amount that CPQ itself rolled up onto the Quote.
-        Boolean reconcilesToQuote =
-            QuoteDocumentTableDefinition.MEASURES_PRICE_WATERFALL.equals(definition.measureSet)
-            && QuoteDocumentTableDefinition.FILTER_EXCLUDE_OPTIONAL.equals(definition.lineFilter);
-
-        if (reconcilesToQuote) {
-            // CPQ's own SBQQ__NetAmount__c has no idea a Discount, Rounding,
-            // or any other synthetic row exists - it only knows about real
-            // quote lines. A counted row that is not a real line's own
-            // Detail row can only ever pull this table's total away from
-            // CPQ's, on the one table where the two are required to match
-            // to the cent. Caught here rather than left to surface as a
-            // baffling one-cent-off failure in the assertion below.
-            assertNoSyntheticCountedRows(rows, table);
-
-            if (quote.SBQQ__NetAmount__c != null) {
-                assertClose(quote.SBQQ__NetAmount__c, (Decimal) grandTotal.get('Amount_Net__c'),
-                            table, 'grand total vs Quote Net Amount');
-            }
-        }
-    }
-
-    private static void assertNoSyntheticCountedRows(List<Quote_Document_Row__c> rows, Quote_Document_Table__c table) {
-        for (Quote_Document_Row__c row : rows) {
-            Boolean isSyntheticCountedLeaf = !AGGREGATE_ROW_TYPES.contains(row.Row_Type__c)
-                && row.Row_Type__c != 'Detail'
-                && row.Include_In_Grand_Total__c;
-            if (isSyntheticCountedLeaf) {
-                table.Status__c = 'Failed';
-                throw new QuoteDocumentException(
-                    table.Table_Code__c + ': a ' + row.Row_Type__c + ' row ("' + row.Display_Label__c
-                    + '") counts toward the grand total, but this table is checked against the Quote '
-                    + 'Net Amount - CPQ has no knowledge of that row, so the two can never agree. Keep '
-                    + 'Discount, Rounding or other synthetic counted rows off the PRICE_WATERFALL + '
-                    + 'EXCLUDE_OPTIONAL table, or set Include_In_Grand_Total__c to false on them.'
-                );
-            }
-        }
-    }
-
-    private static void assertUniqueRowKeys(List<Quote_Document_Row__c> rows, Quote_Document_Table__c table) {
-        Set<String> seen = new Set<String>();
-        for (Quote_Document_Row__c row : rows) {
-            if (!seen.add(row.Row_Key__c)) {
-                table.Status__c = 'Failed';
-                throw new QuoteDocumentException(
-                    table.Table_Code__c + ': duplicate Row_Key__c "' + row.Row_Key__c + '" - '
-                    + 'two different rows produced the same key, most likely two grouping values '
-                    + 'that sanitize to the same text (e.g. "R&D" and "R D" both become "R_D"). '
-                    + 'Adjust the grouping value or the table\'s field path so the two are distinguishable.'
-                );
-            }
-        }
-    }
-
-    private static void assertClose(Decimal expected, Decimal actual, Quote_Document_Table__c table, String what) {
-        Decimal a = expected == null ? 0 : expected;
-        Decimal b = actual == null ? 0 : actual;
-        if (Math.abs(a - b) > TOLERANCE) {
-            table.Status__c = 'Failed';
-            throw new QuoteDocumentException(
-                table.Table_Code__c + ': ' + what + ' - expected ' + a + ', got ' + b
-            );
-        }
-    }
-
-    private static Quote_Document_Row__c findGrandTotal(List<Quote_Document_Row__c> rows) {
-        for (Quote_Document_Row__c row : rows) {
-            if (row.Row_Type__c == 'Grand Total') {
-                return row;
-            }
-        }
-        throw new QuoteDocumentException('Table was built without a Grand Total row.');
-    }
-
-    private static List<String> measureFields(String measureSet) {
-        if (QuoteDocumentTableDefinition.MEASURES_CHANGE.equals(measureSet)) {
-            return new List<String>{
-                'Amount_Net_New__c', 'Amount_Cancellation__c', 'Amount_Replacement_Removed__c',
-                'Amount_Replacement_Added__c', 'Amount_Termination__c', 'Amount_Net_Change__c',
-                'Amount_Final__c'
-            };
-        }
-        return new List<String>{
-            'Amount_List__c', 'Amount_Regular__c', 'Amount_Discount__c',
-            'Amount_Net__c', 'Amount_Customer__c', 'Quantity__c'
-        };
-    }
 }

@@ -128,6 +128,27 @@ public with sharing class QuoteDocumentTableDefinition {
         return MEASURES_CHANGE.equals(measureSet);
     }
 
+    /**
+     * The measure fields a given set writes. Lives here rather than in the
+     * generator because it is purely a function of the measure set, which this
+     * class already owns the constants for - both the persistence step that
+     * stamps a table and the verification step that reconciles it read the
+     * same list from here, so the two can never drift apart.
+     */
+    public static List<String> measureFields(String measureSet) {
+        if (MEASURES_CHANGE.equals(measureSet)) {
+            return new List<String>{
+                'Amount_Net_New__c', 'Amount_Cancellation__c', 'Amount_Replacement_Removed__c',
+                'Amount_Replacement_Added__c', 'Amount_Termination__c', 'Amount_Net_Change__c',
+                'Amount_Final__c'
+            };
+        }
+        return new List<String>{
+            'Amount_List__c', 'Amount_Regular__c', 'Amount_Discount__c',
+            'Amount_Net__c', 'Amount_Customer__c', 'Quantity__c'
+        };
+    }
+
     public String groupDimensionsLabel() {
         List<String> names = new List<String>();
         for (Level level : groupBy) {
