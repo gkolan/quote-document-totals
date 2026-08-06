@@ -63,6 +63,24 @@ None from other phases. Genuinely dependent on org/CLI access to execute and han
 - `scripts/apex/*` — new amendment-scenario script
 - `docs/quote-document-totals.md` §3
 
+## 7a. Progress — 2026-08-06
+
+Step §6.4's scenario is built, as an Apex fixture rather than org data (test data rolls back, so it costs nothing to keep and mutates no shared org): `handBuiltAmendmentProducesEveryReachableClassification` in `QuoteDocumentGeneratorTest`. It drives an amendment quote of its own through an injected CHANGE definition grouped by transaction type.
+
+| Branch | Covered | Value asserted |
+|---|---|---|
+| Net New | yes | present as its own subtotal |
+| Cancellation | yes | −500 — prior quantity at current price, not the line's own zero total |
+| Replacement Removed | yes | −200 — prior quantity at current price |
+| Replacement Added | yes | present, positive |
+| Termination | **no — unreachable** | no fixture can produce it (see the note in the header) |
+
+Also added: `aRenewalCurrentlyHasNoBranchOfItsOwn`, asserting that a line with `SBQQ__RenewedSubscription__c` populated currently classifies as **Replacement Added**. That is recorded as current behaviour, not endorsed — it is the concrete gap §3's six-category taxonomy would close, and is the clearest evidence available for that decision.
+
+**This does not satisfy §8.** These are the branches `classify()` is *written* to produce, so agreement proves the arithmetic is self-consistent, not that the rules match what CPQ emits on a genuine amendment. §8 still requires a real amendment quote. What the fixture buys is that the scenario data now exists under either taxonomy, so the remap becomes a one-pass change with reconciliation already asserted.
+
+Verified: `RunLocalTests` against `gkCpqDevHub` — 80 passing, 0 failing.
+
 ## 8. Acceptance criteria
 
 - [ ] Every category (New, Expansion, Renewal, Contraction, Churn) is hit by at least one line in a real (or realistically hand-built) amendment quote and produces the expected `Transaction_Type__c` and signed measure.
