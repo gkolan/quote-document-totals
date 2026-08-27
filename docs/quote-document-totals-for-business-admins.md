@@ -4,15 +4,17 @@
 
 When a Quote goes out for signature, the PDF usually needs more than the one Net Amount on the CPQ Quote. It needs clear tables - for example money by Product Family, or a separate list of optional products.
 
-**CPQ Quote Document Totals** builds those tables as Salesforce records on the Quote **before** DocuSign prints the PDF. DocuSign prints what is already there; it does not redo the math.
+**CPQ Quote Document Totals** builds those tables as Salesforce records on the Quote **before** anything prints the PDF. The document tool prints what is already there; it does not redo the math.
 
-**Generate Document Tables** prepares the numbers in Salesforce. It does not send the PDF. DocuSign is a separate action afterward.
+> **DocuSign is one document tool, not "the" one.** Everywhere this guide says DocuSign, read "whichever tool prints the document". The Salesforce side does not know or care which one it is — that is deliberate, and it is why switching e-signature vendors would not change any of the calculation, wording, or checking described here.
+
+**Generate Document Tables** prepares the numbers in Salesforce. It does not send the PDF. Printing is a separate action afterward.
 
 ```mermaid
 flowchart LR
     Quote["Quote with Quote Lines"] --> Gen["Generate Document Tables"]
     Gen --> Ready["Numbers saved on the Quote"]
-    Ready --> DocuSign["Later: DocuSign prints / sends"]
+    Ready --> Printing["Later: the document tool prints / sends"]
 ```
 
 ---
@@ -28,21 +30,21 @@ flowchart TD
     C --> D{"Status = Ready?"}
     D -->|No| E["Read Document Data Error<br/>fix · click Generate again"]
     E --> B
-    D -->|Yes| F["3. Separate click: DocuSign button / process"]
-    F --> G["DocuSign prints Tables and Rows<br/>does not recalculate"]
+    D -->|Yes| F["3. Separate click: document button / process"]
+    F --> G["The document tool prints Tables and Rows<br/>does not recalculate"]
 ```
 
 | Order | Action | What it does | What it does not do |
 |---|---|---|---|
 | 1 | Save Quote in CPQ | Stores Quote Lines | Does not build document tables |
 | 2 | **Generate Document Tables** | Builds Tables/Rows, checks math, sets status | Does not open DocuSign, does not email a PDF |
-| 3 | **DocuSign** (separate) | Prints / sends the PDF from those records | Does not recalculate totals |
+| 3 | **Print / send** (separate) | The document tool renders the PDF from those records | Does not recalculate totals |
 
 | Document Data Status | Meaning | Next action |
 |---|---|---|
 | Not Generated | Never built | Click Generate |
 | Stale | Quote changed after last successful build | Click Generate again |
-| Ready | Build succeeded and checks passed | DocuSign |
+| Ready | Build succeeded and checks passed | Print / send |
 | Failed | Last build failed and was undone | Read Document Data Error, fix, Generate again |
 
 ```mermaid
@@ -296,7 +298,7 @@ flowchart TD
 
 | Field (API name) | Value | Meaning |
 |---|---|---|
-| `Table_Code__c` | `PRODUCT_FAMILY_SUMMARY` | Stable ID for DocuSign and reports. Do not rename after templates depend on it. |
+| `Table_Code__c` | `PRODUCT_FAMILY_SUMMARY` | Stable ID every document tool and report keys off. Do not rename after templates depend on it. |
 | `Table_Name__c` | Product Family Summary | Friendly name on the generated table |
 | `Is_Active__c` | true | Include this Def whenever Generate runs |
 | `Line_Filter__c` | `EXCLUDE_OPTIONAL` | Keep Quote Lines where `SBQQ__Optional__c` is not true |
@@ -448,7 +450,7 @@ flowchart TD
 
 | Field (API name) | Value | Meaning |
 |---|---|---|
-| `Table_Code__c` | e.g. `INDUSTRY_ALLEGIANCE` | Stable code DocuSign will filter on |
+| `Table_Code__c` | e.g. `INDUSTRY_ALLEGIANCE` | Stable code the document tool filters on |
 | `Is_Active__c` | true | Puts this table on every Generate |
 | `Line_Filter__c` | usually `EXCLUDE_OPTIONAL` | Same as Example A: `SBQQ__Optional__c` is not true |
 | `Measure_Set__c` | `PRICE_WATERFALL` | Required for the sample customizer’s net-total logic |
@@ -696,7 +698,7 @@ flowchart TD
     B --> C["Activate Def + Row Customizer Code"]
     C --> D["Assign CPQ Document Totals"]
     D --> E["Generate · confirm Ready"]
-    E --> F["Point DocuSign at Table Code"]
+    E --> F["Point the document template at Table Code"]
 ```
 
 ### D. Framework updates later
@@ -716,7 +718,7 @@ flowchart TD
 | Generate | Quick Action / Screen Flow that calls the Apex generator |
 | Apex generator | Builds Tables/Rows from Active Defs and checks math |
 | Row customizer | Optional Apex for one Def after the normal build |
-| DocuSign action | Separate from Generate; prints/sends the PDF |
+| Print / send action | Separate from Generate; renders and sends the PDF |
 
 ---
 
@@ -736,12 +738,40 @@ flowchart TD
 
 ---
 
+
+## Changing what the document says, without a developer
+
+Most wording changes are a Custom Metadata edit, not a code change.
+
+| You want to change | Where | Record |
+|---|---|---|
+| A table's heading | Quote Document Table Def | `Display_Title__c` |
+| A column heading | Quote Document Key Value | category `LABELS_en_US`, key = the column code |
+| A row label such as "Total" or "Hardware Subtotal" | Quote Document Key Value | keys `GRAND_TOTAL`, `SUBTOTAL`, `SECTION_TOTAL` |
+| Another language | Quote Document Key Value | a new category, e.g. `LABELS_fr`, same keys |
+| A notice, term, or signature instruction | Quote Document Content | `Block_Code__c` plus `Body__c` |
+| Which columns print, and in what order | Quote Document Column Def | one record per column |
+
+**A label containing `{0}` is a template, not a mistake.** `{0} Subtotal` becomes "Hardware Subtotal".
+You can move the `{0}` — French writes `Sous-total {0}`, putting the name after the word. That is why
+these are templates rather than something the code glues together: word order is a translator's
+decision.
+
+**Editing metadata does not change documents that already exist.** Quotes already marked Ready keep
+their old wording until they are regenerated, because Salesforce does not notify anything when Custom
+Metadata changes. After changing wording, ask a developer to run the invalidation job, which marks
+affected quotes Stale so the next document rebuilds them. There is no setting that changes this.
+
+**What you cannot change here: any number.** Every amount comes from the Quote Lines and is checked
+against them before a document may print. If a number looks wrong, the fix is on the Quote.
+
+
 ## Cheat sheet
 
 | Question | Exact answer |
 |---|---|
 | Is this a framework? | Yes |
-| Does Generate send DocuSign? | No |
+| Does Generate send the document? | No |
 | What chooses which tables get built? | Custom Metadata Table Defs with `Is_Active__c = true` only |
 | What does the Screen Flow do? | Starts Generate and shows the result message |
 | What does the Apex generator do? | Reads Active Defs, builds Tables/Rows, checks math, sets Ready/Failed |
