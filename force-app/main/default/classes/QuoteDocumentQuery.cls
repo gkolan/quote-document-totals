@@ -66,7 +66,7 @@ public with sharing class QuoteDocumentQuery {
         // unvalidated.
         String soql =
             'SELECT Id, Name, SBQQ__NetAmount__c, AccountIndustry__c, Document_Data_Status__c, '
-            + 'Document_Data_Fingerprint__c' + currencyField + ', '
+            + 'Document_Data_Fingerprint__c, Document_Data_Request_Id__c' + currencyField + ', '
             + '(SELECT ' + String.join(new List<String>(lineFields), ', ')
             + ' FROM SBQQ__LineItems__r ORDER BY SBQQ__Number__c) '
             + 'FROM SBQQ__Quote__c WHERE Id IN :quoteIds WITH USER_MODE FOR UPDATE';

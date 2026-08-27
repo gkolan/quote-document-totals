@@ -43,6 +43,37 @@ public with sharing class QuoteDocumentGenerator {
         public Integer rowCount;
         @InvocableVariable(label='Message')
         public String message;
+
+        // The launch contract, exposed declaratively so a Flow-driven launch
+        // can pass these to the renderer - step 01A section 6b. A renderer
+        // must bind by request Id AND fingerprint, so both have to leave the
+        // action, not just be written to the Quote.
+        @InvocableVariable(label='Request Id')
+        public String requestId;
+        @InvocableVariable(label='Fingerprint')
+        public String fingerprint;
+        @InvocableVariable(label='Reused Existing Snapshot')
+        public Boolean reused;
+    }
+
+    /**
+     * What one quote's generate-or-reuse actually did.
+     *
+     * generate() used to return void, which made the launch contract in step
+     * 01A section 6b unimplementable: a caller had no way to learn the request
+     * Id and fingerprint it must hand the renderer, so it would have had to
+     * re-read the Quote - a second read that can already disagree with what
+     * this transaction wrote.
+     *
+     * `reused` is not cosmetic. It is what an ALWAYS_REBUILD test asserts on,
+     * and what tells an operator whether a launch actually recomputed.
+     */
+    public class GenerationOutcome {
+        public Id quoteId;
+        public String requestId;
+        public String fingerprint;
+        public String status;
+        public Boolean reused;
     }
 
     /**
@@ -61,7 +92,16 @@ public with sharing class QuoteDocumentGenerator {
         for (Request request : requests) {
             Result result = new Result();
             try {
-                generate(new Set<Id>{ request.quoteId });
+                List<GenerationOutcome> outcomes = generate(new Set<Id>{ request.quoteId });
+
+                // Every launch must hand the renderer the request Id and the
+                // fingerprint it just computed, so a declarative launch has to
+                // be able to read them back off this action - step 01A 6b.
+                if (!outcomes.isEmpty()) {
+                    result.requestId = outcomes[0].requestId;
+                    result.fingerprint = outcomes[0].fingerprint;
+                    result.reused = outcomes[0].reused;
+                }
 
                 result.tableCount = [
                     SELECT COUNT() FROM Quote_Document_Table__c WHERE Quote__c = :request.quoteId
@@ -71,8 +111,9 @@ public with sharing class QuoteDocumentGenerator {
                     WHERE Quote_Document_Table__r.Quote__c = :request.quoteId
                 ];
                 result.success = true;
-                result.message = 'Generated ' + result.tableCount + ' tables and '
-                    + result.rowCount + ' rows. This quote is ready for document generation.';
+                result.message = (result.reused == true ? 'Reused the existing snapshot: ' : 'Generated ')
+                    + result.tableCount + ' tables and ' + result.rowCount
+                    + ' rows. This quote is ready for document generation.';
             } catch (Exception e) {
                 result.success = false;
                 result.tableCount = 0;
@@ -89,7 +130,7 @@ public with sharing class QuoteDocumentGenerator {
      * One transaction for every quote passed in. Correct for a single quote
      * from a button or flow; use generateAsync for anything larger.
      */
-    public static void generate(Set<Id> quoteIds) {
+    public static List<GenerationOutcome> generate(Set<Id> quoteIds) {
         List<SBQQ__Quote__c> quotes = QuoteDocumentQuery.quotesWithLines(quoteIds);
 
         // Silently doing nothing for an id that does not resolve is how a flow
@@ -104,9 +145,25 @@ public with sharing class QuoteDocumentGenerator {
             throw new QuoteDocumentException('No Quote found for: ' + missing);
         }
 
+        List<GenerationOutcome> outcomes = new List<GenerationOutcome>();
         for (SBQQ__Quote__c quote : quotes) {
-            generateOne(quote);
+            outcomes.add(generateOne(quote));
         }
+        return outcomes;
+    }
+
+    /**
+     * Correlates one generation attempt for support, which is exactly what
+     * SBQQ__Quote__c.Document_Data_Request_Id__c's help text already describes
+     * - the field exists and nothing has ever written it. Wired up here rather
+     * than adding a second field with the same meaning.
+     *
+     * Not a UUID type: the value only has to be unique enough to tell one
+     * attempt from another in a log, and time-plus-random reads better in a
+     * support ticket than an opaque hex string.
+     */
+    private static String newRequestId() {
+        return System.now().getTime() + '-' + Math.abs(Crypto.getRandomInteger());
     }
 
     /**
@@ -131,7 +188,7 @@ public with sharing class QuoteDocumentGenerator {
     // One quote, all tables, one transaction
     // -----------------------------------------------------------------------
 
-    private static void generateOne(SBQQ__Quote__c quote) {
+    private static GenerationOutcome generateOne(SBQQ__Quote__c quote) {
         List<QuoteDocumentLine> allLines = normalize(quote);
 
         Savepoint sp = Database.setSavepoint();
@@ -150,9 +207,26 @@ public with sharing class QuoteDocumentGenerator {
             // below, so a broken definition still rolls back cleanly and
             // records Failed rather than throwing raw.
             String fingerprint = QuoteDocumentFingerprint.compute(quote, allLines, definitions);
+
+            GenerationOutcome outcome = new GenerationOutcome();
+            outcome.quoteId = quote.Id;
+            outcome.fingerprint = fingerprint;
+
             if (canReuse(quote, fingerprint, definitions)) {
-                return;
+                // The request Id of the attempt that PUBLISHED this snapshot,
+                // never a fresh one. A renderer binds by request Id, so
+                // inventing one here would hand it an identifier matching no
+                // generation that ever ran - step 01A section 9.
+                outcome.requestId = quote.Document_Data_Request_Id__c;
+                outcome.status = quote.Document_Data_Status__c;
+                outcome.reused = true;
+                return outcome;
             }
+
+            String requestId = newRequestId();
+            outcome.requestId = requestId;
+            outcome.status = 'Ready';
+            outcome.reused = false;
 
             delete [SELECT Id FROM Quote_Document_Table__c WHERE Quote__c = :quote.Id];
 
@@ -209,7 +283,9 @@ public with sharing class QuoteDocumentGenerator {
             // came from this one generation. The fingerprint stamped here is
             // the one computed at the top of this method, before generation -
             // nothing that feeds it changes mid-transaction.
-            markQuote(quote.Id, 'Ready', System.now(), null, fingerprint);
+            markQuote(quote.Id, 'Ready', System.now(), null, fingerprint, requestId);
+
+            return outcome;
 
         } catch (DmlException de) {
             Database.rollback(sp);
@@ -277,8 +353,18 @@ public with sharing class QuoteDocumentGenerator {
         }
     }
 
-    /** Success path only - stamps the fingerprint that made this generation's output. */
-    private static void markQuote(Id quoteId, String status, Datetime generatedOn, String error, String fingerprint) {
+    /**
+     * Success path only - stamps the fingerprint and the request Id that made
+     * this generation's output.
+     *
+     * The request Id is written here, with Ready and the fingerprint, so all
+     * three describe the same attempt. Writing it earlier would leave a
+     * request Id on the Quote for an attempt that then rolled back, pointing
+     * support at a generation whose records never existed.
+     */
+    private static void markQuote(
+        Id quoteId, String status, Datetime generatedOn, String error, String fingerprint, String requestId
+    ) {
         QuoteDocumentStaleness.suppress();
         try {
             update new SBQQ__Quote__c(
@@ -286,7 +372,8 @@ public with sharing class QuoteDocumentGenerator {
                 Document_Data_Status__c = status,
                 Document_Data_Generated_On__c = generatedOn,
                 Document_Data_Error__c = error,
-                Document_Data_Fingerprint__c = fingerprint
+                Document_Data_Fingerprint__c = fingerprint,
+                Document_Data_Request_Id__c = requestId
             );
         } finally {
             QuoteDocumentStaleness.resume();
@@ -306,6 +393,18 @@ public with sharing class QuoteDocumentGenerator {
     ) {
         if (!'Ready'.equals(quote.Document_Data_Status__c)) {
             return false;
+        }
+
+        // One ALWAYS_REBUILD contributor on ANY applicable table skips reuse
+        // for the WHOLE QUOTE, not just that table. That is not a design
+        // preference - canReuse is evaluated per quote and generate() returns
+        // from the entire quote on a match, so "defeat reuse for that table"
+        // is not expressible here. Said plainly because the coarser behaviour
+        // is the one an admin will be surprised by.
+        for (QuoteDocumentTableDefinition definition : definitions) {
+            if (definition.alwaysRebuilds()) {
+                return false;
+            }
         }
         if (quote.Document_Data_Fingerprint__c == null
             || !quote.Document_Data_Fingerprint__c.equals(freshFingerprint)) {
