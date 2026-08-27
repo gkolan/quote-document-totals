@@ -144,6 +144,21 @@ public with sharing class QuoteDocumentLifecycle {
         return base + jitter;
     }
 
+    /**
+     * The backoff as the platform's own enqueue delay.
+     *
+     * System.enqueueJob accepts 0-10 minutes, so the seconds figure above is
+     * translated rather than used raw - and clamped, because a delay outside
+     * that range throws and would turn a retry into a hard failure.
+     *
+     * At least one minute: a zero-delay re-enqueue is a busy wait wearing a
+     * queue, and would collide with the same neighbour immediately.
+     */
+    public static Integer backoffMinutes(Integer attempt) {
+        Integer minutes = Math.max(1, backoffSeconds(attempt) / 60);
+        return Math.min(10, minutes);
+    }
+
     /** The terminal code, so a runbook has one string to grep for. */
     public static QuoteDocumentGenerator.QuoteDocumentException lockTimeout(Id quoteId, Integer attempts) {
         return QuoteDocumentContributorError.build(

@@ -70,23 +70,38 @@ public with sharing class QuoteDocumentGenerateJob implements Queueable {
                 && attempt < QuoteDocumentLifecycle.MAX_LOCK_ATTEMPTS;
 
             if (retryable) {
-                // Re-queued rather than looped: Apex has no sleep, and a busy
-                // wait would burn the CPU limit the backoff exists to protect.
-                // The jitter matters more than the exponent - two jobs
-                // retrying on the same fixed schedule collide again every
-                // time.
+                // Re-queued WITH A DELAY, not looped. Apex has no sleep, and a
+                // busy wait would burn the CPU limit the backoff exists to
+                // protect - so the backoff is expressed as the platform's own
+                // enqueue delay. The jitter matters more than the exponent:
+                // two jobs retrying on the same fixed schedule collide again
+                // on every attempt.
+                Integer delayMinutes = QuoteDocumentLifecycle.backoffMinutes(attempt);
                 System.debug(
                     LoggingLevel.WARN,
                     'QuoteDocumentGenerateJob lock contention on ' + quoteId + ', attempt ' + attempt
-                        + ' of ' + QuoteDocumentLifecycle.MAX_LOCK_ATTEMPTS + '; backoff '
-                        + QuoteDocumentLifecycle.backoffSeconds(attempt) + 's; re-queueing.'
+                        + ' of ' + QuoteDocumentLifecycle.MAX_LOCK_ATTEMPTS + '; retrying in '
+                        + delayMinutes + ' minute(s).'
                 );
                 // Enqueueing from a test context would exceed the chained-job
-                // limit and prove nothing about the retry decision, which is
-                // what the tests assert directly.
+                // limit; the retry DECISION and the delay are asserted
+                // directly instead.
                 if (!Test.isRunningTest()) {
-                    System.enqueueJob(new QuoteDocumentGenerateJob(quoteId, onlyIfStale, attempt + 1));
+                    System.enqueueJob(
+                        new QuoteDocumentGenerateJob(quoteId, onlyIfStale, attempt + 1), delayMinutes
+                    );
                 }
+                return;
+            }
+
+            if (QuoteDocumentLifecycle.isRetryable(e)) {
+                // Attempts exhausted. Terminal, and deliberately does NOT
+                // touch the quote's status: nothing about the existing
+                // snapshot is wrong, the generation just never ran. One stable
+                // code for a runbook to grep.
+                QuoteDocumentGenerator.QuoteDocumentException timeout =
+                    QuoteDocumentLifecycle.lockTimeout(quoteId, attempt);
+                System.debug(LoggingLevel.ERROR, timeout.getMessage());
                 return;
             }
 

@@ -156,6 +156,41 @@ public with sharing class QuoteDocumentGenerator {
     }
 
     /**
+     * Refuses to start when another attempt is genuinely still running.
+     *
+     * This is where the abandonment window earns its keep. A quote sitting in
+     * Generating is either a live attempt - in which case starting a second
+     * one means two workers building the same snapshot - or a dead one, in
+     * which case refusing forever would block the quote permanently.
+     * QuoteDocumentLifecycle.isAbandoned draws that line, from configuration
+     * rather than a literal, and a null start time counts as abandoned because
+     * that state can only come from an interrupted write.
+     *
+     * Taking over is safe because publication re-reads the request Id: a
+     * superseded worker that finishes later cannot publish.
+     */
+    private static void assertNotAlreadyRunning(SBQQ__Quote__c quote) {
+        Datetime startedAt = (Datetime) quote.getPopulatedFieldsAsMap()
+            .get('Document_Data_Started_At__c');
+
+        if (!'Generating'.equals(quote.Document_Data_Status__c)) {
+            return;
+        }
+        if (QuoteDocumentLifecycle.isAbandoned(quote.Document_Data_Status__c, startedAt, System.now())) {
+            // Abandoned: take it over. The previous attempt cannot publish.
+            return;
+        }
+
+        throw QuoteDocumentContributorError.build(
+            'GENERATION_ALREADY_RUNNING',
+            'Quote ' + quote.Id + ' is already being generated (request '
+                + quote.Document_Data_Request_Id__c + ', started ' + startedAt + '). Starting a second '
+                + 'attempt would mean two workers building the same snapshot. It becomes available for '
+                + 'takeover once the abandonment window has passed.'
+        );
+    }
+
+    /**
      * Records that this attempt is in flight.
      *
      * Written in its own DML before the savepoint work so Document_Data_
@@ -263,6 +298,7 @@ public with sharing class QuoteDocumentGenerator {
             // other transaction can interleave between the claim and the
             // publish - which is what makes the supersede check below a
             // guarantee rather than a narrowing of the window.
+            assertNotAlreadyRunning(quote);
             claim(quote.Id, requestId);
 
             String locale = QuoteDocumentLocale.resolve(quote);
@@ -387,6 +423,16 @@ public with sharing class QuoteDocumentGenerator {
             throw fail(quote, detail, de, requestId);
         } catch (Exception e) {
             Database.rollback(sp);
+
+            // A LOCK failure is not a document failure. Nothing about the
+            // existing snapshot is wrong - the generation simply did not run -
+            // so the status is left exactly as it was, and the error is
+            // rethrown for the caller to retry. Writing Failed here would mark
+            // a perfectly good Ready snapshot as broken because a neighbouring
+            // transaction happened to hold a row.
+            if (QuoteDocumentLifecycle.isRetryable(e)) {
+                throw e;
+            }
             throw fail(quote, e.getMessage(), e, requestId);
         }
     }

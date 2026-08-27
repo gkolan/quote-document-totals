@@ -89,7 +89,8 @@ public with sharing class QuoteDocumentQuery {
         // unvalidated.
         String soql =
             'SELECT Id, Name, SBQQ__NetAmount__c, AccountIndustry__c, Document_Data_Status__c, '
-            + 'Document_Data_Fingerprint__c, Document_Data_Request_Id__c, Document_Payload_Hash__c'
+            + 'Document_Data_Fingerprint__c, Document_Data_Request_Id__c, Document_Payload_Hash__c, '
+            + 'Document_Data_Started_At__c'
             + currencyField + dependencyFields + ', '
             + '(SELECT ' + String.join(new List<String>(lineFields), ', ')
             + ' FROM SBQQ__LineItems__r ORDER BY SBQQ__Number__c) '

@@ -206,43 +206,247 @@ private class QuoteDocumentAdapterTest {
         // Deserialized UNTYPED, deliberately. Row.values is a
         // Map<String, Object>, and Apex cannot deserialize back into an
         // untyped Object field - "Apex Type unsupported in JSON: Object".
-        // That is a real property of this DTO shape and it is fine: a JSON
-        // renderer's output is read by other systems, not round-tripped back
-        // into Apex. Comparing the untyped structure tests what actually
-        // matters - that nothing was lost or altered on the way out.
+        // A JSON renderer's output is read by other systems, not round-tripped
+        // into Apex, so comparing the untyped structure tests what matters.
         Map<String, Object> parsed = (Map<String, Object>) JSON.deserializeUntyped(jsonOut);
         Assert.areEqual(
             canonical(source),
             canonicalUntyped(parsed),
-            'The JSON adapter must not lose or alter content. If this differs, a value did not survive '
-                + 'serialization and every downstream consumer is reading something the snapshot does not '
-                + 'say.'
+            'The JSON adapter must not lose or alter content.'
         );
 
-        // Every section, column and row code in the payload must appear in the
-        // HTML. The HTML carries them as data- attributes precisely so
-        // structure can be compared without parsing presentation.
-        for (QuoteDocumentPayload.Section section : source.sections) {
-            Assert.isTrue(
-                html.contains('data-code="' + section.code + '"'),
-                'Section ' + section.code + ' is missing from the HTML output.'
-            );
-            if (section.columns == null) {
-                continue;
-            }
-            for (QuoteDocumentPayload.Column column : section.columns) {
-                Assert.isTrue(
-                    html.contains('data-code="' + column.code + '"'),
-                    'Column ' + column.code + ' is missing from the HTML output.'
-                );
-            }
-            for (QuoteDocumentPayload.Row row : section.rows) {
-                Assert.isTrue(
-                    html.contains('data-key="' + row.key.escapeHtml4() + '"'),
-                    'Row ' + row.key + ' is missing from the HTML output.'
+        // The HTML is PARSED BACK and compared as content, not scanned for
+        // identifiers.
+        //
+        // The previous version of this test checked only that every section,
+        // column and row code appeared somewhere in the markup. That would
+        // have passed with wrong amounts, missing wording, or rows in the
+        // wrong order - which is most of what "the same document" means. It
+        // proved the adapter emitted the right SKELETON and called that
+        // equivalence.
+        assertSameDocument(renderableForm(source), renderableFormFromHtml(html));
+    }
+
+    /**
+     * Compares two canonical forms and reports the FIRST differing line.
+     *
+     * Two multi-hundred-line strings in an assertion message are unreadable,
+     * and an unreadable failure is one people learn to skip. Naming the line
+     * makes a real difference actionable in seconds.
+     */
+    private static void assertSameDocument(String expected, String actual) {
+        List<String> left = expected.split('\n');
+        List<String> right = actual.split('\n');
+
+        Integer shared = Math.min(left.size(), right.size());
+        for (Integer i = 0; i < shared; i++) {
+            if (left[i] != right[i]) {
+                Assert.fail(
+                    'The two renderers disagree at line ' + (i + 1) + ' of the semantic document.'
+                        + ' Payload: "' + left[i] + '" | HTML: "' + right[i] + '".'
+                        + ' Same sections in the same order, same columns, same row order, same values,'
+                        + ' same wording - that is what equivalence means.'
                 );
             }
         }
+
+        // Guarded rather than inlined into the assertion: Apex evaluates a
+        // message argument EAGERLY, so indexing past the shorter list threw
+        // even when the sizes matched and the assertion would have passed.
+        if (left.size() != right.size()) {
+            String extra = left.size() > right.size() ? left[shared] : right[shared];
+            Assert.fail(
+                'The renderers agree line for line but one produced more content than the other - '
+                    + left.size() + ' vs ' + right.size() + '. First extra: "' + extra + '"'
+            );
+        }
+    }
+
+    /**
+     * The payload reduced to what a renderer can actually express, in document
+     * order.
+     *
+     * Per §3a, LOCALE FORMATTING IS EXCLUDED from equivalence - a currency
+     * symbol, separator and placement are renderer choices. So numbers compare
+     * as Decimal and text compares normalized, and the HTML side undoes its
+     * own presentation before comparing. Comparing rendered strings instead
+     * would mean re-implementing the adapter's formatting in the test, which
+     * only ever proves the adapter agrees with itself.
+     */
+    private static String renderableForm(QuoteDocumentPayload payload) {
+        List<String> parts = new List<String>();
+
+        for (QuoteDocumentPayload.Section section : payload.sections) {
+            parts.add('SECTION|' + section.code);
+
+            if ('Block'.equals(section.sectionType)) {
+                if (String.isNotBlank(section.heading)) {
+                    parts.add('HEADING|' + norm(section.heading));
+                }
+                parts.add('TEXT|' + norm(section.body));
+                continue;
+            }
+
+            if (String.isNotBlank(section.title)) {
+                parts.add('HEADING|' + norm(section.title));
+            }
+            if (String.isNotBlank(section.subtitle)) {
+                parts.add('SUBTITLE|' + norm(section.subtitle));
+            }
+            if (String.isNotBlank(section.introText)) {
+                parts.add('TEXT|' + norm(section.introText));
+            }
+
+            for (QuoteDocumentPayload.Column column : section.columns) {
+                parts.add('COL|' + column.code + '|' + norm(column.label));
+            }
+            for (QuoteDocumentPayload.Row row : section.rows) {
+                parts.add('ROW|' + row.key + '|' + row.rowType);
+                for (QuoteDocumentPayload.Column column : section.columns) {
+                    parts.add('  VAL|' + column.code + '|'
+                        + comparableValue(row.values.get(column.code), column.dataType));
+                }
+            }
+            if (String.isNotBlank(section.footerText)) {
+                parts.add('TEXT|' + norm(section.footerText));
+            }
+        }
+        return String.join(parts, '\n');
+    }
+
+    /**
+     * The same form, reconstructed from the rendered HTML.
+     *
+     * An independent second walk over the adapter's own `data-` attributes and
+     * cell text. Not a general HTML parser and it does not need to be: the
+     * output shape is fixed and this test owns both ends of it.
+     */
+    private static String renderableFormFromHtml(String html) {
+        List<String> parts = new List<String>();
+        Map<String, String> typeByColumn = new Map<String, String>();
+
+        for (String line : html.split('\n')) {
+            String trimmed = line.trim();
+
+            if (trimmed.startsWith('<section')) {
+                parts.add('SECTION|' + attribute(trimmed, 'data-code'));
+            } else if (trimmed.startsWith('<h2>')) {
+                parts.add('HEADING|' + norm(inner(trimmed, 'h2')));
+            } else if (trimmed.startsWith('<h3>')) {
+                parts.add('SUBTITLE|' + norm(inner(trimmed, 'h3')));
+            } else if (trimmed.startsWith('<p>')) {
+                parts.add('TEXT|' + norm(inner(trimmed, 'p')));
+            } else if (trimmed.startsWith('<strong>')) {
+                parts.add('TEXT|' + norm(inner(trimmed, 'strong')));
+            } else if (trimmed.startsWith('<th')) {
+                parts.add('COL|' + attribute(trimmed, 'data-code')
+                    + '|' + norm(innerAfterTag(trimmed, 'th')));
+            } else if (trimmed.startsWith('<tr')) {
+                parts.add('ROW|' + attribute(trimmed, 'data-key')
+                    + '|' + attribute(trimmed, 'data-row-type'));
+            } else if (trimmed.startsWith('<td')) {
+                parts.add('  VAL|' + attribute(trimmed, 'data-code')
+                    + '|' + comparableRendered(innerAfterTag(trimmed, 'td')));
+            }
+        }
+        return String.join(parts, '\n');
+    }
+
+    /** A payload value, reduced per §3a. Null and zero stay distinct. */
+    private static String comparableValue(Object raw, String dataType) {
+        if (raw == null) {
+            return '~empty';
+        }
+        if (raw instanceof Decimal) {
+            return '#' + ((Decimal) raw).stripTrailingZeros().toPlainString();
+        }
+        if ('Boolean'.equals(dataType)) {
+            return raw == true ? '!true' : '!false';
+        }
+        return '=' + norm(String.valueOf(raw));
+    }
+
+    /**
+     * The same reduction applied to a rendered cell.
+     *
+     * Undoes the presentation the adapter added - the currency code and its
+     * separator - because §3a excludes symbol and placement from equivalence.
+     * What must survive is the NUMBER.
+     */
+    private static String comparableRendered(String cell) {
+        // norm() unescapes HTML, so the adapter's "&nbsp;" has already become
+        // the actual U+00A0 character by this point - and Apex's trim() only
+        // strips ASCII whitespace, so it survives and turns a number into
+        // text. Replace the CHARACTER, not the entity.
+        String nbsp = String.fromCharArray(new List<Integer>{ 160 });
+        String text = norm(cell).replace(nbsp, ' ').replace('&nbsp;', ' ').trim();
+
+        if (String.isBlank(text)) {
+            return '~empty';
+        }
+        if (text == 'Yes') {
+            return '!true';
+        }
+        if (text == 'No') {
+            return '!false';
+        }
+
+        // A number, whatever presentation was wrapped around it.
+        //
+        // Try the whole string first, then - only if that fails - the last
+        // space-separated token, which handles a currency code prefix like
+        // "USD 1234.56". §3a excludes symbol and placement from equivalence;
+        // what must survive is the NUMBER.
+        //
+        // This replaced a heuristic that checked whether the first token was
+        // uppercase, and that heuristic was WRONG in a way worth recording:
+        // Apex's `==` on String is CASE-INSENSITIVE, so `'Not' == 'NOT'` is
+        // true and the word "Not" in "Not Specified" was being stripped as if
+        // it were a currency code. The test caught it; the fix is to stop
+        // guessing at structure and just parse.
+        try {
+            return '#' + Decimal.valueOf(text).stripTrailingZeros().toPlainString();
+        } catch (Exception ignored) {
+            // Not a bare number - fall through.
+        }
+
+        List<String> pieces = text.split(' ');
+        if (pieces.size() == 2) {
+            try {
+                return '#' + Decimal.valueOf(pieces[1]).stripTrailingZeros().toPlainString();
+            } catch (Exception ignored) {
+                // Not a currency-prefixed number either.
+            }
+        }
+        return '=' + text;
+    }
+
+    /** The value of one attribute on an opening tag. */
+    private static String attribute(String tag, String name) {
+        String marker = name + '="';
+        Integer at = tag.indexOf(marker);
+        if (at == -1) {
+            return '';
+        }
+        Integer startAt = at + marker.length();
+        Integer endAt = tag.indexOf('"', startAt);
+        return endAt == -1 ? '' : tag.substring(startAt, endAt);
+    }
+
+    /** Text between <tag> and </tag> on one line. */
+    private static String inner(String line, String tag) {
+        String open = '<' + tag + '>';
+        String close = '</' + tag + '>';
+        Integer startAt = line.indexOf(open);
+        Integer endAt = line.indexOf(close);
+        return (startAt == -1 || endAt == -1) ? '' : line.substring(startAt + open.length(), endAt);
+    }
+
+    /** Text after an opening tag carrying attributes, e.g. <td data-code="X">value</td>. */
+    private static String innerAfterTag(String line, String tag) {
+        Integer startAt = line.indexOf('>');
+        Integer endAt = line.indexOf('</' + tag + '>');
+        return (startAt == -1 || endAt == -1 || endAt < startAt) ? '' : line.substring(startAt + 1, endAt);
     }
 
     /**

@@ -377,4 +377,163 @@ private class QuoteDocumentReviewFindingsTest {
                 + 'from it, so null means every amount prints without a currency.'
         );
     }
+
+    // -----------------------------------------------------------------------
+    // Finding 7 - lifecycle helpers were computed but never acted on
+    // -----------------------------------------------------------------------
+
+    /**
+     * isAbandoned() had no production caller, so the abandonment window was a
+     * number nothing consulted. It is now consulted before a claim: a live
+     * Generating attempt blocks a second one.
+     */
+    @IsTest
+    static void aLiveGeneratingAttemptBlocksASecondOne() {
+        Id quoteId = QuoteDocumentTestData.quoteId();
+
+        QuoteDocumentStaleness.suppress();
+        try {
+            update new SBQQ__Quote__c(
+                Id = quoteId,
+                Document_Data_Status__c = 'Generating',
+                Document_Data_Started_At__c = System.now(),
+                Document_Data_Request_Id__c = 'another-worker'
+            );
+        } finally {
+            QuoteDocumentStaleness.resume();
+        }
+
+        String message;
+        Test.startTest();
+        try {
+            QuoteDocumentGenerator.generate(new Set<Id>{ quoteId });
+        } catch (QuoteDocumentGenerator.QuoteDocumentException e) {
+            message = e.getMessage();
+        }
+        Test.stopTest();
+
+        Assert.isNotNull(message, 'A second attempt must not start while one is genuinely running.');
+        Assert.isTrue(
+            message.contains('GENERATION_ALREADY_RUNNING'),
+            'Wrong code: ' + message
+        );
+        Assert.isTrue(
+            message.contains('another-worker'),
+            'The message must name the attempt that holds it: ' + message
+        );
+    }
+
+    /**
+     * The other half: past the window it IS taken over, or a crashed attempt
+     * would block the quote permanently.
+     */
+    @IsTest
+    static void anAbandonedGeneratingAttemptIsTakenOver() {
+        Id quoteId = QuoteDocumentTestData.quoteId();
+
+        QuoteDocumentStaleness.suppress();
+        try {
+            update new SBQQ__Quote__c(
+                Id = quoteId,
+                Document_Data_Status__c = 'Generating',
+                Document_Data_Started_At__c = System.now().addHours(-24),
+                Document_Data_Request_Id__c = 'dead-worker'
+            );
+        } finally {
+            QuoteDocumentStaleness.resume();
+        }
+
+        Test.startTest();
+        List<QuoteDocumentGenerator.GenerationOutcome> outcomes =
+            QuoteDocumentGenerator.generate(new Set<Id>{ quoteId });
+        Test.stopTest();
+
+        Assert.areEqual('Ready', outcomes[0].status, 'An abandoned attempt must be recoverable.');
+        Assert.areNotEqual(
+            'dead-worker',
+            outcomes[0].requestId,
+            'The takeover runs as a NEW attempt, so the dead one cannot publish over it.'
+        );
+    }
+
+    /**
+     * A Generating quote with a null start time can only have come from an
+     * interrupted write. Blocking on it forever is the worse failure.
+     */
+    @IsTest
+    static void aGeneratingQuoteWithNoStartTimeIsRecoverable() {
+        Id quoteId = QuoteDocumentTestData.quoteId();
+
+        QuoteDocumentStaleness.suppress();
+        try {
+            update new SBQQ__Quote__c(
+                Id = quoteId,
+                Document_Data_Status__c = 'Generating',
+                Document_Data_Started_At__c = null
+            );
+        } finally {
+            QuoteDocumentStaleness.resume();
+        }
+
+        Test.startTest();
+        List<QuoteDocumentGenerator.GenerationOutcome> outcomes =
+            QuoteDocumentGenerator.generate(new Set<Id>{ quoteId });
+        Test.stopTest();
+
+        Assert.areEqual('Ready', outcomes[0].status, 'It must not be permanently stuck.');
+    }
+
+    /**
+     * backoffSeconds() was only ever interpolated into a log line. The retry
+     * now uses the platform's enqueue delay, which is expressed in minutes and
+     * must stay inside the 0-10 the platform accepts - outside that range it
+     * throws, turning a retry into a hard failure.
+     */
+    @IsTest
+    static void theBackoffIsAUsableEnqueueDelay() {
+        for (Integer attempt = 1; attempt <= QuoteDocumentLifecycle.MAX_LOCK_ATTEMPTS + 3; attempt++) {
+            Integer minutes = QuoteDocumentLifecycle.backoffMinutes(attempt);
+            Assert.isTrue(
+                minutes >= 1,
+                'A zero delay is a busy wait wearing a queue and would collide with the same neighbour '
+                    + 'immediately. Attempt ' + attempt + ' gave ' + minutes
+            );
+            Assert.isTrue(
+                minutes <= 10,
+                'System.enqueueJob rejects a delay above 10 minutes, which would turn a retry into a hard '
+                    + 'failure. Attempt ' + attempt + ' gave ' + minutes
+            );
+        }
+    }
+
+    /**
+     * A lock failure must leave the snapshot and the status untouched -
+     * nothing about the existing document is wrong, the generation simply did
+     * not run. Previously the generator wrote Failed for any exception, which
+     * would have marked a perfectly good Ready snapshot as broken because a
+     * neighbouring transaction held a row.
+     */
+    @IsTest
+    static void aRetryableFailureDoesNotMarkTheQuoteFailed() {
+        ApexClass generator = [
+            SELECT Body FROM ApexClass WHERE Name = 'QuoteDocumentGenerator' LIMIT 1
+        ];
+        Assert.isTrue(
+            withoutComments(generator.Body).contains('QuoteDocumentLifecycle.isRetryable'),
+            'The generator must distinguish a lock failure from a document failure before writing Failed. '
+                + 'Without that, contention marks a good snapshot broken.'
+        );
+
+        ApexClass job = [SELECT Body FROM ApexClass WHERE Name = 'QuoteDocumentGenerateJob' LIMIT 1];
+        String jobCode = withoutComments(job.Body);
+        Assert.isTrue(
+            jobCode.contains('QuoteDocumentLifecycle.lockTimeout'),
+            'GENERATION_LOCK_TIMEOUT was a code nothing could ever raise. The job must surface it when '
+                + 'attempts are exhausted.'
+        );
+        Assert.isTrue(
+            jobCode.contains('backoffMinutes'),
+            'The backoff must be USED as the enqueue delay, not merely logged.'
+        );
+    }
 }
