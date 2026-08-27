@@ -97,12 +97,42 @@ public with sharing class QuoteDocumentTableDefinition {
     /** Registry code for QuoteDocumentRowCustomizerRegistry.resolve(), or blank if this table uses only declarative config. */
     public String rowCustomizerCode;
 
+    /**
+     * Content-identity tokens for the two contributors. Not documentation:
+     * QuoteDocumentGenerator.canReuse returns BEFORE customization runs, and
+     * the fingerprint hashes the customizer code - the string, not the
+     * behaviour behind it. Deploying changed Apex or editing a Flow leaves
+     * both unchanged, so without these the fingerprint matches, the quote
+     * stays Ready, and generation reuses a snapshot the new logic would never
+     * have produced. See step 01A section 6.
+     */
+    public String rowCustomizerVersion;
+    public String rowCustomizerFlow;
+    public String rowCustomizerFlowVersion;
+
+    // What the contributor reads beyond the quote and its lines. See step 01A section 6a.
+    public String cachePolicy;
+    public List<String> contributorDependencyPaths;
+
+    public static final String CACHE_STANDARD = 'STANDARD';
+    public static final String CACHE_DECLARED_DEPENDENCIES = 'DECLARED_DEPENDENCIES';
+    public static final String CACHE_ALWAYS_REBUILD = 'ALWAYS_REBUILD';
+
+    public Boolean hasContributor() {
+        return String.isNotBlank(rowCustomizerCode) || String.isNotBlank(rowCustomizerFlow);
+    }
+
+    public Boolean alwaysRebuilds() {
+        return CACHE_ALWAYS_REBUILD.equals(cachePolicy);
+    }
+
     @TestVisible
     private QuoteDocumentTableDefinition() {
         groupBy = new List<Level>();
         compositeSeparator = DEFAULT_SEPARATOR;
         maxGroups = DEFAULT_MAX_GROUPS;
         sortGroupsBy = SORT_ALPHABETICAL;
+        contributorDependencyPaths = new List<String>();
     }
 
     private QuoteDocumentTableDefinition(Quote_Document_Table_Def__mdt record, List<Level> levels) {
@@ -121,7 +151,101 @@ public with sharing class QuoteDocumentTableDefinition {
         sortGroupsBy = String.isBlank(record.Sort_Groups_By__c)
             ? SORT_ALPHABETICAL : record.Sort_Groups_By__c;
         rowCustomizerCode = record.Row_Customizer_Code__c;
+        rowCustomizerVersion = record.Row_Customizer_Version__c;
+        rowCustomizerFlow = record.Row_Customizer_Flow__c;
+        rowCustomizerFlowVersion = record.Row_Customizer_Flow_Version__c;
+        cachePolicy = record.Cache_Policy__c;
+        contributorDependencyPaths = splitPaths(record.Contributor_Dependency_Set__c);
         groupBy = levels;
+    }
+
+    /** Comma-separated, blank entries dropped, order preserved so the fingerprint stays deterministic. */
+    private static List<String> splitPaths(String raw) {
+        List<String> paths = new List<String>();
+        if (String.isBlank(raw)) {
+            return paths;
+        }
+        for (String candidate : raw.split(',')) {
+            String trimmed = candidate.trim();
+            if (String.isNotBlank(trimmed)) {
+                paths.add(trimmed);
+            }
+        }
+        return paths;
+    }
+
+    /**
+     * Everything a contributor must declare before it is allowed to run.
+     *
+     * All of it fails at CONFIG LOAD rather than mid-generation, so a
+     * half-configured table is caught by the first generation attempt on any
+     * quote instead of by the one quote that happens to exercise it. None of
+     * these can be enforced declaratively: they are conditional on another
+     * field being set, and a Custom Metadata field cannot be conditionally
+     * required.
+     */
+    private void validateContributorConfig() {
+        if (!hasContributor()) {
+            // No contributor, nothing to declare. A cache policy on a table
+            // with no contributor is harmless and deliberately not an error -
+            // it is the shape you get mid-edit, and failing on it would punish
+            // someone for configuring in the wrong order.
+            return;
+        }
+
+        if (String.isNotBlank(rowCustomizerCode) && String.isBlank(rowCustomizerVersion)) {
+            QuoteDocumentContributorError.fail(
+                QuoteDocumentContributorError.VERSION_UNDECLARED,
+                'Table ' + tableCode + ' sets Row_Customizer_Code__c "' + rowCustomizerCode
+                    + '" but leaves Row_Customizer_Version__c blank. The version is content identity, not '
+                    + 'documentation: without it, deploying changed customizer Apex leaves the fingerprint '
+                    + 'identical and quotes silently reuse a snapshot the new code would not have produced.'
+            );
+        }
+
+        if (String.isNotBlank(rowCustomizerFlow) && String.isBlank(rowCustomizerFlowVersion)) {
+            QuoteDocumentContributorError.fail(
+                QuoteDocumentContributorError.VERSION_UNDECLARED,
+                'Table ' + tableCode + ' sets Row_Customizer_Flow__c "' + rowCustomizerFlow
+                    + '" but leaves Row_Customizer_Flow_Version__c blank. Editing a Flow does not change its '
+                    + 'API name, so without this token the fingerprint cannot see the change and quotes '
+                    + 'reuse a stale snapshot.'
+            );
+        }
+
+        // Blank must not be readable as STANDARD. "Nobody chose" and "chose
+        // the option that declares no external reads" have the same output and
+        // completely different reliability, which is exactly why step 01A
+        // section 6a specifies a picklist rather than a checkbox.
+        if (String.isBlank(cachePolicy)) {
+            QuoteDocumentContributorError.fail(
+                QuoteDocumentContributorError.DEPENDENCY_UNDECLARED,
+                'Table ' + tableCode + ' has a contributor but no Cache_Policy__c. Choose STANDARD (reads '
+                    + 'only the quote and its lines), DECLARED_DEPENDENCIES (also reads the field paths in '
+                    + 'Contributor_Dependency_Set__c), or ALWAYS_REBUILD (reads data it cannot enumerate). '
+                    + 'There is no default: a contributor that reads external data under an assumed '
+                    + 'STANDARD produces a confidently wrong document.'
+            );
+        }
+
+        if (CACHE_DECLARED_DEPENDENCIES.equals(cachePolicy) && contributorDependencyPaths.isEmpty()) {
+            QuoteDocumentContributorError.fail(
+                QuoteDocumentContributorError.DEPENDENCY_UNDECLARED,
+                'Table ' + tableCode + ' declares Cache_Policy__c = DECLARED_DEPENDENCIES but '
+                    + 'Contributor_Dependency_Set__c is empty. List the field paths the contributor reads '
+                    + 'beyond the quote and its lines, or choose STANDARD or ALWAYS_REBUILD instead.'
+            );
+        }
+
+        if (!CACHE_DECLARED_DEPENDENCIES.equals(cachePolicy) && !contributorDependencyPaths.isEmpty()) {
+            QuoteDocumentContributorError.fail(
+                QuoteDocumentContributorError.DEPENDENCY_UNDECLARED,
+                'Table ' + tableCode + ' lists Contributor_Dependency_Set__c paths but its Cache_Policy__c is '
+                    + cachePolicy + ', under which those paths are never hashed. Either set the policy to '
+                    + 'DECLARED_DEPENDENCIES so the paths take effect, or clear them - silently ignoring a '
+                    + 'declared dependency is how a stale document gets shipped.'
+            );
+        }
     }
 
     public Boolean usesChangeMeasures() {
@@ -202,7 +326,9 @@ public with sharing class QuoteDocumentTableDefinition {
         for (Quote_Document_Table_Def__mdt record : [
             SELECT Id, Table_Code__c, Table_Name__c, Amount_Basis__c, Line_Filter__c,
                    Measure_Set__c, Show_Details__c, Show_Section_Totals__c, Display_Order__c,
-                   Composite_Separator__c, Max_Groups__c, Sort_Groups_By__c, Row_Customizer_Code__c
+                   Composite_Separator__c, Max_Groups__c, Sort_Groups_By__c, Row_Customizer_Code__c,
+                   Row_Customizer_Version__c, Row_Customizer_Flow__c, Row_Customizer_Flow_Version__c,
+                   Cache_Policy__c, Contributor_Dependency_Set__c
             FROM Quote_Document_Table_Def__mdt
             WHERE Is_Active__c = true
             ORDER BY Display_Order__c
@@ -228,7 +354,10 @@ public with sharing class QuoteDocumentTableDefinition {
                 );
             }
 
-            definitions.add(new QuoteDocumentTableDefinition(record, toLevels(record.Table_Code__c, groupings)));
+            QuoteDocumentTableDefinition definition =
+                new QuoteDocumentTableDefinition(record, toLevels(record.Table_Code__c, groupings));
+            definition.validateContributorConfig();
+            definitions.add(definition);
         }
 
         cached = definitions;

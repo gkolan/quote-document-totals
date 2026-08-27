@@ -363,20 +363,53 @@ public with sharing class QuoteDocumentGenerator {
         List<QuoteDocumentLine> lines,
         List<Quote_Document_Row__c> rows
     ) {
-        if (String.isBlank(definition.rowCustomizerCode)) {
+        if (!definition.hasContributor()) {
             return rows;
         }
-        QuoteDocumentRowCustomizer instance =
-            QuoteDocumentRowCustomizerRegistry.resolve(definition.rowCustomizerCode);
 
         QuoteDocumentRowCustomizerContext context = new QuoteDocumentRowCustomizerContext();
         context.quote = quote;
         context.definition = definition;
         context.lines = lines;
         context.rows = rows;
+        context.currencyIsoCode = currencyOf(quote);
 
-        List<Quote_Document_Row__c> customized = instance.customize(context);
-        return customized == null ? context.rows : customized;
+        // Apex first, then Flow. This order is public contract, not incidental
+        // - step 01A section 7. The Flow sees the Apex customizer's rows and
+        // can overwrite them; the Apex customizer never sees the Flow's. Last
+        // writer wins on the same field of the same row, deliberately, so a
+        // Flow can undo an Apex customizer without touching its code.
+        if (String.isNotBlank(definition.rowCustomizerCode)) {
+            context.rows = runContributor(
+                QuoteDocumentRowCustomizerRegistry.resolve(definition.rowCustomizerCode), context
+            );
+        }
+        if (String.isNotBlank(definition.rowCustomizerFlow)) {
+            context.rows = runContributor(new QuoteDocumentFlowRowCustomizer(), context);
+        }
+
+        QuoteDocumentContributorOutput.validate(context.rows, definition);
+        return context.rows;
+    }
+
+    /** Null means "unchanged" - the documented Apex contract. The Flow bridge rejects null before it reaches here. */
+    private static List<Quote_Document_Row__c> runContributor(
+        QuoteDocumentRowCustomizer instance, QuoteDocumentRowCustomizerContext context
+    ) {
+        List<Quote_Document_Row__c> returned = instance.customize(context);
+        return returned == null ? context.rows : returned;
+    }
+
+    /**
+     * CurrencyIsoCode does not exist in a single-currency org, so a static
+     * reference will not compile there - the same reason QuoteDocumentQuery
+     * builds its field list dynamically.
+     */
+    private static String currencyOf(SBQQ__Quote__c quote) {
+        Map<String, Object> populated = quote.getPopulatedFieldsAsMap();
+        return populated.containsKey('CurrencyIsoCode')
+            ? String.valueOf(populated.get('CurrencyIsoCode'))
+            : null;
     }
 
     private static List<QuoteDocumentLine> applyFilter(List<QuoteDocumentLine> lines, String filter) {

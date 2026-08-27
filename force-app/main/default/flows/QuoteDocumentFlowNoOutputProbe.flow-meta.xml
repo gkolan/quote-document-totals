@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <description>Test fixture for CONTRIBUTOR_NO_OUTPUT. Declares rows as input only, never Available for Output - the exact shape a contributor Flow ends up in when the author edits the loop variable in place and never assigns the output collection. The Flow succeeds and returns nothing, which is why the bridge must fail rather than read it as "unchanged". Not a contributor; never reference it from a table definition.</description>
+    <environments>Default</environments>
+    <interviewLabel>Quote Document Flow No Output Probe {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Quote Document Flow No Output Probe</label>
+    <processType>AutoLaunchedFlow</processType>
+    <status>Active</status>
+
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Do_Nothing_Useful</targetReference>
+        </connector>
+    </start>
+
+    <assignments>
+        <name>Do_Nothing_Useful</name>
+        <label>Do Nothing Useful</label>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>scratch</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>the author thinks they edited the rows</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+
+    <variables>
+        <name>rows</name>
+        <dataType>SObject</dataType>
+        <isCollection>true</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+        <objectType>Quote_Document_Row__c</objectType>
+    </variables>
+    <variables>
+        <name>scratch</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>quoteId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>tableCode</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>locale</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>currencyIsoCode</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

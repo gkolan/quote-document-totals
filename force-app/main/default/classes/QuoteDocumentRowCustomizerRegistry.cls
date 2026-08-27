@@ -13,6 +13,11 @@ public with sharing class QuoteDocumentRowCustomizerRegistry {
             when 'INDUSTRY_ALLEGIANCE'   { return new QuoteDocumentIndustryRowCustomizer(); }
             when 'ROUNDING_EXAMPLE'      { return new QuoteDocumentRoundingRowCustomizer(); }
             when 'ESTIMATED_TAX'         { return new QuoteDocumentEstimatedTaxRowCustomizer(); }
+            // The Flow bridge. Reachable this way for a table whose only
+            // contributor is a Flow referenced through Row_Customizer_Code__c,
+            // though the ordinary path is Row_Customizer_Flow__c, which the
+            // generator runs after any Apex customizer - see step 01A section 7.
+            when 'FLOW'                  { return new QuoteDocumentFlowRowCustomizer(); }
             when else {
                 throw new QuoteDocumentGenerator.QuoteDocumentException(
                     'Unknown row customizer code: ' + customizerCode

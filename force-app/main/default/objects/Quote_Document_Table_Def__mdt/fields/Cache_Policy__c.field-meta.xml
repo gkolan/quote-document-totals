@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Cache_Policy__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>REQUIRED on any table with a row customizer or customizer Flow. Declares what that contributor reads, because reuse is decided from a fingerprint that only sees the quote and its lines. STANDARD: reads only the quote and its lines. DECLARED_DEPENDENCIES: also reads the paths in Contributor Dependency Set, which are hashed. ALWAYS_REBUILD: reads data it cannot enumerate, so reuse is skipped for the WHOLE QUOTE. Blank fails with CONTRIBUTOR_DEPENDENCY_UNDECLARED - there is deliberately no default.</inlineHelpText>
+    <label>Cache Policy</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>STANDARD</fullName>
+                <default>false</default>
+                <label>STANDARD</label>
+            </value>
+            <value>
+                <fullName>DECLARED_DEPENDENCIES</fullName>
+                <default>false</default>
+                <label>DECLARED_DEPENDENCIES</label>
+            </value>
+            <value>
+                <fullName>ALWAYS_REBUILD</fullName>
+                <default>false</default>
+                <label>ALWAYS_REBUILD</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

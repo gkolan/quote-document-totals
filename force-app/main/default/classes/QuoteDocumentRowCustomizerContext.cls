@@ -16,6 +16,21 @@ public class QuoteDocumentRowCustomizerContext {
     public List<QuoteDocumentLine> lines;
 
     /**
+     * The locale this table is being generated for, passed through to a Flow
+     * contributor so it can pick the right wording without reading the running
+     * user's locale - which would make the snapshot depend on who clicked
+     * generate, and it must not.
+     *
+     * Null until step 03 resolves locale per quote. Contributors must treat
+     * null as "not yet configured" and fall back to the org default, never
+     * blank the text.
+     */
+    public String locale;
+
+    /** The quote's currency, or null in a single-currency org. Contributors format with it; they must not re-derive it. */
+    public String currencyIsoCode;
+
+    /**
      * The rows QuoteDocumentRowBuilder produced for this table, in render
      * order (group headers, subtotals, details, then the grand total last).
      * Modify in place - add, remove, or edit rows and their measure fields -

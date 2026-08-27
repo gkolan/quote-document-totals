@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <description>Test fixture for CONTRIBUTOR_FLOW_FAULT. Attempts to insert a Quote_Document_Row__c with no parent table, which cannot succeed against a master-detail relationship, and has no fault connector - so the fault reaches Apex unhandled. It also demonstrates step 01A section 2 honestly: core cannot stop a Flow performing its own DML. What core guarantees is that the attempt is rolled back and the failure is loud. Not a contributor; never reference it from a table definition.</description>
+    <environments>Default</environments>
+    <interviewLabel>Quote Document Flow Fault Probe {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Quote Document Flow Fault Probe</label>
+    <processType>AutoLaunchedFlow</processType>
+    <status>Active</status>
+
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Build_Orphan_Row</targetReference>
+        </connector>
+    </start>
+
+    <assignments>
+        <name>Build_Orphan_Row</name>
+        <label>Build Orphan Row</label>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>orphan.Row_Type__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Detail</stringValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>orphan.Display_Label__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>This insert cannot succeed</stringValue>
+            </value>
+        </assignmentItems>
+        <connector>
+            <targetReference>Insert_Orphan_Row</targetReference>
+        </connector>
+    </assignments>
+
+    <recordCreates>
+        <name>Insert_Orphan_Row</name>
+        <label>Insert Orphan Row</label>
+        <locationX>176</locationX>
+        <locationY>278</locationY>
+        <inputReference>orphan</inputReference>
+    </recordCreates>
+
+    <variables>
+        <name>orphan</name>
+        <dataType>SObject</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+        <objectType>Quote_Document_Row__c</objectType>
+    </variables>
+    <variables>
+        <name>rows</name>
+        <dataType>SObject</dataType>
+        <isCollection>true</isCollection>
+        <isInput>true</isInput>
+        <isOutput>true</isOutput>
+        <objectType>Quote_Document_Row__c</objectType>
+    </variables>
+    <variables>
+        <name>quoteId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>tableCode</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>locale</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>currencyIsoCode</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

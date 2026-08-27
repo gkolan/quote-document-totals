@@ -58,6 +58,25 @@ public with sharing class QuoteDocumentFingerprint {
             parts.add(encodeString(definition.amountBasis));
             parts.add(encodeString(definition.rowCustomizerCode));
 
+            // Contributor CONTENT IDENTITY, not bookkeeping. canReuse returns
+            // before customization runs, and the code and Flow API name above
+            // are strings - they do not move when the logic behind them does.
+            // Without these tokens, deploying a changed customizer or editing
+            // a Flow leaves the fingerprint identical, the quote stays Ready,
+            // and generation reuses a snapshot the new logic would never have
+            // produced. Step 01A section 6.
+            parts.add(encodeString(definition.rowCustomizerVersion));
+            parts.add(encodeString(definition.rowCustomizerFlow));
+            parts.add(encodeString(definition.rowCustomizerFlowVersion));
+
+            // The policy itself is hashed so that changing it - which changes
+            // whether reuse is legal at all - regenerates rather than being
+            // invisible until the next unrelated edit.
+            parts.add(encodeString(definition.cachePolicy));
+            for (String path : definition.contributorDependencyPaths) {
+                parts.add(encodeString(path));
+            }
+
             // Ordered grouping definitions - already ordered by Level then
             // Sequence inside groupBy/parts.
             for (QuoteDocumentTableDefinition.Level level : definition.groupBy) {
