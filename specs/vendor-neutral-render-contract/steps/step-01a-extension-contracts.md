@@ -1,6 +1,6 @@
 # Step 01A — Apex and Flow row-contribution seam
 
-**Status: IN PROGRESS — §4 round-trip gate PROVEN, bridge not built**
+**Status: BUILT — not yet COMPLETE. Every mechanism in this step exists and is tested; the residual gaps are named in §11.**
 **Blocked by:** [step 00](step-00-audit-and-contract-principles.md)
 **Blocks:** steps 01–09
 **Owner decision needed:** none outstanding. Namespace scope was decided in [step 00](step-00-audit-and-contract-principles.md) §7 as **A — same namespace / unlocked source**; §8 and §11 record the consequence. Everything else in this step is locked by [step 00](step-00-audit-and-contract-principles.md) §3.
@@ -265,12 +265,40 @@ Zero-core-diff proof, per [`spec.md`](../spec.md) §9: the Flow sample adds a `.
 
 ## 11. Close-out
 
-- **Date:** §4 gate closed 2026-08-27. The step itself remains **IN PROGRESS** — the bridge, validation codes, version tokens, cache policy, and the `generate` result are not built.
-- **Flow round-trip prototype result:** **PROVEN — every fidelity box green, no fallback needed.** Uninserted `Quote_Document_Row__c` records survive `Flow.Interview` intact: order, Decimal scale, null-vs-zero, all three Booleans, fields core never populates, Flow-created rows, and in-Flow mutations. Budget at 1000 rows: 685 ms CPU (6.9% of limit), 328,529 bytes heap (5.5%). Full matrix in §4. Apex-defined types and the JSON fallback are **ruled out**; do not reintroduce them.
-- **One design consequence the prototype found that the matrix did not ask for:** a Flow loop variable is a **copy**. A contributor Flow must collect rows into a second collection and assign it back to `rows`; editing the loop variable in place changes nothing and fails *silently*, which is the worst failure shape available. This is the single most likely authoring mistake and belongs at the top of the extension recipe, not in a footnote.
-- **Decision — namespace scope (A same-namespace / B managed package):** **A**, inherited from [step 00](step-00-audit-and-contract-principles.md) §7. `public` is sufficient throughout; no type is promoted to `global`.
-- **Decision — subscriber factory built now / deferred:** **deferred.** §8 permits this explicitly under option A — the factory is convenience there, not a requirement, and the closed registry already resolves every shipped code. Build it when a real subscriber needs it.
-- **`global` surface inventory (option B only):** not applicable under option A. None taken, none needed unless B is adopted — which would be an irreversible reopening of the step 00 decision.
-- **Flow sample commit SHA:** *(pending — the probe lands with this close-out; the sample contributor Flow lands with the bridge)*
-- **Still open before this step can be marked COMPLETE:** the `FLOW` bridge and its registry entry; the eight §5 validation codes; `Row_Customizer_Version__c` / `Row_Customizer_Flow_Version__c` in the fingerprint; `Cache_Policy__c` and `Contributor_Dependency_Set__c`; the `generate` result carrying request Id and fingerprint; the §10 CI version gate and its own suite.
+- **Date:** §4 gate closed 2026-08-27; bridge, declarations, output validation, launch contract and CI gate built the same day.
+- **Flow round-trip prototype result:** **PROVEN** — full matrix in §4. Uninserted `Quote_Document_Row__c` records survive `Flow.Interview` intact. Apex-defined types and the JSON fallback are **ruled out**; do not reintroduce them.
+- **One design consequence the prototype found that the matrix did not ask for:** a Flow loop variable is a **copy**. A contributor Flow must collect rows into a second collection and assign it back to `rows`; editing the loop variable in place changes nothing and fails *silently*. It leads the sample Flow, the `Row_Customizer_Flow__c` help text, the `CONTRIBUTOR_NO_OUTPUT` message, and the bridge class comment — four places, deliberately, because it is the one mistake that produces a successful-looking run and an unchanged document.
+- **Decision — namespace scope:** **A**, from [step 00](step-00-audit-and-contract-principles.md) §7. `public` throughout; nothing promoted to `global`.
+- **Decision — subscriber factory:** **deferred**, as §8 permits under option A. The closed registry resolves every shipped code; build the factory when a real subscriber needs it.
+- **`global` surface inventory (option B only):** not applicable.
+- **Flow sample:** [`QuoteDocumentSampleFlowContributor`](../../../force-app/main/default/flows/QuoteDocumentSampleFlowContributor.flow-meta.xml), with [`Quote_Document_Table_Def.FLOW_CONTRIBUTOR_EXAMPLE`](../../../force-app/main/default/customMetadata/Quote_Document_Table_Def.FLOW_CONTRIBUTOR_EXAMPLE.md-meta.xml) (inactive, matching the other shipped examples).
+
+### What was built
+
+| § | Delivered | Where |
+|---|---|---|
+| 4 | Flow bridge + three probe Flows | [`QuoteDocumentFlowRowCustomizer`](../../../force-app/main/default/classes/QuoteDocumentFlowRowCustomizer.cls) |
+| 5 | Six previously-unowned output invariants | [`QuoteDocumentContributorOutput`](../../../force-app/main/default/classes/QuoteDocumentContributorOutput.cls) |
+| 6 | `Row_Customizer_Version__c`, `Row_Customizer_Flow_Version__c` in the fingerprint | `QuoteDocumentFingerprint` |
+| 6a | `Cache_Policy__c` (restricted picklist), `Contributor_Dependency_Set__c`, value hashing, `DEPENDENCY_UNREADABLE` | `QuoteDocumentTableDefinition`, `QuoteDocumentQuery` |
+| 6b | `generate()` returns request Id + fingerprint + reused; `Document_Data_Request_Id__c` wired up | `QuoteDocumentGenerator` |
+| 7 | Apex-then-Flow order, last writer wins | `QuoteDocumentGenerator.applyRowCustomizer` |
+| 10 | CI version gate + 15-test suite | [`scripts/ci/check-contributor-versions.js`](../../../scripts/ci/check-contributor-versions.js) |
+
+### One acceptance criterion was changed, not met as written
+
+`ROW_ORDER_INVALID` is narrower than §5 implies, and the reasoning is recorded in the class and pinned by tests both ways. Two stricter readings were implemented and both were **wrong**: "nothing after the Grand Total", then "nothing *counted* after the Grand Total". Each failed three shipped, documented, tested customizers — Discount and Rounding append counted adjustment rows below the total, EstimatedTax an uncounted one. That is the framework's own convention: `context.newRow()` appends, and `verify()` reconciles on the inclusion flags, never on order. Only a **Detail** row below the total is wrong, which is what §5 says literally. A global invariant that contradicts the framework's append convention would simply have been switched off by whoever hit it next.
+
+### Still open before this step can be marked COMPLETE
+
+- **`DEPENDENCY_INVALIDATION_UNDECLARED`** — the invalidation-mapping half of §6a. Declared dependency *values* are hashed; a pack still cannot declare its invalidation mapping or `LaunchRefreshOnly`, so that code has no owner yet. Needs the dependency-pack concept from the [subscribers spec](../../quote-document-subscribers/spec.md), which is why it did not land here.
+- **`DEPENDENCY_UNREADABLE` per-cause tests** — the code exists and fires on a removed or malformed path. The four separate causes §9 asks for (removed field, missing permission for the generation persona, deleted related record, malformed pack) are not each pinned. The permission case in particular depends on the B1 persona security review.
+- **Some §9 cache and launch edge cases** — `LaunchRefreshOnly`; a Flow returning a different collection instance with identical contents; a Flow that removes every ordinary row but returns a valid Grand Total; a Flow that alters a stable `Row_Key__c`; an empty active-table set.
+- **The supported-maximum limits budget** (§8.7 of [`spec.md`](../spec.md)). The round trip alone is measured (685 ms CPU, ~329 KB heap at 1000 rows, budgeted at 3 s / 2 MB). Whole generation at the supported maximum is not, and its budget must be stricter than the round trip's.
+- **Locale** is `null` on the context until [step 03](step-03-semantic-keys-and-localization.md) resolves it per quote. The bridge passes it through already.
+
+### Test evidence
+
+138 local tests pass. Five failures remain and are **not** from this work: `QuoteDocumentGeneratorGuardTest`, `QuoteDocumentTemplateConfigurationTest` and `QuoteDocumentTableDefinitionDefaultsTest` do not exist in this repository — they are org-side leftovers from other work, referencing `Quote_Document_Template_Table__c` and a `fromTemplateTable` method this codebase does not have. They failed identically before the first line of this step was written. Worth clearing separately, since they will keep polluting every future `RunLocalTests`.
+
 - **Next step:** [`step-01-table-presentation-fields.md`](step-01-table-presentation-fields.md)
