@@ -163,7 +163,43 @@ Uses report type **Quote Document Tables and Rows**:
 
 ---
 
-## 9. DocuSign CLM (SpringCM) template — click-by-click
+## 9. Adapter: DocuSign CLM (SpringCM) — click-by-click
+
+> **This section documents ONE adapter, not the system's rendering model.** The same snapshot drives
+> the JSON and HTML adapters in this repo, and would drive any other. Nothing below is a requirement of
+> the framework; it is how this particular renderer is wired to it.
+
+### 9.0 The launch sequence — required, not optional
+
+A conforming renderer is launched **from Salesforce**, by an action that:
+
+1. calls generate-or-reuse for the quote, which recomputes the fingerprint;
+2. takes the request Id and fingerprint that call returns;
+3. hands the document product exactly those, and binds the snapshot they identify.
+
+**A CLM Data Source pointed straight at `Quote_Document_Table__c` is not a conforming renderer.** It
+never calls generate-or-reuse and never passes an expected fingerprint, so it can render a snapshot that
+moved underneath it and nothing would detect that. If the tenant cannot support launching this way, the
+honest outcome is that CLM stops being the renderer — not that the contract acquires an exception.
+
+Why it has to be step 1 every time: invalidation for external dependencies is **best-effort** (a trigger
+may not exist, a sweep may lag, reverse-mapping a custom object to affected quotes may have no answer),
+whereas fresh fingerprint computation is not. It is the last guard when something was missed.
+
+### 9.0.1 What the template no longer types
+
+| Was typed into Word | Now bound from |
+|---|---|
+| Table heading | `Display_Title__c` |
+| Column headings | `Quote_Document_Column__c` — repeat over it |
+| Disclaimers and notices | `Intro_Text__c`, `Footer_Text__c`, or `Quote_Document_Block__c` |
+| Row labels | `Display_Label__c`, already localized |
+| "which rows print" conditionals | `Is_Displayed` |
+
+The Data Source must expose `Quote_Document_Column__c` as a repeating node under
+`Quote_Document_Table__c`, plus the table's `Display_Title__c`, `Display_Subtitle__c`, `Intro_Text__c`,
+`Footer_Text__c`, `Is_Displayed__c` and `Locale__c`, and the row's `Is_Displayed__c` and `Label_Key__c`.
+
 
 Same product confirmed as the rest of this repo's guides: DocuSign CLM, native `<# <Tag .../> #>` syntax.
 
@@ -189,12 +225,31 @@ Same product confirmed as the rest of this repo's guides: DocuSign CLM, native `
 <# </Repeating> #>
 ```
 
-**Print a clear disclaimer above this table** (plain Word text, not a tag) stating these prices are not included in the quote's committed total — this is worth calling out because, unlike every other table in this document set, a reader glancing at this table's grand total without context could mistake it for part of the deal. Consider also using §13.5's `count()`-conditional pattern from the flagship guide to hide the entire section when the quote has no optional lines at all:
+**The disclaimer is now data, not typed text.** It lives in `Intro_Text__c` on the generated
+`OPTIONAL_PRODUCTS` table, sourced from the table definition's Intro Text. Print it above the table with:
+
 ```
-<# <Conditional Test="count(//Quote_Document_Table[Table_Code='OPTIONAL_PRODUCTS']/Quote_Document_Row[Row_Type='Detail']) > 0" /> #>
+<# <Value Select="//Quote_Document_Table[Table_Code='OPTIONAL_PRODUCTS']/Intro_Text"/> #>
+```
+
+It matters that this is data. While the sentence lived only inside a Word file, no review, no
+translation and no test could reach it — and this is the one table in the set whose grand total a
+reader could mistake for part of the deal.
+
+**Section suppression is also data.** The `count(...) > 0` conditional that used to hide this section is
+gone: `Is_Displayed` on the table is `false` when the quote has no optional lines, decided during
+generation. Wrap the section with:
+
+```
+<# <Conditional Test="//Quote_Document_Table[Table_Code='OPTIONAL_PRODUCTS']/Is_Displayed='true'"> #>
    ... the block above ...
 <# </Conditional> #>
 ```
+
+> **Filtering moved into the data.** A renderer prints every row it is given, in `Display_Order` order, and asks no questions about which rows belong. `Is_Displayed` is decided during generation, so every renderer reaches the same answer instead of each template re-deriving it — see [the render contract](quote-document-totals.md#the-render-contract).
+
+The table is still generated when it is hidden, with its Grand Total intact — hiding is not deleting,
+and the absence of a record could not be told apart from a generation that never ran.
 
 ### 9.4 Publish and connect
 

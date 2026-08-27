@@ -1,6 +1,6 @@
 # Step 09 — Documentation and closeout
 
-**Status: PLANNED**
+**Status: COMPLETE**
 **Blocked by:** [step 08](step-08-two-adapters.md)
 **Blocks:** nothing
 
@@ -43,13 +43,13 @@ If the flagship doc keeps opening with what DocuSign does with the rows, the nex
 
 ## 5. Acceptance criteria
 
-- [ ] No architecture doc presents DocuSign as the system's rendering model.
-- [ ] Every guide's §9 is labelled as an adapter.
-- [ ] No filtering conditional remains in any guide; every surviving conditional is annotated as styling.
-- [ ] No guide instructs the author to type a table title or column heading into Word.
-- [ ] Standards file requires columns and semantic keys in new guides.
-- [ ] `CLAUDE.md` reading list updated.
-- [ ] Series-level: the definition of done in [`spec.md`](../spec.md) §1 is demonstrably true, evidenced by the step 08 commit SHA.
+- [x] No architecture doc presents DocuSign as the system's rendering model.
+- [x] Every guide's §9 is labelled as an adapter.
+- [x] No filtering conditional remains in any guide; every surviving conditional is annotated as styling.
+- [x] No guide instructs the author to type a table title or column heading into Word.
+- [x] Standards file requires columns and semantic keys in new guides.
+- [x] `CLAUDE.md` reading list updated.
+- [x] Series-level: the definition of done in [`spec.md`](../spec.md) §1 is demonstrably true, evidenced by the step 08 commit SHA.
 
 ## 6. Verification method
 
@@ -73,6 +73,95 @@ sf apex run test --test-level RunLocalTests --result-format human --wait 30
 
 ## 7. Close-out
 
-- **Date:**
-- **Series outcome:**
-- **Deferred items:**
+- **Date:** 2026-08-27
+
+### Series outcome
+
+**The definition of done in [`spec.md`](../spec.md) §1 is demonstrably true**, evidenced by commit
+**`6c24eea`**: two adapters were added, and the diff outside the two adapter classes and their test is
+empty. No object, no Custom Metadata record, no permission set, no change to generation, calculation,
+or localization. The close-out line "anything the adapters had to compute themselves" is empty.
+
+Both acceptance greps pass:
+
+- `grep -rn "Conditional Test" docs/*.md` — every remaining hit is an `Is_Displayed` test, a
+  conditional explicitly annotated as **styling**, or the syntax-reference table in the CLM guide. No
+  `Row_Type='...'` deciding whether a row prints; no `count(...)` section suppression anywhere.
+- `grep -rniE "docusign|springcm"` on the two architecture docs — every hit now sits in a sentence
+  naming DocuSign as *one adapter*.
+
+### What changed in the docs
+
+| File | Change |
+|---|---|
+| [`quote-document-totals.md`](../../../docs/quote-document-totals.md) | Opening reframed from "DocuSign then does one thing" to "a renderer then does one thing". New **Render contract** section: what a renderer may and may not do, what the snapshot carries, the launch contract, localization, reading a payload, and the two hashes |
+| Seven table guides | §9 relabelled **"Adapter: DocuSign CLM"**, each opening with the launch sequence and stating that a Data Source querying the objects directly is not a conforming renderer |
+| Five guides | Filtering conditionals replaced with `Is_Displayed`; surviving conditionals annotated as styling |
+| [`optional-products-guide.md`](../../../docs/optional-products-guide.md) | The disclaimer is now read from `Intro_Text__c` rather than typed into Word — audit row 6 closed in the documentation as well as the code |
+| [`quote-line-type-bundle-reporting-guide.md`](../../../docs/quote-line-type-bundle-reporting-guide.md) | §11.5 rewritten: `count()` suppression replaced by table-level `Is_Displayed`, with the reason |
+| [`documentation-standards.md`](../../../docs/documentation-standards.md) | Five new rules for any new guide — document columns and semantic keys, never instruct the author to type printable text, conditionals are styling only, label the renderer section as an adapter |
+| [`quote-document-totals-architecture-guide.md`](../../../docs/quote-document-totals-architecture-guide.md) | Same reframing in plain language, plus **"Changing what the document says, without a developer"** — which record to edit for a heading, a label, or a translation, and the warning that editing metadata does not update existing documents |
+| **NEW** [`quote-document-extension-recipes.md`](../../../docs/quote-document-extension-recipes.md) | Both extension recipes end to end, plus the full error-code catalogue |
+| [`CLAUDE.md`](../../../CLAUDE.md) | Reading list updated; a note on how the render contract changes the way printable text is added |
+
+Audit row 9 is documented explicitly: `Group_Dimensions__c` holds API names and `Name` holds an
+identifier. Neither is ever printed, and both are named in the render-contract section because that is
+easy to get wrong.
+
+### Test evidence
+
+**290 local tests.** The only failures are the five pre-existing, org-only ones first recorded in
+[step 01A](step-01a-extension-contracts.md) §11 — `QuoteDocumentGeneratorGuardTest`,
+`QuoteDocumentTemplateConfigurationTest`, `QuoteDocumentTableDefinitionDefaultsTest`. **None of those
+classes exists in this repository.** They reference `Quote_Document_Template_Table__c` and a
+`fromTemplateTable` method this codebase does not have, and they failed identically before the first
+line of this series was written. They are worth clearing separately, since they will keep polluting
+every future `RunLocalTests`.
+
+---
+
+## Deferred items
+
+Carried forward honestly rather than closed. None blocks the definition of done; each is named where it
+would land.
+
+### Needs a decision or a person
+
+| Item | Owner | Where |
+|---|---|---|
+| **B1 persona security review** | owner | [step 00](step-00-audit-and-contract-principles.md) §7 — outstanding since the first step. B1 deliberately separates permission-to-generate from permission-to-read-every-source-field, which is why it ships *subject to* review |
+| **Three-persona permission-set split** and the `Generate_Quote_Document` custom permission | needs the security review | [step 06A](step-06a-snapshot-immutability.md) §3.2 |
+| **Four B1 misconfiguration codes** — `LAUNCH_PERMISSION_MISSING`, `SERVICE_SOURCE_ACCESS_MISSING`, `RENDER_SERVICE_ACCESS_MISSING`, `RENDERER_HAS_DIRECT_CRUD` | same | step 06A §5 |
+| **`Quote_Document_Block__c` sharing asymmetry** — it hangs off a Quote lookup, so `ControlledByParent` is unavailable and it is `ReadWrite` while its siblings are locked. Covered by the payload hash, but detection is not prevention | owner | step 06A close-out |
+
+### Needs the launch Flow
+
+| Item | Where |
+|---|---|
+| **Flow invocable wrapper** for the render service. Apex callers are fully covered; the declarative wrapper needs the versioned-request shape settling with whoever builds the launch Flow | [step 07](step-07-render-service-dto.md) §5 |
+| **`SNAPSHOT_MOVED` at-most-one retry**, and its five tests. `SNAPSHOT_MOVED` is raised and tested; the retry policy belongs to the launch wrapper, as [step 05A](step-05a-generation-lifecycle.md) §5.1 says explicitly | step 05A §5 |
+| **DocuSign CLM adapter rebuild.** Needs the launch action plus a rebuilt Data Source and template in the tenant — org configuration outside this repo. The rule it must meet is already fixed by [`spec.md`](../spec.md) §4.1 | [step 08](step-08-two-adapters.md) §3.6 |
+
+### Needs the subscribers spec
+
+| Item | Where |
+|---|---|
+| **`DEPENDENCY_INVALIDATION_UNDECLARED`** — declared dependency *values* are hashed, but a pack cannot yet declare its invalidation mapping or `LaunchRefreshOnly`. Needs the dependency-pack concept | [step 01A](step-01a-extension-contracts.md) §6a |
+| **`DEPENDENCY_UNREADABLE` per-cause tests** — the code fires; the four separate causes are not each pinned, and the permission case depends on the B1 review | step 01A §9 |
+
+### Testing gaps, stated rather than papered over
+
+| Gap | Why |
+|---|---|
+| **Real lock contention** is not tested. The retry *policy* is (what is retryable, the limit, that backoff grows and carries jitter), but Apex unit tests cannot open a second concurrent transaction. A mocked `UNABLE_TO_LOCK_ROW` would prove the handler while appearing to prove the behaviour — the substitution [step 05A](step-05a-generation-lifecycle.md) §8 warns against | step 05A |
+| **One equivalence fixture carrying every §3a distinction simultaneously** was not built. Every distinction is covered, but not all by one record, so if the intent was to prove they compose, that is not shown | [step 08](step-08-two-adapters.md) §3a |
+| **`duplicateKeyInOneCategoryFails`** asserts the strict loader's contract rather than deploying a duplicated metadata record, which would break every other test in the org | [step 03](step-03-semantic-keys-and-localization.md) |
+| **Supported-maximum governor check** is asserted as flat query count rather than against a sized fixture. Flatness is the stronger property; a sized fixture would add a number to maintain | [step 07](step-07-render-service-dto.md) |
+| **Whole-generation limits budget** at the supported maximum. The Flow round trip alone is measured (685 ms CPU, ~329 KB heap at 1000 rows); generation as a whole is not, and its budget must be stricter | [`spec.md`](../spec.md) §8.7 |
+
+### Also worth doing
+
+- **Update [`war-room-scenarios.md`](../war-room-scenarios.md)** to point at `LIFECYCLE`/`ABANDON_MINUTES`
+  and the error-code catalogue. The abandonment window is configuration and is documented in step 05A,
+  but the runbook has not been rewritten to match.
+- **Clear the three org-only test classes** that pollute every `RunLocalTests` run.

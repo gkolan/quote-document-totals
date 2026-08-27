@@ -10,7 +10,7 @@ Read sections 1–4 before changing anything. Section 9 is the "I need to do X" 
 
 ## 1. What this is and why it exists
 
-DocuSign Gen/CLM generates a document from a Quote. It can print fields and repeat over related lists, but it cannot do arithmetic: it cannot decide whether a bundle component's price is already inside its parent, whether an optional product counts, or what a subtotal is. Asking a Word template to work that out is how documents end up with wrong numbers on them, and a wrong number on a signed document is a commercial problem, not a bug report.
+A document generator renders a Quote. It can print fields and repeat over related lists, but it cannot do arithmetic: it cannot decide whether a bundle component's price is already inside its parent, whether an optional product counts, or what a subtotal is. Asking a Word template to work that out is how documents end up with wrong numbers on them, and a wrong number on a signed document is a commercial problem, not a bug report.
 
 So the arithmetic happens in Apex, ahead of time, and lands in two custom objects hanging off the Quote:
 
@@ -20,9 +20,116 @@ SBQQ__Quote__c
     └── Quote_Document_Row__c      (headers, details, subtotals, grand totals)
 ```
 
-DocuSign then does one thing: print rows in `Display_Order__c` order, indenting by `Group_Level__c`, styling by `Row_Type__c`. No logic.
+A **renderer** then does one thing: print what it is given, in `Display_Order__c` order, indenting by
+`Group_Level__c`, styling by `Row_Type__c`. No logic.
 
-**The hierarchy depth is not an accident.** DocuSign documents support fields from up to two levels of related lists. Quote → Table → Row uses exactly that budget. Adding a third object between them would break template traversal, which is why an early proposal for a `Quote_Document_Generation__c` object was dropped in favour of a status field on the Quote.
+DocuSign CLM is one renderer. So are the JSON and HTML adapters in this repo. The framework does not
+know or care which one is printing — that is the point, and [the render contract](#the-render-contract)
+below is what makes it true rather than aspirational.
+
+**The hierarchy depth is not an accident.** DocuSign CLM documents support fields from up to two levels of related lists, and it is the most constrained renderer in use — so Quote → Table → Row uses exactly that budget. Adding a third object between them would break traversal there, which is why an early proposal for a `Quote_Document_Generation__c` object was dropped in favour of a status field on the Quote.
+
+This is a constraint one adapter imposes on the *shape*, recorded so nobody removes it by accident. It is not the system's rendering model; the render contract is.
+
+## The render contract
+
+Salesforce produces a complete, immutable, vendor-neutral snapshot. A renderer may **only**:
+
+- query the generated records through `QuoteDocumentRenderService`,
+- render in `Display_Order__c` order,
+- bind already-generated values,
+- apply styling, page breaks, and fonts.
+
+A renderer may **not**: calculate, evaluate business conditions, translate, construct labels or
+sentences, decide which sections or rows appear, derive totals, read CPQ fields to recover missing data,
+or hold vendor-specific business rules.
+
+**Definition of done:** a developer adds a new document product by writing a renderer adapter plus
+mapping and styling config only — no change to Apex business logic, Flow, Custom Metadata content
+selection, generated records, calculations, or localization.
+
+### What the snapshot carries
+
+| Object | Carries |
+|---|---|
+| `Quote_Document_Table__c` | `Display_Title__c`, `Display_Subtitle__c`, `Intro_Text__c`, `Footer_Text__c`, `Is_Displayed__c`, `Locale__c` |
+| `Quote_Document_Column__c` | which columns print, in what order, bound to which row field, formatted as what type |
+| `Quote_Document_Row__c` | `Display_Label__c` (already localized) plus `Label_Key__c` and its arguments |
+| `Quote_Document_Block__c` | standalone narrative — notices, terms, clauses, signature instructions |
+
+Two fields are **never printed**, and this is easy to get wrong:
+
+- **`Group_Dimensions__c`** holds API names such as `SBQQ__Product__r.Family > CHARGE_TYPE`. It is
+  diagnostic. Printing it puts a field path in a customer's document.
+- **`Name`** is `"Q-00063 - Family and Billing Summary"` — an identifier built for list views and
+  search, abbreviated to 80 characters. The printable heading is `Display_Title__c`. Printing `Name`
+  puts the quote number in the middle of the document.
+
+### The launch contract — the supported integration path
+
+Every production launch does this, in this order:
+
+```
+1. call generate-or-reuse for the quote        (recomputes the fingerprint)
+2. take the request Id and fingerprint it returns
+3. call getPayload with exactly those
+```
+
+**Reading a `Ready` snapshot without step 1 is unsupported**, and the reason is specific rather than
+procedural. Invalidation for external dependencies is best-effort: a trigger may not exist, a sweep may
+lag, and reverse-mapping an arbitrary custom object back to affected quotes may have no answer at all.
+Fresh fingerprint computation is **not** best-effort — it happens on every `generate()` call, before
+anything decides whether to reuse. It is the last guard when a trigger, a sweep, or a version bump was
+missed.
+
+A renderer that cannot be launched that way is not a conforming renderer. In particular, a DocuSign CLM
+Data Source pointed straight at the objects never calls generate-or-reuse and never passes an expected
+fingerprint — it is exactly the bypass this contract exists to close.
+
+### Localization
+
+Every printable string resolves from a semantic key against a locale dictionary
+(`Quote_Document_Key_Value__mdt`, category `LABELS_<locale>`). Apex constructs no English: `'{0} Subtotal'`
+is a template the dictionary owns, so word order is the translator's decision — French puts the
+qualifier after the noun, which a concatenation in Apex could never express.
+
+One locale per snapshot. It is part of the fingerprint, so regenerating in another language produces a
+different snapshot rather than silently reusing the previous one.
+
+### Reading a payload
+
+```apex
+List<QuoteDocumentGenerator.GenerationOutcome> outcomes =
+    QuoteDocumentGenerator.generate(new Set<Id>{ quoteId });
+
+QuoteDocumentPayload payload = QuoteDocumentRenderService.getPayload(
+    quoteId, outcomes[0].requestId, outcomes[0].fingerprint
+);
+```
+
+There is deliberately **no** quote-Id-only overload — not for tests, not for inspection. The service
+cannot tell a production call from an ad hoc one, so an overload that skipped the expectations would
+simply be the bypass above. Administrators who need to look at a snapshot use
+`QuoteDocumentRenderService.describeSnapshot(quoteId)`, which returns diagnostics and cannot return a
+payload.
+
+Values arrive **typed**: a `Decimal` for money, not `"$1,234.00"`. Formatting is the renderer's job, and
+the payload carries `locale` and `currencyIsoCode` for it. Row values are keyed by **column code**, never
+by field API name, which is what lets an org bind a column to a field it added itself without any
+adapter learning about it.
+
+### Two hashes, two jobs
+
+| Field | Covers | Answers |
+|---|---|---|
+| `Document_Data_Fingerprint__c` | source and configuration | should this be rebuilt? |
+| `Document_Payload_Hash__c` | the persisted output | has this been edited since publication? |
+
+The fingerprint cannot detect tampering: editing an amount, a label, a display order or a column binding
+on a saved record changes no *input*, so the fingerprint stays identical and the document would render
+modified with every expectation matching. The payload hash is recomputed at retrieval and refuses to
+render on a mismatch. It never repairs — nothing knows which version was correct, so the answer is
+always to regenerate.
 
 ### The one rule that matters
 
@@ -523,7 +630,8 @@ Do not read these as bugs.
 | Change what counts | `QuoteDocumentLine.countsIn`. Expect `grandTotalReconcilesToTheQuoteNetAmount` to fail if you get it wrong — that is the test doing its job. |
 | Generate for one quote | Quick action, or `QuoteDocumentGenerator.generate`. |
 | Backfill history | `scripts/apex/quote-document-backfill.apex`, repeatedly. |
-| Show someone the output | The two reports in the **CPQ Document Totals** folder. |
+| Show someone the output | Primary: Quote report links — [`specs/quote-document-report-links/spec.md`](../specs/quote-document-report-links/spec.md). Secondary: open reports in the **CPQ Document Totals** folder. Related lists are not the document preview. |
+| Preview generated tables for this Quote | Same — one-click / pick-and-go report links (series above). |
 | Debug a failed generation | `Document_Data_Error__c` on the Quote; `Status__c = 'Failed'` on the table; Setup → Apex Jobs for async runs. |
 | Run the tests | `sf apex run test --class-names QuoteDocumentGeneratorTest --class-names QuoteDocumentLifecycleTest` |
 

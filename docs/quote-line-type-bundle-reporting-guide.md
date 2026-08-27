@@ -516,7 +516,7 @@ Order the four sections in the printed document however you like; nothing forces
 **View A — Transaction Type Totals** (one row per type, single delta column):
 ```
 <# <Repeating NodeSet="//Quote_Document_Table[Table_Code='TRANSACTION_SUMMARY']/Quote_Document_Row"> #>
-<# <Conditional Test="Row_Type!='Detail'"> #>
+<# <Conditional Test="Is_Displayed='true'"> #>
 <# <Value Select="Display_Label"/> #>     <# <Value Select="Amount_Net_Change"/> #>
 <# </Conditional> #>
 <# </Repeating> #>
@@ -532,7 +532,7 @@ Order the four sections in the printed document however you like; nothing forces
 **View C — Bundle Totals** (same shape as View A, different table code):
 ```
 <# <Repeating NodeSet="//Quote_Document_Table[Table_Code='BUNDLE_SUMMARY']/Quote_Document_Row"> #>
-<# <Conditional Test="Row_Type!='Detail'"> #>
+<# <Conditional Test="Is_Displayed='true'"> #>
 <# <Value Select="Display_Label"/> #>     <# <Value Select="Amount_Net_Change"/> #>
 <# </Conditional> #>
 <# </Repeating> #>
@@ -541,7 +541,7 @@ Order the four sections in the printed document however you like; nothing forces
 **View D — Product Totals** (same shape again):
 ```
 <# <Repeating NodeSet="//Quote_Document_Table[Table_Code='PRODUCT_SUMMARY']/Quote_Document_Row"> #>
-<# <Conditional Test="Row_Type!='Detail'"> #>
+<# <Conditional Test="Is_Displayed='true'"> #>
 <# <Value Select="Display_Label"/> #>     <# <Value Select="Amount_Net_Change"/> #>
 <# </Conditional> #>
 <# </Repeating> #>
@@ -553,26 +553,38 @@ Style each row by wrapping the print statement in a further `Conditional` on `Ro
 <# <Value Select="Display_Label"/> #>     <# <Value Select="Amount_Net_Change"/> #>
 <# </Conditional> #>
 ```
-Apply the bold/border formatting to the Word text itself around that block (select the text, use Word's normal Bold/Border formatting) — the tag only controls *whether* the row prints, not its styling; styling is regular Word formatting wrapped around the tag.
+Apply the bold/border formatting to the Word text itself around that block (select the text, use Word's normal Bold/Border formatting).
 
-### 11.5 Practical uses of the exact pattern you showed (count-based conditionals)
+> **This conditional is STYLING, not filtering.** It decides how a row looks, never whether it prints.
+> What prints is `Is_Displayed`, decided during generation and carried in the data. `Row_Type` is
+> styling-only in this contract — see [the render contract](quote-document-totals.md#the-render-contract).
 
-Your example — `count(//Quote_Line_Items[...conditions...]) > 0` — is the right way to hide an entire section when it has nothing to show, and the same pattern is genuinely useful here in two places:
+### 11.5 Section suppression, and why it is no longer a count
 
-**Hide the whole grid section if the quote has no bundled products at all:**
+Earlier versions of this guide used `count(//...[...]) > 0` to hide a section with nothing to show. That
+worked, and it put a decision about **what appears in the document** inside the template — where every
+renderer had to re-derive it, and two renderers could legitimately disagree.
+
+That decision now lives in the data. `Is_Displayed` on the table is `false` when no source line survived
+the table's filter, decided once during generation:
+
+**Hide the whole grid section when the quote has no bundled products:**
 ```
-<# <Conditional Test="count(//Quote_Document_Table[Table_Code='BUNDLE_PRODUCT_GRID']/Quote_Document_Row[Row_Type='Detail']) > 0" /> #>
+<# <Conditional Test="//Quote_Document_Table[Table_Code='BUNDLE_PRODUCT_GRID']/Is_Displayed='true'"> #>
    ... the entire View B block from §11.4 ...
 <# </Conditional> #>
 ```
 
-**Hide the "Uncategorized" row specifically if it's exactly zero** (e.g. every line on this quote happens to be inside a real bundle):
-```
-<# <Conditional Test="//Quote_Document_Table[Table_Code='BUNDLE_SUMMARY']/Quote_Document_Row[Group_Value='Uncategorized']/Amount_Net_Change != 0" /> #>
-<# <Value Select="Amount_Net_Change"/> #>
-<# </Conditional> #>
-```
-Note this second one isn't wrapped in its own `Repeating` — it's evaluated once, referencing the specific `Uncategorized` node directly by its `Group_Value`, which is a legitimate XPath pattern (matching the style of your original example, which also filtered by a specific field value with `[...]` rather than iterating).
+**Hiding a single row** — for example an `Uncategorized` bucket that happens to be zero — is the same
+question one level down, and has the same answer: `Is_Displayed` on the row. A renderer never inspects an
+amount to decide whether a row belongs; if a zero row should not print, that is a generation decision,
+and a row customizer or the table definition makes it.
+
+> **Why the change matters.** A `count()` test is a *business rule* written in XPath. The moment a second
+> renderer exists, that rule has to be rewritten in whatever language the second renderer speaks — and
+> the two can drift without anything detecting it. `Is_Displayed` is decided once, hashed into the
+> snapshot, and honoured identically by every adapter.
+
 
 ### 11.6 Two things that will silently produce a wrong document if you skip them
 

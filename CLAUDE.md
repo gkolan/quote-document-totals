@@ -5,7 +5,25 @@ This file orients an agent (or a new developer) working in `cpqRules`. It doesn'
 1. [`docs/quote-document-totals.md`](docs/quote-document-totals.md) — the single source of truth for the CPQ Quote Document framework (object model, generation pipeline, staleness, retention, config).
 2. [`docs/quote-document-totals-architecture-guide.md`](docs/quote-document-totals-architecture-guide.md) — the same framework explained for a Salesforce admin with no coding background: plain-language walkthrough of every object, custom metadata type, Apex class, and how to configure or extend it. Point a junior admin here first; point a developer at #1 first.
 3. [`docs/documentation-standards.md`](docs/documentation-standards.md) — the required standard for any new `Quote_Document_Table_Def__mdt` guide. Apply it automatically; don't ask.
-4. [`specs/quote-docusign-totals/spec.md`](specs/quote-docusign-totals/spec.md) — the hardening roadmap, phased and atomic under [`specs/quote-docusign-totals/phases/`](specs/quote-docusign-totals/phases/). Check phase status before assuming something is done vs. planned.
+4. [`specs/vendor-neutral-render-contract/spec.md`](specs/vendor-neutral-render-contract/spec.md) — the render contract that makes the document product replaceable. Read this before touching anything that produces printable text: titles, column headings, row labels, narrative blocks, or locale. Its steps are under [`specs/vendor-neutral-render-contract/steps/`](specs/vendor-neutral-render-contract/steps/), each with a close-out recording what was built and what was deliberately deferred.
+5. [`docs/quote-document-extension-recipes.md`](docs/quote-document-extension-recipes.md) — copyable recipes for an Apex or Flow row customizer, plus the full error-code catalogue. Start here rather than reading generator internals.
+6. [`specs/quote-docusign-totals/spec.md`](specs/quote-docusign-totals/spec.md) — the hardening roadmap, phased and atomic under [`specs/quote-docusign-totals/phases/`](specs/quote-docusign-totals/phases/). Check phase status before assuming something is done vs. planned.
+
+
+## The render contract changes how you add printable text
+
+Since `specs/vendor-neutral-render-contract`, **no printable string is constructed in Apex or typed into
+a template.** Titles come from the table definition, column headings and row labels resolve from a
+locale dictionary through `QuoteDocumentLabels`, and narrative comes from `Quote_Document_Content__mdt`.
+
+Two consequences worth knowing before you write code:
+
+- `QuoteDocumentRowBuilder.defaultRow()` **fails** on a blank label rather than substituting
+  `'(unnamed)'`. Resolve `GROUP_UNNAMED` from the dictionary at the call site.
+- A renderer never queries the snapshot objects. It calls
+  `QuoteDocumentRenderService.getPayload(quoteId, expectedRequestId, expectedFingerprint)`, with both
+  expectations from a preceding `generate()`. There is no overload that omits them, and a test asserts
+  none is ever added.
 
 ## Environment note: `sf` and Java are on PATH, but not always in a fresh shell
 

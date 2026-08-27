@@ -20,7 +20,7 @@ Every guide produced under this standard has these sections, in this order. Renu
 | — | **Code changes**, if any | Only if config alone can't do it. Apply the fix directly to the real files, with a test — but **do not narrate the diff in the guide**. The guide is for a junior admin who should never need to read Apex; state the resulting behavior in one line inside the relevant view's section (e.g. "lines with no bundle print under a labeled 'Uncategorized' bucket — already handled, nothing to configure"), and put the reasoning where a developer will actually look for it: inline code comments in the changed file. If the change adds a genuine per-table config option (a new CMDT field), document *that* like any other config field — a row in the config table — not as a code walkthrough. |
 | — | **Worked example** | One concrete numeric scenario walked through every view in the guide, with a **script** (`scripts/apex/*.apex`) that builds it as real records — hand-built, safe to re-run, scoped to its own table codes so it never clobbers another example's data. |
 | — | **Deployment checklist** | Numbered, in the order a junior dev would actually run them: deploy → assign permset → generate/build → verify with a SOQL query → move on to reports/template. State plainly what's already done in source vs. what the reader still has to do. |
-| — | **Salesforce reports** | **Build the actual report(s) as deployable metadata** (`force-app/main/default/reports/CPQ_Document_Totals/*.report-meta.xml`, following the existing two reports' conventions) — one per view, filtered to that view's `Table_Code__c`. Tell the reader which named report to open (**Reports → CPQ Document Totals → \<name\>**), not how to build one. Keep the filter/group/column spec as a table underneath, for anyone auditing the report definition, but the primary instruction is "go here," not "build this." State explicitly if multiple views can't share one report (they usually can't — say why, don't let the reader assume). |
+| — | **Salesforce reports** | **Build the actual report(s) as deployable metadata** (`force-app/main/default/reports/CPQ_Document_Totals/*.report-meta.xml`, following the existing reports' conventions) — one per view, filtered to that view's `Table_Code__c`. Tell the reader which named report to open (**Reports → CPQ Document Totals → \<name\>**), not how to build one. Keep the filter/group/column spec as a table underneath, for anyone auditing the report definition, but the primary instruction is "go here," not "build this." State explicitly if multiple views can't share one report (they usually can't — say why, don't let the reader assume). **Also:** Quote-scoped preview links — when [`specs/quote-document-report-links`](../specs/quote-document-report-links/spec.md) is implemented, each view needs a `Quote_Document_Report_Link__mdt` row and an unlocked Quote filter as `fv0` per that series' contract; until then, note the report name and that one-click Quote preview is planned. |
 | — | **DocuSign CLM (or Gen) template** | Full click-by-click: Data Source/mapping setup (with the exact field→XML-node table), Composer usage (where tags come from, which one you hand-type), the actual tag block per view, styling, publishing, connecting to a Salesforce button, and how to verify before trusting it. Assume the reader has never opened the tool. Confirm which product (CLM vs. Gen) before picking a syntax — don't guess silently; if you got it wrong once already in this conversation, say so, matching the correction pattern from the flagship guide's §13 opening. |
 | — | **Scratch-org reproduction** | Point at (or extend) the shared bootstrap script (§6 below) so this view is included in the one-command replay. Don't invent a second bootstrap script per guide. |
 | — | **Review & score** | Self-review against §5's rubric below, itemized, with a final score. Required on every guide — see §5. |
@@ -137,3 +137,52 @@ This standard was extracted retroactively from `docs/quote-line-type-bundle-repo
 - `docs/family-billing-composite-guide.md`
 
 All six are config-only (no code changes needed — the CMDT framework already supports every one of them), so each guide's §5 will read "None needed" with an explanation of why, which is itself information a reader needs (not a shortcut taken).
+
+
+## Required since the render contract
+
+Three rules every new `Quote_Document_Table_Def__mdt` guide must follow. They exist because the
+framework moved presentation out of templates and into the snapshot, and a guide written the old way
+quietly teaches the next author to put it back.
+
+### 1. Document the columns, not the tags
+
+State which `Quote_Document_Column_Def__mdt` records the table has: code, order, bound field, data type.
+That table **is** the column layout. A guide that instead lists which `<Value Select="..."/>` tags to
+drag into Word is describing one renderer's implementation of the layout, which is exactly the coupling
+the contract removes.
+
+### 2. Document the semantic keys
+
+List the label keys the table's rows resolve — `GRAND_TOTAL`, `SUBTOTAL`, `SECTION_TOTAL`, and any the
+table adds. A reader translating the document needs the keys; the English wording is a lookup, not the
+contract.
+
+### 3. Never instruct the author to type printable text into a template
+
+No table title, no column heading, no disclaimer, no notice. Every one of those is data now:
+
+| Printable text | Where it lives |
+|---|---|
+| Table heading | `Display_Title__c` on the table definition |
+| Subtitle, intro, footer | `Display_Subtitle__c`, `Intro_Text__c`, `Footer_Text__c` |
+| Column heading | the label dictionary, keyed by column code |
+| Row label | the label dictionary, keyed by semantic key |
+| Notice, terms, signature instructions | `Quote_Document_Content__mdt` |
+
+The test is simple: **if the sentence exists only inside a `.docx`, no review, no translation and no
+test can reach it.** That was true of the optional-products disclaimer for the whole life of this
+project, and nobody noticed until the audit went looking.
+
+### 4. Conditionals are styling only
+
+A guide may show a conditional that decides how a row **looks**. It may not show one that decides
+whether a row **prints** — that is `Is_Displayed`, decided during generation so every renderer reaches
+the same answer. Annotate every surviving conditional as styling, so the distinction survives the next
+edit.
+
+### 5. Label the renderer section as an adapter
+
+The DocuSign section is "Adapter: DocuSign CLM", and it opens with the launch sequence: a Salesforce
+action performs generate-or-reuse and binds the published snapshot by request Id and fingerprint. A Data
+Source pointed straight at the objects is not a conforming renderer and must not be documented as one.
