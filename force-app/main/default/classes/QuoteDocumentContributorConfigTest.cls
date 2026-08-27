@@ -141,6 +141,71 @@ private class QuoteDocumentContributorConfigTest {
         );
     }
 
+    /**
+     * The other half of section 6a, and the one a version token cannot cover:
+     * the contributor's LOGIC did not change, the DATA it reads did. Nothing
+     * in this framework watches an Account field, so without hashing the
+     * declared value the fingerprint would match and the document would keep
+     * printing the old tier.
+     */
+    @IsTest
+    static void changingADeclaredDependencyVALUEChangesTheFingerprint() {
+        QuoteDocumentTableDefinition definition = definition();
+        definition.rowCustomizerCode = 'DISCOUNT_EXAMPLE';
+        definition.rowCustomizerVersion = '1';
+        definition.cachePolicy = QuoteDocumentTableDefinition.CACHE_DECLARED_DEPENDENCIES;
+        // Any writeable field serves: this tests the hashing mechanism, not
+        // the semantics of a particular dependency. AccountIndustry__c would
+        // read better but is a formula and cannot be set in a test.
+        definition.contributorDependencyPaths = new List<String>{ 'Document_Data_Status__c' };
+
+        List<QuoteDocumentTableDefinition> plan = new List<QuoteDocumentTableDefinition>{ definition };
+
+        String before = QuoteDocumentFingerprint.canonicalize(
+            new SBQQ__Quote__c(Document_Data_Status__c = 'Ready'), new List<QuoteDocumentLine>(), plan
+        );
+        String after = QuoteDocumentFingerprint.canonicalize(
+            new SBQQ__Quote__c(Document_Data_Status__c = 'Stale'), new List<QuoteDocumentLine>(), plan
+        );
+
+        Assert.areNotEqual(
+            before,
+            after,
+            'A declared dependency whose VALUE changed must move the fingerprint. The contributor code is '
+                + 'identical, so the version token cannot help here - only the hashed value can.'
+        );
+    }
+
+    /**
+     * The same path under STANDARD is NOT hashed, which is the whole reason
+     * reading undeclared external data under STANDARD is prohibited: the
+     * framework genuinely cannot see it, and the document goes stale silently.
+     * Pinned so the prohibition stays a fact rather than advice.
+     */
+    @IsTest
+    static void aDependencyValueIsNotHashedUnderStandard() {
+        QuoteDocumentTableDefinition definition = definition();
+        definition.rowCustomizerCode = 'DISCOUNT_EXAMPLE';
+        definition.rowCustomizerVersion = '1';
+        definition.cachePolicy = QuoteDocumentTableDefinition.CACHE_STANDARD;
+
+        List<QuoteDocumentTableDefinition> plan = new List<QuoteDocumentTableDefinition>{ definition };
+
+        String before = QuoteDocumentFingerprint.canonicalize(
+            new SBQQ__Quote__c(Document_Data_Status__c = 'Ready'), new List<QuoteDocumentLine>(), plan
+        );
+        String after = QuoteDocumentFingerprint.canonicalize(
+            new SBQQ__Quote__c(Document_Data_Status__c = 'Stale'), new List<QuoteDocumentLine>(), plan
+        );
+
+        Assert.areEqual(
+            before,
+            after,
+            'Under STANDARD nothing external is hashed. This is the hazard the policy exists to make '
+                + 'someone choose deliberately, not a defect.'
+        );
+    }
+
     // -----------------------------------------------------------------------
     // Helpers on the definition itself
     // -----------------------------------------------------------------------

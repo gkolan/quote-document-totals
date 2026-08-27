@@ -31,6 +31,37 @@ public with sharing class QuoteDocumentFingerprint {
         return digest(canonicalize(quote, lines, definitions));
     }
 
+    /**
+     * Reads a dot path off the queried Quote, as a string, for hashing only.
+     *
+     * Stringified deliberately: the fingerprint compares equality, never
+     * magnitude, and a single encoding means a path whose TYPE changes moves
+     * the canonical form - which is the correct outcome, since a contributor
+     * reading a field that changed type is reading something different.
+     *
+     * A null relationship part way along a path yields null, which is a real
+     * value here - "this quote has no account" is a legitimate input to hash,
+     * distinct from "the field does not exist", which QuoteDocumentQuery has
+     * already rejected at validation time with DEPENDENCY_UNREADABLE.
+     */
+    private static String resolvePath(SObject record, String path) {
+        List<String> segments = path.split('\\.');
+        SObject current = record;
+
+        for (Integer i = 0; i < segments.size() - 1; i++) {
+            if (current == null) {
+                return null;
+            }
+            current = current.getSObject(segments[i]);
+        }
+        if (current == null) {
+            return null;
+        }
+
+        Object value = current.get(segments[segments.size() - 1]);
+        return value == null ? null : String.valueOf(value);
+    }
+
     @TestVisible
     private static String canonicalize(
         SBQQ__Quote__c quote,
@@ -101,6 +132,40 @@ public with sharing class QuoteDocumentFingerprint {
         parts.add(encodeString(quote.AccountIndustry__c));
         if (UserInfo.isMultiCurrencyOrganization()) {
             parts.add(encodeString((String) quote.get('CurrencyIsoCode')));
+        }
+
+        // Declared contributor dependency VALUES - the other half of section
+        // 6a. A version token identifies the contributor's LOGIC; it says
+        // nothing about the data that logic read. Nothing in this framework
+        // watches anything outside the quote and its lines, so an Account
+        // field a Flow reads can change with no trigger, no staleness, and an
+        // unchanged fingerprint - and the document keeps printing the old
+        // value. Hashing the declared values closes that, but only on the
+        // next generate(): HASHING IS NOT INVALIDATION, which is why the
+        // launch contract in step 01A section 6b requires every launch to
+        // call generate-or-reuse rather than read a Ready snapshot directly.
+        //
+        // Read off the definitions PASSED IN, not the global config, so the
+        // canonical form always describes the plan actually being generated -
+        // the same reason every other section of this method walks the
+        // argument rather than re-reading getAll().
+        List<String> dependencyPaths = new List<String>();
+        Set<String> seenPaths = new Set<String>();
+        for (QuoteDocumentTableDefinition definition : definitions) {
+            if (!QuoteDocumentTableDefinition.CACHE_DECLARED_DEPENDENCIES.equals(definition.cachePolicy)) {
+                continue;
+            }
+            for (String path : definition.contributorDependencyPaths) {
+                if (seenPaths.add(path)) {
+                    dependencyPaths.add(path);
+                }
+            }
+        }
+        dependencyPaths.sort();
+
+        for (String path : dependencyPaths) {
+            parts.add(encodeString(path));
+            parts.add(encodeString(resolvePath(quote, path)));
         }
 
         // Ordered Quote Line IDs.

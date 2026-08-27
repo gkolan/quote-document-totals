@@ -419,6 +419,24 @@ public with sharing class QuoteDocumentTableDefinition {
         return paths;
     }
 
+    /**
+     * Every declared contributor dependency path across every active
+     * definition, so the query can fetch them in one pass and the fingerprint
+     * can hash their values. Sorted, because the fingerprint's determinism
+     * depends on iteration order and a Set has none.
+     */
+    public static List<String> allDependencyPaths() {
+        Set<String> paths = new Set<String>();
+        for (QuoteDocumentTableDefinition definition : getAll()) {
+            if (CACHE_DECLARED_DEPENDENCIES.equals(definition.cachePolicy)) {
+                paths.addAll(definition.contributorDependencyPaths);
+            }
+        }
+        List<String> sorted = new List<String>(paths);
+        sorted.sort();
+        return sorted;
+    }
+
     @TestVisible
     private static void useDefinitions(List<QuoteDocumentTableDefinition> definitions) {
         cached = definitions;
