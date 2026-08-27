@@ -1,6 +1,6 @@
 # Step 08 — Two adapters (JSON, HTML)
 
-**Status: PLANNED**
+**Status: COMPLETE** — core-diff proof clean, CLM adapter deferred (see close-out)
 **Blocked by:** [step 07](step-07-render-service-dto.md)
 **Blocks:** 09
 
@@ -51,11 +51,11 @@ The canonicalizer lives in the test, not in the adapters. If an adapter needs to
 
 ## 5. Acceptance criteria
 
-- [ ] Both adapters produce output from a `Ready` quote with no exception.
-- [ ] **Semantic equivalence test,** against the canonical comparison in §3a — not "looks the same".
-- [ ] **Core-diff proof** per [`spec.md`](../spec.md) §9: no diff in the core class list, no modification to an existing shipped CMDT record, and a stated dependency direction. A new adapter genuinely needs no metadata at all, so for *this* step the diff outside the adapter class should be empty — that is not the standard applied to steps that add tables or columns.
-- [ ] Neither adapter contains a SOQL query, a CMDT read, or a total calculation.
-- [ ] Neither adapter needs a locale lookup or a translation — every string it prints came from the payload.
+- [x] Both adapters produce output from a `Ready` quote with no exception.
+- [x] **Semantic equivalence test,** against the canonical comparison in §3a — not "looks the same".
+- [x] **Core-diff proof** per [`spec.md`](../spec.md) §9: no diff in the core class list, no modification to an existing shipped CMDT record, and a stated dependency direction. A new adapter genuinely needs no metadata at all, so for *this* step the diff outside the adapter class should be empty — that is not the standard applied to steps that add tables or columns.
+- [x] Neither adapter contains a SOQL query, a CMDT read, or a total calculation.
+- [x] Neither adapter needs a locale lookup or a translation — every string it prints came from the payload.
 
 ## 6. Verification method
 
@@ -75,7 +75,42 @@ For an adapter, only the two new adapter classes and their tests may appear. Per
 
 ## 7. Close-out
 
-- **Date:**
-- **Adapter commit SHA:**
-- **Anything the adapters had to compute themselves:** *(must be empty — a non-empty answer sends work back to steps 01–03)*
+- **Date:** 2026-08-27
+- **Adapter commit SHA:** **`6c24eea`**
+- **Anything the adapters had to compute themselves:** **nothing.**
+
+That last line is the definition of done in [`spec.md`](../spec.md) §1, and it held. Neither adapter needed a total, a label, a locale lookup, a translation, or a default. The HTML adapter's only judgement is how to present a typed value — which is what a renderer is *for*, and is exactly the boundary the contract draws.
+
+### Core-diff proof (spec §9)
+
+```
+force-app/main/default/classes/QuoteDocumentAdapterTest.cls        | 487 +
+force-app/main/default/classes/QuoteDocumentAdapterTest.cls-meta   |   5 +
+force-app/main/default/classes/QuoteDocumentHtmlAdapter.cls        | 129 +
+force-app/main/default/classes/QuoteDocumentHtmlAdapter.cls-meta   |   5 +
+force-app/main/default/classes/QuoteDocumentJsonAdapter.cls        |  32 +
+force-app/main/default/classes/QuoteDocumentJsonAdapter.cls-meta   |   5 +
+6 files changed, 663 insertions(+)
+```
+
+Nothing outside the two adapter classes and their test. No object, no Custom Metadata record, no permission set — which is the standard for an *adapter* specifically, as §5 notes, and not the standard applied to steps that add tables or columns.
+
+**Dependency direction, stated as §9 requires:** adapter → `QuoteDocumentRenderService` → payload. Nothing points back. `adaptersContainNoQueries` asserts against the adapters' own source that neither references `QuoteDocumentGenerator` or `QuoteDocumentLabels`, so the direction cannot be reversed without failing a test — the stat alone could be satisfied by moving logic into a Flow or a formula field, which is why §9 asks for the statement as well.
+
+### Two findings, both from assertions that could have proved nothing
+
+**Apex reports `aDate instanceof Datetime` as TRUE.** The first canonicalizer used runtime `instanceof` and silently collapsed a `Date` into a `DateTime`. `dateAndDateTimeAreNotCollapsed` caught it. The fix canonicalizes on the type the payload **declares** — more reliable, and precisely what `Column.dataType` exists for. Had that test been written as "both produce a date", it would have passed and the distinction would have been lost in every renderer downstream.
+
+**Apex cannot deserialize JSON into an untyped `Object` field** — "Apex Type unsupported in JSON: Object". `Row.values` is a `Map<String, Object>`, so the payload is **serialize-only**. This is a real property of the DTO shape and an acceptable one: a JSON renderer's output is read by other systems, not round-tripped back into Apex. The equivalence test compares the untyped structure instead, with an independent second walk — a shared helper would only have proved the helper is deterministic.
+
+### On the equivalence fixture
+
+§3a asks for one fixture carrying every distinction the table draws. What is asserted is a mix: the shared fixture exercises hidden elements, text normalisation, escaping, currency, ordering and null-vs-zero end to end through both adapters; the type distinctions (`Date` vs `DateTime`, `Boolean`, scale, negatives) are asserted against the canonicalizer and, for null-vs-zero, through a hand-built payload rendered by the real HTML adapter.
+
+Stating it plainly: a **single** quote fixture containing every listed distinction simultaneously was not built. Every distinction is covered, but not all of them by one record, so if the intent was specifically to prove they compose, that is not yet shown.
+
+### DocuSign CLM (§3.6) is not built
+
+Deferred deliberately, not overlooked. It needs the launch action from [step 07](step-07-render-service-dto.md)'s outstanding Flow wrapper, plus a rebuilt Data Source and template in the tenant — org configuration work outside this repository. The rule it must meet is already fixed by [`spec.md`](../spec.md) §4.1: a CLM Data Source querying the objects directly is not a conforming renderer and is not carried forward.
+
 - **Next step:** [`step-09-docs-and-closeout.md`](step-09-docs-and-closeout.md)
