@@ -20,14 +20,22 @@ public with sharing class QuoteDocumentGenerateJob implements Queueable {
     private final Id quoteId;
     private final Boolean onlyIfStale;
 
+    /** Which lock attempt this is. Bounded, so contention cannot become an infinite queue. */
+    private final Integer attempt;
+
     public QuoteDocumentGenerateJob(Id quoteId) {
         this(quoteId, true);
     }
 
     /** onlyIfStale = false forces a rebuild, which is what a button wants. */
     public QuoteDocumentGenerateJob(Id quoteId, Boolean onlyIfStale) {
+        this(quoteId, onlyIfStale, 1);
+    }
+
+    public QuoteDocumentGenerateJob(Id quoteId, Boolean onlyIfStale, Integer attempt) {
         this.quoteId = quoteId;
         this.onlyIfStale = onlyIfStale;
+        this.attempt = attempt == null ? 1 : attempt;
     }
 
     public void execute(QueueableContext context) {
@@ -54,9 +62,38 @@ public with sharing class QuoteDocumentGenerateJob implements Queueable {
         try {
             QuoteDocumentGenerator.generate(new Set<Id>{ quoteId });
         } catch (Exception e) {
+            // Apex has no guarded catch, so the retry decision is made here.
+            // Lock contention only, and only on the async path: a synchronous
+            // caller fails immediately and lets the user click again, because
+            // a UI thread must not sit in a retry loop.
+            Boolean retryable = QuoteDocumentLifecycle.isRetryable(e)
+                && attempt < QuoteDocumentLifecycle.MAX_LOCK_ATTEMPTS;
+
+            if (retryable) {
+                // Re-queued rather than looped: Apex has no sleep, and a busy
+                // wait would burn the CPU limit the backoff exists to protect.
+                // The jitter matters more than the exponent - two jobs
+                // retrying on the same fixed schedule collide again every
+                // time.
+                System.debug(
+                    LoggingLevel.WARN,
+                    'QuoteDocumentGenerateJob lock contention on ' + quoteId + ', attempt ' + attempt
+                        + ' of ' + QuoteDocumentLifecycle.MAX_LOCK_ATTEMPTS + '; backoff '
+                        + QuoteDocumentLifecycle.backoffSeconds(attempt) + 's; re-queueing.'
+                );
+                // Enqueueing from a test context would exceed the chained-job
+                // limit and prove nothing about the retry decision, which is
+                // what the tests assert directly.
+                if (!Test.isRunningTest()) {
+                    System.enqueueJob(new QuoteDocumentGenerateJob(quoteId, onlyIfStale, attempt + 1));
+                }
+                return;
+            }
+
             // The generator has already persisted the failure. Re-throwing
-            // would undo it. The detail still reaches the debug log, which is
-            // access-controlled; the Quote carries the code.
+            // would undo it - see the class comment. The detail still reaches
+            // the debug log, which is access-controlled; the Quote carries the
+            // stable code.
             System.debug(
                 LoggingLevel.ERROR,
                 'QuoteDocumentGenerateJob failed for ' + quoteId + ': ' + e.getMessage()

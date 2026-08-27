@@ -153,6 +153,27 @@ public with sharing class QuoteDocumentGenerator {
     }
 
     /**
+     * Records that this attempt is in flight.
+     *
+     * Written in its own DML before the savepoint work so Document_Data_
+     * Started_At__c means what its help text says - when THIS attempt began,
+     * which is what abandonment detection compares against.
+     */
+    private static void claim(Id quoteId, String requestId) {
+        QuoteDocumentStaleness.suppress();
+        try {
+            update new SBQQ__Quote__c(
+                Id = quoteId,
+                Document_Data_Status__c = 'Generating',
+                Document_Data_Started_At__c = System.now(),
+                Document_Data_Request_Id__c = requestId
+            );
+        } finally {
+            QuoteDocumentStaleness.resume();
+        }
+    }
+
+    /**
      * Correlates one generation attempt for support, which is exactly what
      * SBQQ__Quote__c.Document_Data_Request_Id__c's help text already describes
      * - the field exists and nothing has ever written it. Wired up here rather
@@ -233,6 +254,13 @@ public with sharing class QuoteDocumentGenerator {
             // out in different languages - the locale is part of the
             // fingerprint, so "this snapshot, in this language" is a single
             // identity.
+            // Claim the quote for this attempt before any work begins. The
+            // row is already held under FOR UPDATE by the query above, so no
+            // other transaction can interleave between the claim and the
+            // publish - which is what makes the supersede check below a
+            // guarantee rather than a narrowing of the window.
+            claim(quote.Id, requestId);
+
             String locale = QuoteDocumentLocale.resolve(quote);
             QuoteDocumentLabels labels = QuoteDocumentLabels.forLocale(locale);
 
@@ -316,6 +344,13 @@ public with sharing class QuoteDocumentGenerator {
             // came from this one generation. The fingerprint stamped here is
             // the one computed at the top of this method, before generation -
             // nothing that feeds it changes mid-transaction.
+            // Last thing before publication: confirm this attempt still owns
+            // the quote. A request that was taken over as abandoned may still
+            // be running; if it published here it would overwrite a snapshot
+            // built from newer inputs with one built from older ones, and
+            // nothing downstream could tell.
+            QuoteDocumentLifecycle.assertStillOwns(quote.Id, requestId);
+
             markQuote(quote.Id, 'Ready', System.now(), null, fingerprint, requestId);
 
             return outcome;
