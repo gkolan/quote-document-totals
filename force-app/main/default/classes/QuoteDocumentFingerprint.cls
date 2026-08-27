@@ -62,6 +62,33 @@ public with sharing class QuoteDocumentFingerprint {
         return value == null ? null : String.valueOf(value);
     }
 
+    /**
+     * One global content version, bumped whenever dictionary or clause text
+     * changes. Deliberately global rather than per-key: blanket invalidation
+     * is accepted policy for v1, and per-key dependency tracking is deferred
+     * until blanket invalidation is measurably too costly rather than merely
+     * inelegant.
+     *
+     * Absent means "never set", encoded as a stable literal rather than null,
+     * so an org that has not adopted content versioning still produces a
+     * deterministic hash.
+     */
+    @TestVisible
+    private static String contentVersion() {
+        String version = QuoteDocumentKeyValueMap.get('CONTENT').get('VERSION');
+        return String.isBlank(version) ? 'UNVERSIONED' : version;
+    }
+
+    /** Ordered so the hash is deterministic; a Set or unordered query would make it drift. */
+    private static List<Quote_Document_Content__mdt> orderedContent() {
+        return [
+            SELECT Block_Code__c, Locale__c, Version__c
+            FROM Quote_Document_Content__mdt
+            WHERE Is_Active__c = true
+            ORDER BY Block_Code__c, Locale__c
+        ];
+    }
+
     @TestVisible
     private static String canonicalize(
         SBQQ__Quote__c quote,
@@ -125,6 +152,30 @@ public with sharing class QuoteDocumentFingerprint {
         requiredPaths.sort();
         for (String path : requiredPaths) {
             parts.add(encodeString(path));
+        }
+
+        // Locale, content version, columns and blocks - the four inputs steps
+        // 01 to 04 added that the original hash could not see. Without them a
+        // translation fix or a clause edit would leave every existing snapshot
+        // claiming to be current while printing the old wording.
+        //
+        // All four are derived here rather than passed in, so every existing
+        // caller keeps working and no caller can accidentally omit one.
+        parts.add(encodeString(QuoteDocumentLocale.resolve(quote)));
+        parts.add(encodeString(contentVersion()));
+
+        for (QuoteDocumentTableDefinition definition : definitions) {
+            for (QuoteDocumentColumnDefinition column : QuoteDocumentColumnDefinition.forTable(definition)) {
+                parts.add(encodeString(column.columnCode));
+                parts.add(encodeDecimal(column.displayOrder));
+                parts.add(encodeString(column.valueField));
+                parts.add(encodeString(column.dataType));
+            }
+        }
+
+        for (Quote_Document_Content__mdt content : orderedContent()) {
+            parts.add(encodeString(content.Block_Code__c));
+            parts.add(encodeString(content.Version__c));
         }
 
         // Quote-level values.

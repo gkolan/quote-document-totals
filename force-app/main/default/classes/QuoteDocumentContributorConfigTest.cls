@@ -207,6 +207,79 @@ private class QuoteDocumentContributorConfigTest {
     }
 
     // -----------------------------------------------------------------------
+    // Step 05 - the inputs steps 01 to 04 added
+    // -----------------------------------------------------------------------
+
+    /**
+     * Without this, a translation fix would leave every existing snapshot
+     * claiming to be current while printing the old wording.
+     */
+    @IsTest
+    static void localeIsPartOfTheFingerprint() {
+        List<QuoteDocumentTableDefinition> plan = new List<QuoteDocumentTableDefinition>{ definition() };
+        SBQQ__Quote__c quote = new SBQQ__Quote__c();
+
+        QuoteDocumentLocale.overrideLocale = 'en_US';
+        String english = QuoteDocumentFingerprint.canonicalize(quote, new List<QuoteDocumentLine>(), plan);
+
+        QuoteDocumentLocale.overrideLocale = 'fr';
+        String french = QuoteDocumentFingerprint.canonicalize(quote, new List<QuoteDocumentLine>(), plan);
+        QuoteDocumentLocale.overrideLocale = null;
+
+        Assert.areNotEqual(
+            english,
+            french,
+            'Two locales are two different documents. Reusing one for the other would print the wrong '
+                + 'language while reporting Ready.'
+        );
+    }
+
+    @IsTest
+    static void columnDefinitionsArePartOfTheFingerprint() {
+        QuoteDocumentTableDefinition before = definition();
+        before.measureSet = QuoteDocumentTableDefinition.MEASURES_PRICE_WATERFALL;
+
+        QuoteDocumentTableDefinition after = definition();
+        after.measureSet = QuoteDocumentTableDefinition.MEASURES_CHANGE;
+
+        Assert.areNotEqual(
+            fingerprintOf(before),
+            fingerprintOf(after),
+            'A different measure set produces a different default column set, and therefore a different '
+                + 'printed table. The hash has to see that.'
+        );
+    }
+
+    /** A quote regenerated twice with nothing changed must hash identically. */
+    @IsTest
+    static void twoGenerationsOfAnUnchangedQuoteMatch() {
+        List<QuoteDocumentTableDefinition> plan = new List<QuoteDocumentTableDefinition>{ definition() };
+        SBQQ__Quote__c quote = new SBQQ__Quote__c();
+
+        Assert.areEqual(
+            QuoteDocumentFingerprint.canonicalize(quote, new List<QuoteDocumentLine>(), plan),
+            QuoteDocumentFingerprint.canonicalize(quote, new List<QuoteDocumentLine>(), plan),
+            'Determinism is the property everything else rests on. If this drifts, every quote regenerates '
+                + 'every time and nobody notices until the limits bite.'
+        );
+    }
+
+    /**
+     * The content version is one global value bumped whenever dictionary or
+     * clause text changes. An org that never sets it still hashes
+     * deterministically.
+     */
+    @IsTest
+    static void anUnsetContentVersionStillHashesDeterministically() {
+        Assert.areEqual(
+            'UNVERSIONED',
+            QuoteDocumentFingerprint.contentVersion(),
+            'Absent must encode as a stable literal, not as null, or an org that has not adopted content '
+                + 'versioning gets a different hash depending on how null happens to encode.'
+        );
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers on the definition itself
     // -----------------------------------------------------------------------
 

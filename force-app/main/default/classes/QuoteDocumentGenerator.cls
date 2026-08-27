@@ -191,6 +191,11 @@ public with sharing class QuoteDocumentGenerator {
     private static GenerationOutcome generateOne(SBQQ__Quote__c quote) {
         List<QuoteDocumentLine> allLines = normalize(quote);
 
+        // Assigned before any work begins, so the failure path writes the Id
+        // of the attempt that actually failed. Assigning it inside the try
+        // would leave a rolled-back attempt with no identity at all.
+        String requestId = newRequestId();
+
         Savepoint sp = Database.setSavepoint();
         List<Quote_Document_Table__c> tables = new List<Quote_Document_Table__c>();
         Map<String, List<Quote_Document_Row__c>> rowsByCode =
@@ -231,7 +236,6 @@ public with sharing class QuoteDocumentGenerator {
             String locale = QuoteDocumentLocale.resolve(quote);
             QuoteDocumentLabels labels = QuoteDocumentLabels.forLocale(locale);
 
-            String requestId = newRequestId();
             outcome.requestId = requestId;
             outcome.status = 'Ready';
             outcome.reused = false;
@@ -324,10 +328,10 @@ public with sharing class QuoteDocumentGenerator {
             if (de.getNumDml() > 0) {
                 detail += ' | fields: ' + de.getDmlFieldNames(0) + ' | ' + de.getDmlMessage(0);
             }
-            throw fail(quote, detail, de);
+            throw fail(quote, detail, de, requestId);
         } catch (Exception e) {
             Database.rollback(sp);
-            throw fail(quote, e.getMessage(), e);
+            throw fail(quote, e.getMessage(), e, requestId);
         }
     }
 
@@ -338,18 +342,28 @@ public with sharing class QuoteDocumentGenerator {
      * survives. A quote left silently on its previous Ready status after a
      * failed regeneration is exactly how a stale document gets signed.
      */
-    private static QuoteDocumentException fail(SBQQ__Quote__c quote, String detail, Exception cause) {
+    private static QuoteDocumentException fail(
+        SBQQ__Quote__c quote, String detail, Exception cause, String requestId
+    ) {
+        // The thrown message keeps the full detail: it goes to the caller and
+        // the debug log, both of which are access-controlled.
         String message = 'Document generation failed for quote ' + quote.Name + ': ' + detail;
+
         try {
-            // Document_Data_Error__c is a Long Text Area (4000 chars) precisely
-            // so this bound rarely bites - a Text(255) field used to sit here
-            // and silently cut off the actionable part of longer, named error
-            // messages (e.g. a misconfiguration explaining exactly which field
-            // to fix), which defeated the point of writing a clear message in
-            // the first place. Still capped, not unbounded - a raw DmlException
-            // detail (assertUniqueRowKeys, a DML error listing many field
-            // names) has no natural upper length.
-            markQuote(quote.Id, 'Failed', null, message.abbreviate(3000));
+            // What gets PERSISTED is assembled from a stable code plus
+            // allowlisted context - never copied from the exception.
+            // Document_Data_Error__c is readable by anyone who can read the
+            // Quote, and raw exception text echoes customer data: a DML error
+            // repeats the field values it rejected, a contributor's message
+            // can quote a product description. Abbreviating to 3000 characters
+            // bounded the length and sanitized nothing.
+            markQuote(
+                quote.Id,
+                'Failed',
+                null,
+                QuoteDocumentError.persistable(cause, requestId),
+                requestId
+            );
         } catch (Exception ignored) {
             // Never let the bookkeeping hide the real error.
         }
@@ -368,14 +382,17 @@ public with sharing class QuoteDocumentGenerator {
      * null it out, since the previously-committed tables (if any) are still
      * exactly what that fingerprint describes.
      */
-    private static void markQuote(Id quoteId, String status, Datetime generatedOn, String error) {
+    private static void markQuote(
+        Id quoteId, String status, Datetime generatedOn, String error, String requestId
+    ) {
         QuoteDocumentStaleness.suppress();
         try {
             update new SBQQ__Quote__c(
                 Id = quoteId,
                 Document_Data_Status__c = status,
                 Document_Data_Generated_On__c = generatedOn,
-                Document_Data_Error__c = error
+                Document_Data_Error__c = error,
+                Document_Data_Request_Id__c = requestId
             );
         } finally {
             QuoteDocumentStaleness.resume();
