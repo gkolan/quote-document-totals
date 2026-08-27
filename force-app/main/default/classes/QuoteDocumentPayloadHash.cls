@@ -51,14 +51,61 @@ public with sharing class QuoteDocumentPayloadHash {
     private static String canonicalize(Id quoteId) {
         List<String> parts = new List<String>();
 
-        // Tables, in the order a renderer walks them.
-        for (Quote_Document_Table__c table : [
+        // FOUR queries, whatever the table count.
+        //
+        // The obvious shape - loop the tables, query each one's columns and
+        // rows - was what this method did first, and it put SOQL inside a
+        // loop: a quote with seven active tables cost fifteen queries just to
+        // verify its own integrity, and verifying three quotes in one
+        // transaction cost forty-five. The render service's own
+        // flat-query-count test caught it. Grouping in memory instead is the
+        // same amount of code and does not scale with configuration.
+        List<Quote_Document_Table__c> tables = [
             SELECT Id, Table_Code__c, Display_Title__c, Display_Subtitle__c, Intro_Text__c,
-                   Footer_Text__c, Is_Displayed__c, Locale__c, Display_Order__c, Status__c, Row_Count__c
+                   Footer_Text__c, Is_Displayed__c, Locale__c, Display_Order__c, Status__c
             FROM Quote_Document_Table__c
             WHERE Quote__c = :quoteId
             ORDER BY Display_Order__c, Table_Code__c
+        ];
+
+        Set<Id> tableIds = new Map<Id, Quote_Document_Table__c>(tables).keySet();
+
+        Map<Id, List<Quote_Document_Column__c>> columnsByTable =
+            new Map<Id, List<Quote_Document_Column__c>>();
+        for (Quote_Document_Column__c column : [
+            SELECT Quote_Document_Table__c, Column_Code__c, Display_Label__c, Display_Order__c,
+                   Value_Field__c, Data_Type__c, Is_Displayed__c
+            FROM Quote_Document_Column__c
+            WHERE Quote_Document_Table__c IN :tableIds
+            ORDER BY Display_Order__c, Column_Code__c
         ]) {
+            if (!columnsByTable.containsKey(column.Quote_Document_Table__c)) {
+                columnsByTable.put(column.Quote_Document_Table__c, new List<Quote_Document_Column__c>());
+            }
+            columnsByTable.get(column.Quote_Document_Table__c).add(column);
+        }
+
+        Map<Id, List<Quote_Document_Row__c>> rowsByTable = new Map<Id, List<Quote_Document_Row__c>>();
+        for (Quote_Document_Row__c row : [
+            SELECT Quote_Document_Table__c, Row_Key__c, Row_Type__c, Display_Label__c, Label_Key__c,
+                   Label_Arg_1__c, Label_Arg_2__c, Display_Order__c, Group_Level__c, Group_Value__c,
+                   Is_Displayed__c, Include_In_Subtotal__c, Include_In_Grand_Total__c,
+                   Amount_List__c, Amount_Regular__c, Amount_Discount__c, Amount_Net__c,
+                   Amount_Customer__c, Quantity__c, Amount_Net_New__c, Amount_Cancellation__c,
+                   Amount_Replacement_Removed__c, Amount_Replacement_Added__c,
+                   Amount_Termination__c, Amount_Net_Change__c, Amount_Final__c,
+                   Product_Code__c, Product_Name__c, Charge_Type__c, Transaction_Type__c
+            FROM Quote_Document_Row__c
+            WHERE Quote_Document_Table__c IN :tableIds
+            ORDER BY Display_Order__c, Row_Key__c
+        ]) {
+            if (!rowsByTable.containsKey(row.Quote_Document_Table__c)) {
+                rowsByTable.put(row.Quote_Document_Table__c, new List<Quote_Document_Row__c>());
+            }
+            rowsByTable.get(row.Quote_Document_Table__c).add(row);
+        }
+
+        for (Quote_Document_Table__c table : tables) {
             parts.add('T');
             parts.add(text(table.Table_Code__c));
             parts.add(text(table.Display_Title__c));
@@ -70,13 +117,7 @@ public with sharing class QuoteDocumentPayloadHash {
             parts.add(number(table.Display_Order__c));
             parts.add(text(table.Status__c));
 
-            for (Quote_Document_Column__c column : [
-                SELECT Column_Code__c, Display_Label__c, Display_Order__c, Value_Field__c,
-                       Data_Type__c, Is_Displayed__c
-                FROM Quote_Document_Column__c
-                WHERE Quote_Document_Table__c = :table.Id
-                ORDER BY Display_Order__c, Column_Code__c
-            ]) {
+            for (Quote_Document_Column__c column : columnsFor(columnsByTable, table.Id)) {
                 parts.add('C');
                 parts.add(text(column.Column_Code__c));
                 parts.add(text(column.Display_Label__c));
@@ -86,19 +127,7 @@ public with sharing class QuoteDocumentPayloadHash {
                 parts.add(flag(column.Is_Displayed__c));
             }
 
-            for (Quote_Document_Row__c row : [
-                SELECT Row_Key__c, Row_Type__c, Display_Label__c, Label_Key__c, Label_Arg_1__c,
-                       Label_Arg_2__c, Display_Order__c, Group_Level__c, Group_Value__c,
-                       Is_Displayed__c, Include_In_Subtotal__c, Include_In_Grand_Total__c,
-                       Amount_List__c, Amount_Regular__c, Amount_Discount__c, Amount_Net__c,
-                       Amount_Customer__c, Quantity__c, Amount_Net_New__c, Amount_Cancellation__c,
-                       Amount_Replacement_Removed__c, Amount_Replacement_Added__c,
-                       Amount_Termination__c, Amount_Net_Change__c, Amount_Final__c,
-                       Product_Code__c, Product_Name__c, Charge_Type__c, Transaction_Type__c
-                FROM Quote_Document_Row__c
-                WHERE Quote_Document_Table__c = :table.Id
-                ORDER BY Display_Order__c, Row_Key__c
-            ]) {
+            for (Quote_Document_Row__c row : rowsFor(rowsByTable, table.Id)) {
                 parts.add('R');
                 parts.add(text(row.Row_Key__c));
                 parts.add(text(row.Row_Type__c));
@@ -145,6 +174,18 @@ public with sharing class QuoteDocumentPayloadHash {
         }
 
         return String.join(parts, SEPARATOR);
+    }
+
+    private static List<Quote_Document_Column__c> columnsFor(
+        Map<Id, List<Quote_Document_Column__c>> byTable, Id tableId
+    ) {
+        return byTable.containsKey(tableId) ? byTable.get(tableId) : new List<Quote_Document_Column__c>();
+    }
+
+    private static List<Quote_Document_Row__c> rowsFor(
+        Map<Id, List<Quote_Document_Row__c>> byTable, Id tableId
+    ) {
+        return byTable.containsKey(tableId) ? byTable.get(tableId) : new List<Quote_Document_Row__c>();
     }
 
     private static List<String> allMeasureFields() {

@@ -73,8 +73,7 @@ public with sharing class QuoteDocumentFingerprint {
      * so an org that has not adopted content versioning still produces a
      * deterministic hash.
      */
-    @TestVisible
-    private static String contentVersion() {
+    public static String contentVersion() {
         String version = QuoteDocumentKeyValueMap.get('CONTENT').get('VERSION');
         return String.isBlank(version) ? 'UNVERSIONED' : version;
     }
