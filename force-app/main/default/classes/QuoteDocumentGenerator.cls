@@ -237,6 +237,7 @@ public with sharing class QuoteDocumentGenerator {
             outcome.reused = false;
 
             delete [SELECT Id FROM Quote_Document_Table__c WHERE Quote__c = :quote.Id];
+            delete [SELECT Id FROM Quote_Document_Block__c WHERE Quote__c = :quote.Id];
 
             for (QuoteDocumentTableDefinition definition : definitions) {
                 List<QuoteDocumentLine> lines = applyFilter(allLines, definition.lineFilter);
@@ -266,6 +267,13 @@ public with sharing class QuoteDocumentGenerator {
                 }
             }
             insert allColumns;
+
+            // Standalone narrative, ordered in the SAME sequence as the
+            // tables so a renderer walks one list. Core decides what is
+            // included; the renderer never does.
+            List<Quote_Document_Block__c> blocks = QuoteDocumentBlockBuilder.build(quote, locale);
+            QuoteDocumentBlockBuilder.assertOrderingIsUnambiguous(blocks, tables);
+            insert blocks;
 
             List<Quote_Document_Row__c> allRows = new List<Quote_Document_Row__c>();
             for (String code : rowsByCode.keySet()) {

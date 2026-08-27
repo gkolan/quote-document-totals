@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Source_Version__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Which version of the source clause text this snapshot captured. Contractual text changes; a signed document must be able to say exactly which wording the customer agreed to, which the text alone cannot prove once the source has moved on.</inlineHelpText>
+    <label>Source Version</label>
+    <length>40</length>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

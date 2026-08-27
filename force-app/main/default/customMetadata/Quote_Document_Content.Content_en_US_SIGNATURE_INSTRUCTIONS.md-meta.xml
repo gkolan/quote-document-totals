@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <label>Content en_US - SIGNATURE_INSTRUCTIONS</label>
+    <protected>false</protected>
+    <values><field>Block_Code__c</field><value xsi:type="xsd:string">SIGNATURE_INSTRUCTIONS</value></values>
+    <values><field>Locale__c</field><value xsi:type="xsd:string">en_US</value></values>
+    <values><field>Block_Type__c</field><value xsi:type="xsd:string">Paragraph</value></values>
+    <values><field>Display_Order__c</field><value xsi:type="xsd:double">2100</value></values>
+    <values><field>Version__c</field><value xsi:type="xsd:string">1</value></values>
+    <values><field>Heading__c</field><value xsi:type="xsd:string">How to accept this quote</value></values>
+    <values><field>Body__c</field><value xsi:type="xsd:string">To accept, sign and return this document. An authorised signatory must sign on behalf of the customer.</value></values>
+    <values><field>Is_Active__c</field><value xsi:type="xsd:boolean">true</value></values>
+</CustomMetadata>
