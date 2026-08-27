@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Footer_Text__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Narrative text printed BELOW this table, snapshotted from the table definition. Same table-attached scope as Intro Text.</inlineHelpText>
+    <label>Footer Text</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <length>4000</length>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

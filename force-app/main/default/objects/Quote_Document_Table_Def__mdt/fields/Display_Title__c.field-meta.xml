@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Display_Title__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>REQUIRED on every active definition. The printable heading a document shows for this table. Table Name stays the admin-facing name used in list views and this metadata record; the two are deliberately separate, because the name that helps an admin find a record is rarely the heading a customer should read. Blank on an active definition fails config load - there is no fallback to Table Name.</inlineHelpText>
+    <label>Display Title</label>
+    <required>false</required>
+    <length>255</length>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

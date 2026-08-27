@@ -110,6 +110,19 @@ public with sharing class QuoteDocumentTableDefinition {
     public String rowCustomizerFlow;
     public String rowCustomizerFlowVersion;
 
+    /**
+     * Printable presentation, snapshotted onto every generated table.
+     *
+     * displayTitle is NOT tableName. tableName is the admin-facing name that
+     * makes a metadata record findable; the title is what a customer reads.
+     * Conflating them is how a document ends up printing an internal label
+     * nobody reviewed, so there is deliberately no fallback between them.
+     */
+    public String displayTitle;
+    public String displaySubtitle;
+    public String introText;
+    public String footerText;
+
     // What the contributor reads beyond the quote and its lines. See step 01A section 6a.
     public String cachePolicy;
     public List<String> contributorDependencyPaths;
@@ -154,6 +167,10 @@ public with sharing class QuoteDocumentTableDefinition {
         rowCustomizerVersion = record.Row_Customizer_Version__c;
         rowCustomizerFlow = record.Row_Customizer_Flow__c;
         rowCustomizerFlowVersion = record.Row_Customizer_Flow_Version__c;
+        displayTitle = record.Display_Title__c;
+        displaySubtitle = record.Display_Subtitle__c;
+        introText = record.Intro_Text__c;
+        footerText = record.Footer_Text__c;
         cachePolicy = record.Cache_Policy__c;
         contributorDependencyPaths = splitPaths(record.Contributor_Dependency_Set__c);
         groupBy = levels;
@@ -172,6 +189,28 @@ public with sharing class QuoteDocumentTableDefinition {
             }
         }
         return paths;
+    }
+
+    /**
+     * An active definition must carry its own printable title.
+     *
+     * Deliberately no fallback to Table_Name__c. A fallback would make every
+     * unconfigured table silently print an admin-facing name - the failure
+     * would reach a customer's document rather than a deployment log, and it
+     * would reach every table at once. spec.md section 4 removes the fallback
+     * for exactly this reason.
+     *
+     * Only ACTIVE definitions are loaded here, so an inactive example record
+     * can sit half-configured without blocking anyone.
+     */
+    private void validatePresentationConfig() {
+        if (String.isBlank(displayTitle)) {
+            throw new QuoteDocumentGenerator.QuoteDocumentException(
+                'Active table definition ' + tableCode + ' has no Display_Title__c. Every active definition '
+                + 'must carry the heading its table prints. Table_Name__c is the admin-facing name and is '
+                + 'deliberately not used as a fallback - it would print an internal label to a customer.'
+            );
+        }
     }
 
     /**
@@ -328,7 +367,8 @@ public with sharing class QuoteDocumentTableDefinition {
                    Measure_Set__c, Show_Details__c, Show_Section_Totals__c, Display_Order__c,
                    Composite_Separator__c, Max_Groups__c, Sort_Groups_By__c, Row_Customizer_Code__c,
                    Row_Customizer_Version__c, Row_Customizer_Flow__c, Row_Customizer_Flow_Version__c,
-                   Cache_Policy__c, Contributor_Dependency_Set__c
+                   Cache_Policy__c, Contributor_Dependency_Set__c,
+                   Display_Title__c, Display_Subtitle__c, Intro_Text__c, Footer_Text__c
             FROM Quote_Document_Table_Def__mdt
             WHERE Is_Active__c = true
             ORDER BY Display_Order__c
@@ -356,6 +396,7 @@ public with sharing class QuoteDocumentTableDefinition {
 
             QuoteDocumentTableDefinition definition =
                 new QuoteDocumentTableDefinition(record, toLevels(record.Table_Code__c, groupings));
+            definition.validatePresentationConfig();
             definition.validateContributorConfig();
             definitions.add(definition);
         }

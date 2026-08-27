@@ -38,4 +38,5 @@
         <field>Display_Order__c</field>
         <value xsi:type="xsd:double">80</value>
     </values>
+    <values><field>Display_Title__c</field><value xsi:type="xsd:string">Discount Summary</value></values>
 </CustomMetadata>

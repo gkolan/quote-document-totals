@@ -14,4 +14,5 @@
     <values><field>Row_Customizer_Flow__c</field><value xsi:type="xsd:string">QuoteDocumentSampleFlowContributor</value></values>
     <values><field>Row_Customizer_Flow_Version__c</field><value xsi:type="xsd:string">1</value></values>
     <values><field>Cache_Policy__c</field><value xsi:type="xsd:string">STANDARD</value></values>
+    <values><field>Display_Title__c</field><value xsi:type="xsd:string">Flow Contributor Example</value></values>
 </CustomMetadata>

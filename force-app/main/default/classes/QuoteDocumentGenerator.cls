@@ -233,7 +233,7 @@ public with sharing class QuoteDocumentGenerator {
             for (QuoteDocumentTableDefinition definition : definitions) {
                 List<QuoteDocumentLine> lines = applyFilter(allLines, definition.lineFilter);
 
-                Quote_Document_Table__c table = newTable(quote, definition);
+                Quote_Document_Table__c table = newTable(quote, definition, !lines.isEmpty());
                 tables.add(table);
                 List<Quote_Document_Row__c> rows = new QuoteDocumentRowBuilder(definition).build(lines);
                 rows = applyRowCustomizer(quote, definition, lines, rows);
@@ -525,9 +525,22 @@ public with sharing class QuoteDocumentGenerator {
     // Persist
     // -----------------------------------------------------------------------
 
+    /**
+     * hasQualifyingLines drives Is_Displayed__c, and it is deliberately about
+     * LINES rather than rows.
+     *
+     * "No Detail rows" would be the obvious test and is wrong: a summary table
+     * (Show_Details__c = false) never emits a Detail row even when it has
+     * plenty of data, so that rule would hide CHARGE_TYPE_SUMMARY and every
+     * table like it. Row_Count__c is wrong for the opposite reason - the
+     * builder always emits a Grand Total, so an empty table still has a row.
+     * Whether any source line survived the filter is the question the renderer
+     * conditional was really asking.
+     */
     private static Quote_Document_Table__c newTable(
         SBQQ__Quote__c quote,
-        QuoteDocumentTableDefinition definition
+        QuoteDocumentTableDefinition definition,
+        Boolean hasQualifyingLines
     ) {
         // The name carries the quote number so a table is identifiable in a
         // list view or search result. Quote_Number__c is the field to trust
@@ -542,7 +555,17 @@ public with sharing class QuoteDocumentGenerator {
             Group_Dimensions__c = definition.groupDimensionsLabel(),
             Line_Filter__c = definition.lineFilter,
             Measure_Set__c = definition.measureSet,
-            Status__c = 'Generating'
+            Status__c = 'Generating',
+
+            // Printable presentation, snapshotted so a renderer never reads
+            // configuration - the whole point of the contract. Title is
+            // guaranteed non-blank by config load; the rest are legitimately
+            // optional and blank is a valid value, not a missing one.
+            Display_Title__c = definition.displayTitle,
+            Display_Subtitle__c = definition.displaySubtitle,
+            Intro_Text__c = definition.introText,
+            Footer_Text__c = definition.footerText,
+            Is_Displayed__c = hasQualifyingLines
         );
         copyCurrency(quote, table);
         return table;

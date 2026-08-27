@@ -44,4 +44,5 @@
     </values>
     <values><field>Row_Customizer_Version__c</field><value xsi:type="xsd:string">1</value></values>
     <values><field>Cache_Policy__c</field><value xsi:type="xsd:string">STANDARD</value></values>
+    <values><field>Display_Title__c</field><value xsi:type="xsd:string">Row Customizer Example</value></values>
 </CustomMetadata>
