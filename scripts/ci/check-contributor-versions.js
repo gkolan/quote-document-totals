@@ -158,16 +158,36 @@ function parseDefinitions(dir, readFile, listFiles) {
  *
  * changedFiles: repo-relative paths changed since the merge base.
  */
-function findViolations({ changedFiles, registry, definitions }) {
+function findViolations({ changedFiles, registry, definitions, previousTokens }) {
     const violations = [];
     const changed = new Set(changedFiles);
+    const previous = previousTokens || {};
 
     const classChanged = (className) =>
         changed.has('force-app/main/default/classes/' + className + '.cls');
     const flowChanged = (flowName) =>
         changed.has('force-app/main/default/flows/' + flowName + '.flow-meta.xml');
-    const definitionChanged = (file) =>
-        changed.has('force-app/main/default/customMetadata/' + file);
+
+    /**
+     * Whether the TOKEN VALUE moved - not whether the file did.
+     *
+     * This is the whole gate. The first version compared file paths: "the
+     * customizer changed, did its metadata file also change?" That is
+     * satisfied by editing anything at all in the record - a help text, an
+     * unrelated field, a whitespace change - while the version token stays
+     * exactly as it was. A reviewer reproduced it: changed customizer, changed
+     * metadata file, unchanged token, gate green.
+     *
+     * A missing previous value means the record is new in this change, which
+     * cannot be a stale-token problem.
+     */
+    const tokenMoved = (file, field, current) => {
+        const before = previous[file] && previous[file][field];
+        if (before === undefined || before === null) {
+            return true;
+        }
+        return String(before) !== String(current === undefined || current === null ? '' : current);
+    };
 
     for (const definition of definitions) {
         if (definition.customizerCode) {
@@ -180,25 +200,31 @@ function findViolations({ changedFiles, registry, definitions }) {
                         'metadata was not updated, or the registry branch was removed. Generation would ' +
                         'fail at runtime, and until then this contributor is outside the version gate.'
                 );
-            } else if (classChanged(className) && !definitionChanged(definition.file)) {
+            } else if (
+                classChanged(className) &&
+                !tokenMoved(definition.file, 'customizerVersion', definition.customizerVersion)
+            ) {
                 violations.push(
-                    className + '.cls changed but ' + definition.file + ' did not, so ' +
-                        'Row_Customizer_Version__c for table ' + definition.tableCode + ' is still "' +
-                        definition.customizerVersion + '". The fingerprint cannot see an Apex body change, ' +
-                        'so quotes using this table stay Ready and reuse a snapshot the new logic would ' +
-                        'not have produced. Bump the version and run the step 05 invalidation job.'
+                    className + '.cls changed but Row_Customizer_Version__c on ' + definition.file +
+                        ' is still "' + definition.customizerVersion + '". Editing the metadata record is ' +
+                        'not enough - the TOKEN has to move, because the token is what the fingerprint ' +
+                        'hashes. Quotes using table ' + definition.tableCode + ' would stay Ready and ' +
+                        'reuse a snapshot the new logic would not have produced. Bump it and run the ' +
+                        'step 05 invalidation job.'
                 );
             }
         }
 
         if (definition.flowName) {
-            if (flowChanged(definition.flowName) && !definitionChanged(definition.file)) {
+            if (
+                flowChanged(definition.flowName) &&
+                !tokenMoved(definition.file, 'flowVersion', definition.flowVersion)
+            ) {
                 violations.push(
-                    definition.flowName + '.flow-meta.xml changed but ' + definition.file + ' did not, so ' +
-                        'Row_Customizer_Flow_Version__c for table ' + definition.tableCode + ' is still "' +
-                        definition.flowVersion + '". Editing a Flow does not change its API name, so the ' +
-                        'fingerprint cannot see the change. Bump the version and run the step 05 ' +
-                        'invalidation job.'
+                    definition.flowName + '.flow-meta.xml changed but Row_Customizer_Flow_Version__c on ' +
+                        definition.file + ' is still "' + definition.flowVersion + '". Editing a Flow does ' +
+                        'not change its API name, so the fingerprint cannot see the change unless the ' +
+                        'token moves. Bump it and run the step 05 invalidation job.'
                 );
             }
         }
@@ -233,6 +259,59 @@ function changedFilesSince(base) {
     return output.split(/\r?\n/).filter(Boolean);
 }
 
+/**
+ * The version tokens as they were at the merge base.
+ *
+ * Read with `git show <base>:<path>` rather than from the diff, so the gate
+ * compares VALUES. A file-level comparison is satisfied by editing anything in
+ * the record while the token stands still, which is exactly the case that
+ * ships a stale snapshot.
+ *
+ * A file that did not exist at the base yields no entry, and a definition with
+ * no previous value is treated as new rather than stale - a record being added
+ * cannot be a stale-token problem.
+ */
+function tokensAtMergeBase(base, definitions) {
+    let mergeBase;
+    try {
+        mergeBase = execFileSync('git', ['merge-base', base, 'HEAD'], {
+            cwd: REPO_ROOT,
+            encoding: 'utf8'
+        }).trim();
+    } catch (e) {
+        throw new GateError(
+            'Could not resolve a merge base against "' + base + '", so the gate cannot read the previous ' +
+                'version tokens and cannot tell a bumped token from an unchanged one. Fetch the base ' +
+                'branch first. Underlying error: ' + e.message
+        );
+    }
+
+    const previous = {};
+    for (const definition of definitions) {
+        const path = 'force-app/main/default/customMetadata/' + definition.file;
+        let xml;
+        try {
+            xml = execFileSync('git', ['show', mergeBase + ':' + path], {
+                cwd: REPO_ROOT,
+                encoding: 'utf8',
+                // A file absent at the base is the NEW-record case, which is
+                // expected and handled below. Letting git print its "exists on
+                // disk, but not in <sha>" fatal to stderr would make every
+                // clean run of a branch that adds a contributor look broken.
+                stdio: ['ignore', 'pipe', 'ignore']
+            });
+        } catch (e) {
+            // Not present at the base: a new record, not a stale one.
+            continue;
+        }
+        previous[definition.file] = {
+            customizerVersion: cmdtValue(xml, 'Row_Customizer_Version__c'),
+            flowVersion: cmdtValue(xml, 'Row_Customizer_Flow_Version__c')
+        };
+    }
+    return previous;
+}
+
 function main(argv) {
     const baseArg = argv.indexOf('--base');
     const base = baseArg === -1 ? 'origin/master' : argv[baseArg + 1];
@@ -251,7 +330,8 @@ function main(argv) {
         (d) => fs.readdirSync(d)
     );
     const changedFiles = changedFilesSince(base);
-    const violations = findViolations({ changedFiles, registry, definitions });
+    const previousTokens = tokensAtMergeBase(base, definitions);
+    const violations = findViolations({ changedFiles, registry, definitions, previousTokens });
 
     if (violations.length > 0) {
         console.error('Contributor version gate FAILED:\n');
@@ -284,4 +364,12 @@ if (require.main === module) {
     }
 }
 
-module.exports = { parseRegistry, parseDefinitions, findViolations, cmdtValue, GateError, FLOW_DIR };
+module.exports = {
+    parseRegistry,
+    parseDefinitions,
+    findViolations,
+    tokensAtMergeBase,
+    cmdtValue,
+    GateError,
+    FLOW_DIR
+};

@@ -115,6 +115,19 @@ public with sharing class QuoteDocumentFingerprint {
             parts.add(encodeString(definition.amountBasis));
             parts.add(encodeString(definition.rowCustomizerCode));
 
+            // PRESENTATION TEXT - the words the customer actually reads.
+            //
+            // Omitting these was a real defect, found in review: an admin
+            // could correct a heading, a subtitle, a disclaimer or a footer,
+            // regenerate, and get the OLD wording back with the quote still
+            // reporting Ready. It is the same class of failure the contributor
+            // version tokens exist to prevent, introduced by the same step
+            // that added the fields.
+            parts.add(encodeString(definition.displayTitle));
+            parts.add(encodeString(definition.displaySubtitle));
+            parts.add(encodeString(definition.introText));
+            parts.add(encodeString(definition.footerText));
+
             // Contributor CONTENT IDENTITY, not bookkeeping. canReuse returns
             // before customization runs, and the code and Flow API name above
             // are strings - they do not move when the logic behind them does.

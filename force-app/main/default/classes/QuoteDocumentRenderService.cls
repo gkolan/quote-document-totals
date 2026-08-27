@@ -76,12 +76,9 @@ public with sharing class QuoteDocumentRenderService {
 
         Map<Id, SBQQ__Quote__c> quotes = quoteIds.isEmpty()
             ? new Map<Id, SBQQ__Quote__c>()
-            : new Map<Id, SBQQ__Quote__c>([
-                SELECT Id, Name, Document_Data_Status__c, Document_Data_Request_Id__c,
-                       Document_Data_Fingerprint__c, Document_Payload_Hash__c,
-                       Document_Data_Generated_On__c
-                FROM SBQQ__Quote__c WHERE Id IN :quoteIds
-            ]);
+            : new Map<Id, SBQQ__Quote__c>(
+                (List<SBQQ__Quote__c>) Database.query(quoteSoql())
+            );
 
         // Everything below is fetched ONCE for the whole batch. Moving any of
         // these inside the per-request loop would make query count scale with
@@ -91,19 +88,60 @@ public with sharing class QuoteDocumentRenderService {
         Map<Id, List<SObject>> rowsByTable = rowsFor(tablesByQuote, columnsByTable);
         Map<Id, List<Quote_Document_Block__c>> blocksByQuote = blocksFor(quoteIds);
 
-        // Integrity is a property of the QUOTE, not of the request, so it is
-        // verified once per quote even when several requests name the same
-        // one. Without this, three requests for one quote paid for three full
-        // hash recomputations - which the flat-query-count test caught.
+        // Integrity is verified for the WHOLE BATCH in one bulk load, not
+        // once per request and not once per quote. The earlier per-quote cache
+        // stopped a repeated quote being re-hashed but left the cost scaling
+        // with the number of DISTINCT quotes - and the test that should have
+        // caught that passed the same quote three times, so it measured the
+        // cache rather than the work.
+        Map<Id, String> actualHashByQuote = QuoteDocumentPayloadHash.computeAll(quoteIds);
         Map<Id, String> integrityFailureByQuote = new Map<Id, String>();
 
         for (QuoteDocumentPayload.PayloadRequest request : requests) {
             results.add(build(
                 request, quotes, tablesByQuote, columnsByTable, rowsByTable, blocksByQuote,
-                integrityFailureByQuote
+                integrityFailureByQuote, actualHashByQuote
             ));
         }
         return results;
+    }
+
+    /**
+     * CurrencyIsoCode only exists as a field when multi-currency is on, so a
+     * static reference will not compile in a single-currency org - the same
+     * guard QuoteDocumentQuery applies to its own SELECT list.
+     *
+     * This was a real defect, found in review: the projection read the
+     * currency from getPopulatedFieldsAsMap() but the query never selected
+     * it, so it came back null in EVERY org including a multi-currency one.
+     * Both adapters format money from it, so every amount printed with no
+     * currency - and nothing failed, because null is a legal value for a
+     * field that legitimately does not exist in a single-currency org. That
+     * is what made it invisible.
+     *
+     * Bind variable `quoteIds` is resolved by the caller's scope.
+     */
+    @TestVisible
+    private static String quoteSoql() {
+        String currencyField = UserInfo.isMultiCurrencyOrganization() ? ', CurrencyIsoCode' : '';
+
+        return 'SELECT Id, Name, Document_Data_Status__c, Document_Data_Request_Id__c, '
+            + 'Document_Data_Fingerprint__c, Document_Payload_Hash__c, '
+            + 'Document_Data_Generated_On__c' + currencyField
+            + ' FROM SBQQ__Quote__c WHERE Id IN :quoteIds';
+    }
+
+    /**
+     * Whether the quote query actually selects the currency.
+     *
+     * Inspects the real SELECT list rather than returning a constant - a
+     * helper that cannot fail is worse than no helper, because it reads like
+     * coverage.
+     */
+    @TestVisible
+    private static Boolean selectsCurrency() {
+        return !UserInfo.isMultiCurrencyOrganization()
+            || quoteSoql().contains('CurrencyIsoCode');
     }
 
     /**
@@ -298,7 +336,8 @@ public with sharing class QuoteDocumentRenderService {
         Map<Id, List<Quote_Document_Column__c>> columnsByTable,
         Map<Id, List<SObject>> rowsByTable,
         Map<Id, List<Quote_Document_Block__c>> blocksByQuote,
-        Map<Id, String> integrityFailureByQuote
+        Map<Id, String> integrityFailureByQuote,
+        Map<Id, String> actualHashByQuote
     ) {
         QuoteDocumentPayload.PayloadResult result = new QuoteDocumentPayload.PayloadResult();
         result.quoteId = request == null ? null : request.quoteId;
@@ -315,7 +354,7 @@ public with sharing class QuoteDocumentRenderService {
 
             assertReady(quote);
             assertExpectationsMatch(request, quote);
-            assertIntactOnce(quote, integrityFailureByQuote);
+            assertIntactOnce(quote, integrityFailureByQuote, actualHashByQuote);
 
             result.payload = project(
                 quote,
@@ -342,7 +381,9 @@ public with sharing class QuoteDocumentRenderService {
      * outcome - including a FAILURE, so a tampered quote named by three
      * requests fails all three without being re-hashed three times.
      */
-    private static void assertIntactOnce(SBQQ__Quote__c quote, Map<Id, String> failureByQuote) {
+    private static void assertIntactOnce(
+        SBQQ__Quote__c quote, Map<Id, String> failureByQuote, Map<Id, String> actualHashByQuote
+    ) {
         if (failureByQuote.containsKey(quote.Id)) {
             String remembered = failureByQuote.get(quote.Id);
             if (remembered != null) {
@@ -352,7 +393,9 @@ public with sharing class QuoteDocumentRenderService {
         }
 
         try {
-            QuoteDocumentPayloadHash.assertIntact(quote.Id, quote.Document_Payload_Hash__c);
+            QuoteDocumentPayloadHash.assertIntact(
+                quote.Id, quote.Document_Payload_Hash__c, actualHashByQuote.get(quote.Id)
+            );
             failureByQuote.put(quote.Id, null);
         } catch (QuoteDocumentGenerator.QuoteDocumentException e) {
             failureByQuote.put(quote.Id, e.getMessage());

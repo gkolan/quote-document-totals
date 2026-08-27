@@ -65,6 +65,15 @@ public with sharing class QuoteDocumentQuery {
             validateDependencyPath(path);
             quoteFields.add(path);
         }
+        // The configured locale path is a QUOTE field and has to be selected
+        // like any other, or readPath finds nothing and every quote falls back
+        // to the default - which looks exactly like "nobody configured one".
+        String localePath = QuoteDocumentLocale.configuredPath();
+        if (String.isNotBlank(localePath)) {
+            validateDependencyPath(localePath);
+            quoteFields.add(localePath);
+        }
+
         String dependencyFields = quoteFields.isEmpty()
             ? ''
             : ', ' + String.join(new List<String>(quoteFields), ', ');
@@ -93,6 +102,26 @@ public with sharing class QuoteDocumentQuery {
      * Walks a dot path through the describe layer so a bad configuration is
      * caught at generation time, naming the segment that does not exist.
      */
+    /**
+     * Whether a configured locale path would actually reach the query. Lets a
+     * test assert the wiring in an org that has not configured one, rather
+     * than passing vacuously.
+     */
+    @TestVisible
+    private static Boolean localePathIsQueried() {
+        String path = QuoteDocumentLocale.configuredPath();
+        return String.isBlank(path) || quotesWithLinesSoql().contains(path);
+    }
+
+    /** The SELECT list as it would be built now, for the assertion above. */
+    @TestVisible
+    private static String quotesWithLinesSoql() {
+        String localePath = QuoteDocumentLocale.configuredPath();
+        return 'SELECT Id, Name'
+            + (String.isBlank(localePath) ? '' : ', ' + localePath)
+            + ' FROM SBQQ__Quote__c';
+    }
+
     @TestVisible
     private static void validateFieldPath(String path) {
         walkPath(path, SBQQ__QuoteLine__c.SObjectType, 'Grouping field path');

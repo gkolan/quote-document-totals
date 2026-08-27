@@ -44,31 +44,47 @@ public with sharing class QuoteDocumentPayloadHash {
      * intent would certify a document that was never stored.
      */
     public static String compute(Id quoteId) {
-        return digest(canonicalize(quoteId));
+        return computeAll(new Set<Id>{ quoteId }).get(quoteId);
     }
 
-    @TestVisible
-    private static String canonicalize(Id quoteId) {
-        List<String> parts = new List<String>();
+    /**
+     * Hashes many quotes with the SAME fixed number of queries as one.
+     *
+     * The single-quote form used to be the only one, and the render service
+     * called it per request - so integrity verification cost four queries per
+     * quote in a batch. The flat-query-count test that should have caught it
+     * requested the same quote three times, and the per-quote cache made it
+     * pass. Two mistakes compounding: a per-quote cost, and a test that
+     * measured the cache instead of the work.
+     *
+     * Everything here is keyed by quote up front, so nothing scales with batch
+     * size.
+     */
+    public static Map<Id, String> computeAll(Set<Id> quoteIds) {
+        Map<Id, String> digests = new Map<Id, String>();
+        if (quoteIds == null || quoteIds.isEmpty()) {
+            return digests;
+        }
 
-        // FOUR queries, whatever the table count.
-        //
-        // The obvious shape - loop the tables, query each one's columns and
-        // rows - was what this method did first, and it put SOQL inside a
-        // loop: a quote with seven active tables cost fifteen queries just to
-        // verify its own integrity, and verifying three quotes in one
-        // transaction cost forty-five. The render service's own
-        // flat-query-count test caught it. Grouping in memory instead is the
-        // same amount of code and does not scale with configuration.
-        List<Quote_Document_Table__c> tables = [
-            SELECT Id, Table_Code__c, Display_Title__c, Display_Subtitle__c, Intro_Text__c,
+        Map<Id, List<Quote_Document_Table__c>> tablesByQuote =
+            new Map<Id, List<Quote_Document_Table__c>>();
+        Map<Id, Id> quoteByTable = new Map<Id, Id>();
+
+        for (Quote_Document_Table__c table : [
+            SELECT Id, Quote__c, Table_Code__c, Display_Title__c, Display_Subtitle__c, Intro_Text__c,
                    Footer_Text__c, Is_Displayed__c, Locale__c, Display_Order__c, Status__c
             FROM Quote_Document_Table__c
-            WHERE Quote__c = :quoteId
+            WHERE Quote__c IN :quoteIds
             ORDER BY Display_Order__c, Table_Code__c
-        ];
+        ]) {
+            if (!tablesByQuote.containsKey(table.Quote__c)) {
+                tablesByQuote.put(table.Quote__c, new List<Quote_Document_Table__c>());
+            }
+            tablesByQuote.get(table.Quote__c).add(table);
+            quoteByTable.put(table.Id, table.Quote__c);
+        }
 
-        Set<Id> tableIds = new Map<Id, Quote_Document_Table__c>(tables).keySet();
+        Set<Id> tableIds = quoteByTable.keySet();
 
         Map<Id, List<Quote_Document_Column__c>> columnsByTable =
             new Map<Id, List<Quote_Document_Column__c>>();
@@ -85,25 +101,66 @@ public with sharing class QuoteDocumentPayloadHash {
             columnsByTable.get(column.Quote_Document_Table__c).add(column);
         }
 
-        Map<Id, List<Quote_Document_Row__c>> rowsByTable = new Map<Id, List<Quote_Document_Row__c>>();
-        for (Quote_Document_Row__c row : [
-            SELECT Quote_Document_Table__c, Row_Key__c, Row_Type__c, Display_Label__c, Label_Key__c,
-                   Label_Arg_1__c, Label_Arg_2__c, Display_Order__c, Group_Level__c, Group_Value__c,
-                   Is_Displayed__c, Include_In_Subtotal__c, Include_In_Grand_Total__c,
-                   Amount_List__c, Amount_Regular__c, Amount_Discount__c, Amount_Net__c,
-                   Amount_Customer__c, Quantity__c, Amount_Net_New__c, Amount_Cancellation__c,
-                   Amount_Replacement_Removed__c, Amount_Replacement_Added__c,
-                   Amount_Termination__c, Amount_Net_Change__c, Amount_Final__c,
-                   Product_Code__c, Product_Name__c, Charge_Type__c, Transaction_Type__c
-            FROM Quote_Document_Row__c
-            WHERE Quote_Document_Table__c IN :tableIds
-            ORDER BY Display_Order__c, Row_Key__c
-        ]) {
-            if (!rowsByTable.containsKey(row.Quote_Document_Table__c)) {
-                rowsByTable.put(row.Quote_Document_Table__c, new List<Quote_Document_Row__c>());
+        List<String> boundFields = new List<String>(configuredBindings(columnsByTable));
+        List<String> rowFields = rowFieldList(boundFields);
+        List<String> hashFields = rowHashFields(boundFields);
+
+        Map<Id, List<SObject>> rowsByTable = new Map<Id, List<SObject>>();
+        String rowSoql =
+            'SELECT ' + String.join(rowFields, ', ')
+            + ' FROM Quote_Document_Row__c WHERE Quote_Document_Table__c IN :tableIds'
+            + ' ORDER BY Display_Order__c, Row_Key__c';
+        for (SObject row : Database.query(rowSoql)) {
+            Id parent = (Id) row.get('Quote_Document_Table__c');
+            if (!rowsByTable.containsKey(parent)) {
+                rowsByTable.put(parent, new List<SObject>());
             }
-            rowsByTable.get(row.Quote_Document_Table__c).add(row);
+            rowsByTable.get(parent).add(row);
         }
+
+        Map<Id, List<Quote_Document_Block__c>> blocksByQuote =
+            new Map<Id, List<Quote_Document_Block__c>>();
+        for (Quote_Document_Block__c block : [
+            SELECT Quote__c, Block_Code__c, Block_Type__c, Display_Order__c, Is_Displayed__c,
+                   Locale__c, Heading__c, Body__c, Source_Version__c
+            FROM Quote_Document_Block__c
+            WHERE Quote__c IN :quoteIds
+            ORDER BY Display_Order__c, Block_Code__c
+        ]) {
+            if (!blocksByQuote.containsKey(block.Quote__c)) {
+                blocksByQuote.put(block.Quote__c, new List<Quote_Document_Block__c>());
+            }
+            blocksByQuote.get(block.Quote__c).add(block);
+        }
+
+        for (Id quoteId : quoteIds) {
+            digests.put(quoteId, digest(canonicalize(
+                tablesByQuote.containsKey(quoteId)
+                    ? tablesByQuote.get(quoteId) : new List<Quote_Document_Table__c>(),
+                columnsByTable,
+                rowsByTable,
+                blocksByQuote.containsKey(quoteId)
+                    ? blocksByQuote.get(quoteId) : new List<Quote_Document_Block__c>(),
+                hashFields
+            )));
+        }
+        return digests;
+    }
+
+    /**
+     * The canonical form, from collections the caller already loaded.
+     *
+     * Takes data rather than an Id so it can be called once per quote inside a
+     * bulk load without issuing a single further query.
+     */
+    private static String canonicalize(
+        List<Quote_Document_Table__c> tables,
+        Map<Id, List<Quote_Document_Column__c>> columnsByTable,
+        Map<Id, List<SObject>> rowsByTable,
+        List<Quote_Document_Block__c> blocks,
+        List<String> hashFields
+    ) {
+        List<String> parts = new List<String>();
 
         for (Quote_Document_Table__c table : tables) {
             parts.add('T');
@@ -127,41 +184,20 @@ public with sharing class QuoteDocumentPayloadHash {
                 parts.add(flag(column.Is_Displayed__c));
             }
 
-            for (Quote_Document_Row__c row : rowsFor(rowsByTable, table.Id)) {
+            for (SObject row : rowsFor(rowsByTable, table.Id)) {
                 parts.add('R');
-                parts.add(text(row.Row_Key__c));
-                parts.add(text(row.Row_Type__c));
-                parts.add(text(row.Display_Label__c));
-                parts.add(text(row.Label_Key__c));
-                parts.add(text(row.Label_Arg_1__c));
-                parts.add(text(row.Label_Arg_2__c));
-                parts.add(number(row.Display_Order__c));
-                parts.add(number(row.Group_Level__c));
-                parts.add(text(row.Group_Value__c));
-                parts.add(flag(row.Is_Displayed__c));
-                parts.add(flag(row.Include_In_Subtotal__c));
-                parts.add(flag(row.Include_In_Grand_Total__c));
-
-                // Every measure, both sets. A table only populates one set, but
-                // hashing both means adding a measure cannot silently fall
-                // outside the integrity check.
-                for (String field : allMeasureFields()) {
-                    parts.add(number((Decimal) row.get(field)));
+                // Every selected field, in one sorted order, so the canonical
+                // form does not depend on how the SELECT list was assembled -
+                // and so a newly bound field is covered without anyone
+                // remembering to add it here.
+                for (String field : hashFields) {
+                    parts.add(field);
+                    parts.add(scalar(row.get(field)));
                 }
-                parts.add(text(row.Product_Code__c));
-                parts.add(text(row.Product_Name__c));
-                parts.add(text(row.Charge_Type__c));
-                parts.add(text(row.Transaction_Type__c));
             }
         }
 
-        for (Quote_Document_Block__c block : [
-            SELECT Block_Code__c, Block_Type__c, Display_Order__c, Is_Displayed__c,
-                   Locale__c, Heading__c, Body__c, Source_Version__c
-            FROM Quote_Document_Block__c
-            WHERE Quote__c = :quoteId
-            ORDER BY Display_Order__c, Block_Code__c
-        ]) {
+        for (Quote_Document_Block__c block : blocks) {
             parts.add('B');
             parts.add(text(block.Block_Code__c));
             parts.add(text(block.Block_Type__c));
@@ -182,10 +218,80 @@ public with sharing class QuoteDocumentPayloadHash {
         return byTable.containsKey(tableId) ? byTable.get(tableId) : new List<Quote_Document_Column__c>();
     }
 
-    private static List<Quote_Document_Row__c> rowsFor(
-        Map<Id, List<Quote_Document_Row__c>> byTable, Id tableId
+    private static List<SObject> rowsFor(Map<Id, List<SObject>> byTable, Id tableId) {
+        return byTable.containsKey(tableId) ? byTable.get(tableId) : new List<SObject>();
+    }
+
+    /** Every field any configured column binds, whether or not core knows about it. */
+    private static Set<String> configuredBindings(
+        Map<Id, List<Quote_Document_Column__c>> columnsByTable
     ) {
-        return byTable.containsKey(tableId) ? byTable.get(tableId) : new List<Quote_Document_Row__c>();
+        Map<String, SObjectField> rowFields =
+            Quote_Document_Row__c.SObjectType.getDescribe().fields.getMap();
+
+        Set<String> bound = new Set<String>();
+        for (List<Quote_Document_Column__c> columns : columnsByTable.values()) {
+            for (Quote_Document_Column__c column : columns) {
+                if (String.isNotBlank(column.Value_Field__c)
+                    && rowFields.containsKey(column.Value_Field__c.toLowerCase())) {
+                    bound.add(column.Value_Field__c);
+                }
+            }
+        }
+        return bound;
+    }
+
+    /**
+     * The hashed field list: the semantic base, every measure, and every
+     * configured binding. Sorted, because the canonical form has to be
+     * deterministic and a Set has no order.
+     *
+     * Interpolated into SOQL, so every name is either a literal here or one
+     * the row describe has already proved exists.
+     */
+    private static List<String> rowFieldList(List<String> boundFields) {
+        List<String> selected = new List<String>(rowHashFields(boundFields));
+        // The parent Id is needed to GROUP the rows but must never be HASHED -
+        // tables are deleted and recreated on every regeneration, so hashing
+        // it would change the digest on every rebuild and make the integrity
+        // check useless for the one case it exists for. The existing
+        // regeneration test caught exactly this.
+        selected.add('Quote_Document_Table__c');
+        selected.sort();
+        return selected;
+    }
+
+    /** The semantic fields: everything that PRINTS, and nothing that merely identifies a record. */
+    private static List<String> rowHashFields(List<String> boundFields) {
+        Set<String> fields = new Set<String>{
+            'Row_Key__c', 'Row_Type__c', 'Display_Label__c',
+            'Label_Key__c', 'Label_Arg_1__c', 'Label_Arg_2__c', 'Display_Order__c',
+            'Group_Level__c', 'Group_Value__c', 'Is_Displayed__c',
+            'Include_In_Subtotal__c', 'Include_In_Grand_Total__c',
+            'Product_Code__c', 'Product_Name__c', 'Charge_Type__c', 'Transaction_Type__c'
+        };
+        fields.addAll(allMeasureFields());
+        if (boundFields != null) {
+            fields.addAll(boundFields);
+        }
+
+        List<String> sorted = new List<String>(fields);
+        sorted.sort();
+        return sorted;
+    }
+
+    /** One encoding for any scalar, so a newly bound field needs no per-type branch here. */
+    private static String scalar(Object value) {
+        if (value == null) {
+            return '~null';
+        }
+        if (value instanceof Decimal) {
+            return number((Decimal) value);
+        }
+        if (value instanceof Boolean) {
+            return flag((Boolean) value);
+        }
+        return text(String.valueOf(value));
     }
 
     private static List<String> allMeasureFields() {
@@ -231,6 +337,14 @@ public with sharing class QuoteDocumentPayloadHash {
      * written into a document someone signs.
      */
     public static void assertIntact(Id quoteId, String expectedHash) {
+        assertIntact(quoteId, expectedHash, null);
+    }
+
+    /**
+     * `actualHash` may be supplied by a caller that already hashed the batch,
+     * so a bulk retrieval does not re-query per quote. Null means compute it.
+     */
+    public static void assertIntact(Id quoteId, String expectedHash, String actualHash) {
         if (String.isBlank(expectedHash)) {
             throw QuoteDocumentContributorError.build(
                 'PAYLOAD_HASH_MISSING',
@@ -240,7 +354,7 @@ public with sharing class QuoteDocumentPayloadHash {
             );
         }
 
-        String actual = compute(quoteId);
+        String actual = actualHash == null ? compute(quoteId) : actualHash;
         if (!expectedHash.equals(actual)) {
             throw QuoteDocumentContributorError.build(
                 'PAYLOAD_INTEGRITY_MISMATCH',

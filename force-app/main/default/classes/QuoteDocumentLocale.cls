@@ -29,14 +29,28 @@ public with sharing class QuoteDocumentLocale {
     @TestVisible
     private static String overrideLocale;
 
+    private static final String CONFIG_KEY_DEFAULT_LOCALE = 'DEFAULT_LOCALE';
+
     /**
-     * The org default, read from the platform rather than hardcoded to en_US.
-     * A hardcoded default is invisible until the org is not American.
+     * The org's documented default, and DELIBERATELY NOT UserInfo.getLocale().
+     *
+     * This method used to return the running user's locale, which contradicted
+     * this class's own opening comment in the same file. The consequence was
+     * concrete rather than stylistic: two sales users with different personal
+     * locale settings would generate two different documents from the same
+     * quote, and deterministic replay - which the fingerprint, the payload
+     * hash and the whole reuse decision rest on - would silently not hold.
+     *
+     * It is org CONFIGURATION, read from the same key-value metadata as
+     * everything else, falling back to a stable literal. A literal fallback is
+     * defensible where the running user's locale is not, because it is the
+     * same for everyone.
      */
+    @TestVisible
     private static String orgDefault() {
-        return UserInfo.getDefaultCurrency() == null
-            ? 'en_US'
-            : String.isBlank(UserInfo.getLocale()) ? 'en_US' : UserInfo.getLocale();
+        String configured = QuoteDocumentKeyValueMap.get(CONFIG_CATEGORY)
+            .get(CONFIG_KEY_DEFAULT_LOCALE);
+        return String.isBlank(configured) ? 'en_US' : configured.trim();
     }
 
     public static String resolve(SBQQ__Quote__c quote) {
@@ -44,7 +58,7 @@ public with sharing class QuoteDocumentLocale {
             return overrideLocale;
         }
 
-        String path = QuoteDocumentKeyValueMap.get(CONFIG_CATEGORY).get(CONFIG_KEY);
+        String path = configuredPath();
         if (String.isNotBlank(path)) {
             String configured = readPath(quote, path);
             if (String.isNotBlank(configured)) {
@@ -57,6 +71,19 @@ public with sharing class QuoteDocumentLocale {
         }
 
         return orgDefault();
+    }
+
+    /**
+     * The configured Quote field path holding a locale, or blank.
+     *
+     * Exposed so QuoteDocumentQuery can add it to the generation SELECT list.
+     * Without that it was never queried, `readPath` always found nothing, and
+     * every quote silently fell back to the default - which is
+     * indistinguishable from "nobody configured a path". A configuration that
+     * appears to be ignored is worse than one that fails.
+     */
+    public static String configuredPath() {
+        return QuoteDocumentKeyValueMap.get(CONFIG_CATEGORY).get(CONFIG_KEY);
     }
 
     /** Same dot-path walk the fingerprint uses; null anywhere along it yields null, not an error. */
