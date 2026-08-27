@@ -74,6 +74,9 @@ public with sharing class QuoteDocumentGenerator {
         public String fingerprint;
         public String status;
         public Boolean reused;
+
+        /** Integrity of the persisted OUTPUT, as opposed to the fingerprint's identity of the INPUTS. */
+        public String payloadHash;
     }
 
     /**
@@ -245,6 +248,7 @@ public with sharing class QuoteDocumentGenerator {
                 // generation that ever ran - step 01A section 9.
                 outcome.requestId = quote.Document_Data_Request_Id__c;
                 outcome.status = quote.Document_Data_Status__c;
+                outcome.payloadHash = quote.Document_Payload_Hash__c;
                 outcome.reused = true;
                 return outcome;
             }
@@ -358,7 +362,17 @@ public with sharing class QuoteDocumentGenerator {
             // nothing downstream could tell.
             QuoteDocumentLifecycle.assertStillOwns(quote.Id, requestId);
 
-            markQuote(quote.Id, 'Ready', System.now(), null, fingerprint, requestId);
+            // Computed AFTER insert and after verification, by reading the
+            // snapshot back out of the database. Reading it back rather than
+            // hashing the in-memory lists is the point: the hash must describe
+            // what was actually saved, including anything a trigger, a
+            // validation rule or a field default changed on the way in.
+            // Hashing the intent would certify a document that was never
+            // stored.
+            String payloadHash = QuoteDocumentPayloadHash.compute(quote.Id);
+            outcome.payloadHash = payloadHash;
+
+            markQuote(quote.Id, 'Ready', System.now(), null, fingerprint, requestId, payloadHash);
 
             return outcome;
 
@@ -451,7 +465,8 @@ public with sharing class QuoteDocumentGenerator {
      * support at a generation whose records never existed.
      */
     private static void markQuote(
-        Id quoteId, String status, Datetime generatedOn, String error, String fingerprint, String requestId
+        Id quoteId, String status, Datetime generatedOn, String error, String fingerprint,
+        String requestId, String payloadHash
     ) {
         QuoteDocumentStaleness.suppress();
         try {
@@ -461,7 +476,8 @@ public with sharing class QuoteDocumentGenerator {
                 Document_Data_Generated_On__c = generatedOn,
                 Document_Data_Error__c = error,
                 Document_Data_Fingerprint__c = fingerprint,
-                Document_Data_Request_Id__c = requestId
+                Document_Data_Request_Id__c = requestId,
+                Document_Payload_Hash__c = payloadHash
             );
         } finally {
             QuoteDocumentStaleness.resume();

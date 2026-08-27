@@ -12,6 +12,6 @@
         <type>Text</type>
     </nameField>
     <pluralLabel>Quote Document Tables</pluralLabel>
-    <sharingModel>ReadWrite</sharingModel>
+    <sharingModel>Private</sharingModel>
     <visibility>Public</visibility>
 </CustomObject>

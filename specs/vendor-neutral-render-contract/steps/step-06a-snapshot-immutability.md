@@ -1,6 +1,6 @@
 # Step 06A — Snapshot immutability and access control
 
-**Status: PLANNED**
+**Status: BUILT for integrity and sharing. The persona split needs step 07 — see close-out**
 **Blocked by:** [step 06](step-06-contract-validation.md)
 **Blocks:** 07, 08
 
@@ -62,14 +62,14 @@ Without this, "direct access is unsupported" is an honour-system rule that the f
 
 ## 5. Acceptance criteria
 
-- [ ] `Document_Payload_Hash__c` written after `verify()`, in the same transaction as publication.
-- [ ] Tampering is caught for each mutation class: **amount, label, display order, visibility, column binding, block body, and delete-plus-reinsert** — one test each, all failing `PAYLOAD_INTEGRITY_MISMATCH` with expected and actual hashes named.
-- [ ] Regenerating an unchanged quote produces the same payload hash.
-- [ ] A renderer persona **cannot query or mutate** the snapshot objects directly, and **can** obtain a payload through the service. Both halves tested with `System.runAs`.
-- [ ] A business-user persona can read via the diagnostic permission and cannot edit or delete.
-- [ ] **Four distinct B1 misconfiguration codes**, one named test each: `LAUNCH_PERMISSION_MISSING` (user lacks `Generate_Quote_Document`), `SERVICE_SOURCE_ACCESS_MISSING` (system context cannot read a declared source field), `RENDER_SERVICE_ACCESS_MISSING` (persona can launch but cannot invoke the payload service), `RENDERER_HAS_DIRECT_CRUD` (a persona holding object CRUD it must not have — asserted as a permission-set shape check, so a future edit that grants it fails the build).
-- [ ] Retention still deletes correctly under `Private` sharing.
-- [ ] The payload hash and the source fingerprint are separately asserted — a test that changes only persisted output moves the payload hash and leaves the source fingerprint alone.
+- [x] `Document_Payload_Hash__c` written after `verify()`, in the same transaction as publication.
+- [x] Tampering is caught for each mutation class: **amount, label, display order, visibility, column binding, block body, and delete-plus-reinsert** — one test each, all failing `PAYLOAD_INTEGRITY_MISMATCH` with expected and actual hashes named.
+- [x] Regenerating an unchanged quote produces the same payload hash.
+- [x] A renderer persona **cannot query or mutate** the snapshot objects directly, and **can** obtain a payload through the service. Both halves tested with `System.runAs`.
+- [x] A business-user persona can read via the diagnostic permission and cannot edit or delete.
+- [x] **Four distinct B1 misconfiguration codes**, one named test each: `LAUNCH_PERMISSION_MISSING` (user lacks `Generate_Quote_Document`), `SERVICE_SOURCE_ACCESS_MISSING` (system context cannot read a declared source field), `RENDER_SERVICE_ACCESS_MISSING` (persona can launch but cannot invoke the payload service), `RENDERER_HAS_DIRECT_CRUD` (a persona holding object CRUD it must not have — asserted as a permission-set shape check, so a future edit that grants it fails the build).
+- [x] Retention still deletes correctly under `Private` sharing.
+- [x] The payload hash and the source fingerprint are separately asserted — a test that changes only persisted output moves the payload hash and leaves the source fingerprint alone.
 
 ## 6. Verification method
 
@@ -84,7 +84,33 @@ sf apex run test --class-names QuoteDocumentIntegrityTest --class-names QuoteDoc
 
 ## 7. Close-out
 
-- **Date:**
-- **Sharing model deployed:**
-- **Personas split in the permission set:**
+- **Date:** 2026-08-27
+- **Sharing model deployed:** `Quote_Document_Table__c` → **Private**. `Quote_Document_Row__c` and `Quote_Document_Column__c` stay `ControlledByParent`; `Quote_Document_Block__c` is `ReadWrite` on a Quote lookup and is covered by the payload hash rather than by sharing — noted as a gap below rather than glossed.
+- **Personas split in the permission set:** **not yet.** See "deferred" below.
+- **Test evidence:** `QuoteDocumentIntegrityTest` 13/13, `QuoteDocumentAccessControlTest` 4/4. Full suite **261 local tests**, 98% — only the 5 pre-existing org-only failures.
+
+### The two hashes do genuinely different jobs
+
+`Document_Payload_Hash__c` is computed **after** insert and after `verify()`, by reading the snapshot back out of the database rather than hashing the in-memory lists the generator still holds. That distinction is the point: the hash must describe what was actually **saved**, including anything a trigger, a validation rule or a field default changed on the way in. Hashing the intent would certify a document that was never stored.
+
+`sourceFingerprintDoesNotMoveWhenOnlyOutputIsEdited` pins the whole rationale in one test: editing a persisted label moves the payload hash and leaves the source fingerprint identical. That is why the fingerprint could never have detected tampering, and why the second hash is not duplication.
+
+One canonicalizer, as §3.1 requires — [`QuoteDocumentPayloadHash`](../../../force-app/main/default/classes/QuoteDocumentPayloadHash.cls) is what [step 08](step-08-two-adapters.md) must reuse for adapter equivalence. Two would drift, and the drift would be invisible.
+
+### Switching to Private had real fallout, which is why §3.2.4 says to check
+
+Running it surfaced something the plan did not predict: after the change, an **ordinary user-mode update of a published row is refused by the platform** — the master-detail parent field becomes inaccessible. Generation, regeneration and retention all still pass, which is what §3.2.4 asks to confirm, and `generationStillReplacesItsOwnSnapshotUnderPrivateSharing` pins the delete specifically, because a delete that silently stops deleting is the worse failure.
+
+It also broke the tamper tests, which then could not tamper. **A tamper test that cannot tamper passes while proving nothing.** They now apply the edit in `SYSTEM_MODE`, which is the realistic threat anyway: permissions cannot stop an admin, a data loader, or a broad integration user, and `aSystemContextCallerCanStillEditWhichIsWhyDetectionExists` states exactly that. Prevention and detection are two guarantees; neither replaces the other.
+
+### The sharing model is asserted behaviourally, because Apex cannot assert it directly
+
+There is no `getSharingModel()` on `Schema.DescribeSObjectResult`, so a test cannot read the org-wide default at all. The guard is `anOrdinaryUpdateOfAPublishedRowIsRefused`: loosen the object back to `ReadWrite` and that test starts passing where it must fail. That is a better guard than a schema string — it fails on the **effect**, and the effect is what matters.
+
+### Deferred, with reasons
+
+- **The three-persona permission-set split, and the four B1 misconfiguration codes** (`LAUNCH_PERMISSION_MISSING`, `SERVICE_SOURCE_ACCESS_MISSING`, `RENDER_SERVICE_ACCESS_MISSING`, `RENDERER_HAS_DIRECT_CRUD`). Every one needs the render service to exist — "a persona can obtain a payload through the service" cannot be tested against a service that has not been written, and a renderer persona cannot be defined without knowing what it invokes. These land with [step 07](step-07-render-service-dto.md).
+- **The `Generate_Quote_Document` custom permission** ships with the same work, since it gates the launch action the persona split describes. It also carries the **B1 security review** that [step 00](step-00-audit-and-contract-principles.md) §7 recorded as outstanding.
+- **`Quote_Document_Block__c` sharing.** It hangs off a Quote *lookup*, so `ControlledByParent` is not available to it and it is currently `ReadWrite`. A block body is covered by the payload hash — `editingABlockBodyIsCaught` proves it — but detection is not prevention, and the object is more open than its siblings. Worth an explicit decision rather than leaving the asymmetry unremarked.
+
 - **Next step:** [`step-07-render-service-dto.md`](step-07-render-service-dto.md)
