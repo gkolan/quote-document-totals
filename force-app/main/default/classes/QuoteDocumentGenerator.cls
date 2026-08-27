@@ -246,6 +246,18 @@ public with sharing class QuoteDocumentGenerator {
                 tableByCode.put(t.Table_Code__c, t);
             }
 
+            // Columns, once the tables have Ids. Built from the same
+            // definitions the rows came from, so a table can never state a
+            // column layout that its rows were not generated against.
+            List<Quote_Document_Column__c> allColumns = new List<Quote_Document_Column__c>();
+            for (QuoteDocumentTableDefinition definition : definitions) {
+                Id tableId = tableByCode.get(definition.tableCode).Id;
+                for (QuoteDocumentColumnDefinition column : QuoteDocumentColumnDefinition.forTable(definition)) {
+                    allColumns.add(newColumn(tableId, column));
+                }
+            }
+            insert allColumns;
+
             List<Quote_Document_Row__c> allRows = new List<Quote_Document_Row__c>();
             for (String code : rowsByCode.keySet()) {
                 Id tableId = tableByCode.get(code).Id;
@@ -524,6 +536,40 @@ public with sharing class QuoteDocumentGenerator {
     // -----------------------------------------------------------------------
     // Persist
     // -----------------------------------------------------------------------
+
+    /**
+     * One generated column record.
+     *
+     * Display_Label__c is the field's own schema label for now. Step 03
+     * replaces this with a dictionary lookup keyed on Column_Code__c - which
+     * is why the code, not the label, is what a renderer keys off. Reading the
+     * schema label rather than constructing an English phrase here keeps the
+     * "no English literal outside the dictionary" rule intact in the meantime.
+     */
+    private static Quote_Document_Column__c newColumn(Id tableId, QuoteDocumentColumnDefinition column) {
+        return new Quote_Document_Column__c(
+            Quote_Document_Table__c = tableId,
+            Column_Code__c = column.columnCode,
+            Display_Label__c = columnLabel(column),
+            Display_Order__c = column.displayOrder,
+            Value_Field__c = column.valueField,
+            Data_Type__c = column.dataType,
+            Is_Displayed__c = true
+        );
+    }
+
+    private static String columnLabel(QuoteDocumentColumnDefinition column) {
+        if (column.isLabelColumn()) {
+            // The one heading with no schema label behind it. Step 03 resolves
+            // COL_LABEL from the dictionary like every other code.
+            return 'Description';
+        }
+        SObjectField field = Quote_Document_Row__c.SObjectType.getDescribe()
+            .fields.getMap().get(column.valueField.toLowerCase());
+        return field == null
+            ? column.columnCode
+            : field.getDescribe().getLabel().abbreviate(255);
+    }
 
     /**
      * hasQualifyingLines drives Is_Displayed__c, and it is deliberately about

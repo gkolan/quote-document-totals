@@ -1,6 +1,6 @@
 # Step 02 — Column snapshot object
 
-**Status: PLANNED**
+**Status: BUILT — generation side complete; the DTO-side items in §3.7 belong to step 07, see close-out**
 **Blocked by:** [step 01](step-01-table-presentation-fields.md)
 **Blocks:** 03, 06, 07, 08
 
@@ -108,6 +108,25 @@ New test class `QuoteDocumentColumnTest`: `defaultColumnsMatchTheMeasureSet`, `e
 
 ## 7. Close-out
 
-- **Date:**
-- **Notes:**
+- **Date:** 2026-08-27
+- **Delivered:** `Quote_Document_Column__c` (master-detail, AutoNumber `QDC-{0000000000}`), `Quote_Document_Column_Def__mdt`, `QuoteDocumentColumnDefinition` (loading, defaults, validation), generation in `QuoteDocumentGenerator`, permission-set entries, and explicit column records for the two tables whose guides document a narrower set.
+- **Defaults, so nothing had to be authored twice.** A definition with no column records emits `COL_LABEL` plus one column per field in `measureFields(measureSet)`. Every pre-existing definition keeps working with zero authoring. The count is not fixed anywhere — the test asserts `measures.size() + 1` rather than a literal, so adding a measure is a change, not a test failure.
+- **Any readable field binds, deliberately.** A measure-set allowlist would have looked safer and would have closed the cheapest flexibility lever in the design (a subscriber printing their own field with one metadata row and no core change), while also banning `Product_Code__c`, `Quantity__c` and `Charge_Type__c`, which are legitimate columns today. The failure the allowlist was aimed at is caught exactly instead, by `COLUMN_MEASURE_MISMATCH`.
+- **Type safety is two separate checks, because they fail for different reasons.** `COLUMN_TYPE_UNSUPPORTED` rejects what no renderer can print without inventing a presentation decision — reference, multi-select, rich text, encrypted, blob, compound — each naming *why*. `COLUMN_TYPE_DECLARATION_MISMATCH` catches a `Currency` field declared as `Text`, which is how two adapters start formatting the same value differently. Rich text needed `isHtmlFormatted()`, not `DisplayType`, since it is `TEXTAREA` either way.
+- **Documented layouts now match the data.** `PRODUCT_FAMILY_SUMMARY` produces exactly the four columns its guide §8 table lists, in order; `CHARGE_TYPE_SUMMARY` the two its §9 tag sample shows. `spec.md` §3 said four for `CHARGE_TYPE_SUMMARY`; the guide shows two, and the guide is the documented output this step is asked to match.
+- **`Display_Label__c` holds the field's own schema label for now**, as §4 scopes. Read from the schema rather than constructed, so the "no English literal outside the dictionary" rule stays intact until [step 03](step-03-semantic-keys-and-localization.md) resolves it from `Column_Code__c`. The one exception is `COL_LABEL`, which has no field behind it and carries the literal `Description` — the single English string this step adds, and step 03 removes it.
+- **Test evidence:** `QuoteDocumentColumnTest`, 14/14. Full suite 161 local tests, 97% — the only failures are the 5 pre-existing org-only ones.
+- **One transient worth recording:** a `RunLocalTests` run reported `QuoteDocumentFlowRoundTripProbeTest` failing with "Dependent class is invalid and needs recompilation". It passed 9/9 standalone and clean on the next full run — a recompilation race, aggravated by the broken org-only classes poisoning the compile graph, not a defect in this step.
+
+### Deferred to step 07, and why
+
+§3.7 asks for things that only exist once there is a DTO to populate. The **validation** half landed here; the **delivery** half cannot be tested without a payload:
+
+- the row query assembled dynamically from the union of every configured `Value_Field__c`, and `COLUMN_VALUE_NOT_QUERIED` — there is no render query yet;
+- formula fields read post-insert — same reason;
+- a per-column required-value check for a column whose emptiness is a defect;
+- the FLS/persona test, which also waits on the B1 security review.
+
+Binding a field is only half the contract, and this step delivered that half honestly rather than claiming the other.
+
 - **Next step:** [`step-03-semantic-keys-and-localization.md`](step-03-semantic-keys-and-localization.md)

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Column_Code__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Semantic key for this column - COL_LIST, COL_NET, COL_NET_CHANGE, COL_LABEL. NEVER an English phrase: the printed heading is Display Label, which the dictionary resolves per locale. A renderer keys layout and styling off this code, so it must stay stable even when the heading is reworded or translated.</inlineHelpText>
+    <label>Column Code</label>
+    <length>40</length>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
