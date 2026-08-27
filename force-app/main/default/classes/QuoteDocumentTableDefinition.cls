@@ -203,6 +203,7 @@ public with sharing class QuoteDocumentTableDefinition {
      * Only ACTIVE definitions are loaded here, so an inactive example record
      * can sit half-configured without blocking anyone.
      */
+    @TestVisible
     private void validatePresentationConfig() {
         if (String.isBlank(displayTitle)) {
             throw new QuoteDocumentGenerator.QuoteDocumentException(
@@ -491,6 +492,11 @@ public with sharing class QuoteDocumentTableDefinition {
         QuoteDocumentTableDefinition definition = new QuoteDocumentTableDefinition();
         definition.tableCode = tableCode;
         definition.tableName = tableCode;
+        // A fixture must build a VALID definition, and since step 01 a valid
+        // definition carries a printable title - verification refuses to
+        // publish a table without one. Deriving it from the code keeps every
+        // existing fixture working without each one having to know that.
+        definition.displayTitle = tableCode;
         definition.amountBasis = 'Final Value';
         definition.lineFilter = filter;
         definition.measureSet = MEASURES_PRICE_WATERFALL;

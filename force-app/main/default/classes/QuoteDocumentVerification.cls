@@ -55,6 +55,7 @@ public with sharing class QuoteDocumentVerification {
         //    consuming template can no longer address unambiguously.
         assertUniqueRowKeys(rows, table);
 
+
         // 1. The grand total equals the sum of the included detail rows.
         // 2. It also equals the sum of the outermost subtotals. Two independent
         //    paths to the same number; if they disagree, the grouping dropped
@@ -122,6 +123,55 @@ public with sharing class QuoteDocumentVerification {
                 assertClose(quote.SBQQ__NetAmount__c, (Decimal) grandTotal.get('Amount_Net__c'),
                             table, 'grand total vs Quote Net Amount');
             }
+        }
+
+        // 5. Presentation completeness - step 06 condition 2.
+        //
+        //    Deliberately LAST. A table whose money does not add up and whose
+        //    title is missing has two problems, and the money is the one worth
+        //    reporting first: it is the more serious failure and the one a
+        //    reader will act on. Running this earlier made a reconciliation
+        //    test report a missing title instead, which is exactly the
+        //    inversion to avoid.
+        //
+        //    It belongs in verify() at all for the same reason the money
+        //    assertions do: the whole value of the contract is that a renderer
+        //    can be dumb, and that only holds while the payload is guaranteed
+        //    complete. The moment a title can be blank, the first adapter adds
+        //    "if blank, use the table code" and the logic starts leaking back
+        //    out one fallback at a time.
+        assertPresentationComplete(table);
+    }
+
+    /**
+     * A published table must carry everything a renderer needs to print it
+     * without asking anything else: a heading, and the locale that heading was
+     * resolved for.
+     *
+     * Columns are deliberately NOT checked here. They are inserted after the
+     * table row is stamped but before publication, and re-querying them per
+     * table inside verification would add a SOQL call per table to prove
+     * something the generator already guarantees structurally - it builds
+     * columns for every definition it builds a table for, from the same list.
+     * The retrieval-side check in step 07 is where a missing column set is
+     * caught, because that is where it would actually do harm.
+     */
+    private static void assertPresentationComplete(Quote_Document_Table__c table) {
+        if (String.isBlank(table.Display_Title__c)) {
+            throw QuoteDocumentContributorError.build(
+                'TABLE_TITLE_MISSING',
+                'Table ' + table.Table_Code__c + ' has no Display_Title__c and cannot be published. A '
+                    + 'renderer prints this heading verbatim; there is deliberately no fallback to '
+                    + 'Table_Name__c, which is an internal label nobody reviewed for a customer.'
+            );
+        }
+        if (String.isBlank(table.Locale__c)) {
+            throw QuoteDocumentContributorError.build(
+                'TABLE_LOCALE_MISSING',
+                'Table ' + table.Table_Code__c + ' has no Locale__c. Without it nothing can tell which '
+                    + 'language this snapshot was resolved in, so a re-render in another locale could not '
+                    + 'know it had to regenerate.'
+            );
         }
     }
 

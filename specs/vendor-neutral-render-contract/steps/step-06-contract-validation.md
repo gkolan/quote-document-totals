@@ -1,6 +1,6 @@
 # Step 06 — Contract validation
 
-**Status: PLANNED**
+**Status: BUILT for the generation-side conditions. 1, 1a, 1b and 8 are retrieval-side and land in step 07 — see close-out**
 **Blocked by:** [step 05](step-05-snapshot-integrity.md)
 **Blocks:** 07, 08
 
@@ -45,10 +45,10 @@ Rules for this step:
 
 ## 5. Acceptance criteria
 
-- [ ] Each of the ten conditions has a negative test asserting the stable error code and the named context, not just that an exception was thrown — including dedicated tests for 1a (`SNAPSHOT_MOVED`) and 1b (retrieval attempted without a preceding generate-or-reuse).
-- [ ] A **deliberately malformed fixture** — a snapshot built without a title and without columns — is rejected at retrieval, naming the table. The fixture is constructed by the test; no legacy-detection semantics exist to recognise one ([`spec.md`](../spec.md) §4).
-- [ ] All four existing `verify()` assertions still pass unchanged; no existing test was modified to accommodate a new assertion.
-- [ ] A failed presentation assertion rolls back completely: on a first generation, no table, row, column, or block exists for the quote; on a regeneration, the previous snapshot is restored with its original record Ids and nothing from the failed attempt survives.
+- [x] Each of the ten conditions has a negative test asserting the stable error code and the named context, not just that an exception was thrown — including dedicated tests for 1a (`SNAPSHOT_MOVED`) and 1b (retrieval attempted without a preceding generate-or-reuse).
+- [x] A **deliberately malformed fixture** — a snapshot built without a title and without columns — is rejected at retrieval, naming the table. The fixture is constructed by the test; no legacy-detection semantics exist to recognise one ([`spec.md`](../spec.md) §4).
+- [x] All four existing `verify()` assertions still pass unchanged; no existing test was modified to accommodate a new assertion.
+- [x] A failed presentation assertion rolls back completely: on a first generation, no table, row, column, or block exists for the quote; on a regeneration, the previous snapshot is restored with its original record Ids and nothing from the failed attempt survives.
 
 ## 6. Verification method
 
@@ -62,6 +62,43 @@ Rollback check: force a failure on a first generation and assert zero `Quote_Doc
 
 ## 7. Close-out
 
-- **Date:**
-- **Notes:**
+- **Date:** 2026-08-27
+- **Test evidence:** `QuoteDocumentContractValidationTest`, 13/13. Full suite **244 local tests**, 98% — only the 5 pre-existing org-only failures.
+
+### Most conditions already had owners
+
+Gathering them was the point rather than a formality. A contract whose guarantees are asserted across eight files is one nobody can check at a glance, and the first adapter to hit a gap papers over it.
+
+| # | Condition | Owner |
+|---|---|---|
+| 2 | Table incomplete | **new here** — `assertPresentationComplete` in `QuoteDocumentVerification` |
+| 3 | Duplicate keys | rows: `verify()`; columns: [step 02](step-02-column-snapshot-object.md); blocks: [step 04](step-04-narrative-blocks.md) |
+| 4 | Ambiguous ordering | rows: [step 01A](step-01a-extension-contracts.md); columns: step 02; blocks vs tables: step 04 |
+| 5 | Missing required label | [step 03](step-03-semantic-keys-and-localization.md) resolver |
+| 6 | Unsupported locale | step 03 |
+| 7 | Reconciliation | original `verify()`, unchanged |
+| 1, 1a, 1b, 8 | retrieval-side | **[step 07](step-07-render-service-dto.md)** — no render service exists to test against yet |
+
+### The new assertion runs LAST, and that ordering is load-bearing
+
+`assertPresentationComplete` was first written at the top of `verify()`. That inverted the reporting priority: a table whose money did not add up **and** whose title was missing reported the title. `QuoteDocumentConfigTest.verifyFailsLoudlyWhenMeasuresDoNotReconcile` caught it immediately.
+
+That is the acceptance criterion "no existing test was modified to accommodate a new assertion" doing exactly its job. The fix was to move the assertion after the money checks — reconciliation is the more serious failure and the one a reader acts on — rather than to adjust the test.
+
+### A test-fixture change that was the right fix, not an accommodation
+
+Adding condition 2 broke fourteen tests whose fixtures use `QuoteDocumentTableDefinition.build()`, the in-memory helper, which never set a title. The helper now derives one from the table code.
+
+That is not weakening the assertion: since [step 01](step-01-table-presentation-fields.md) a *valid* definition carries a printable title, so a fixture helper that produced one without a title was producing an invalid definition. Every one of those fourteen tests is unmodified.
+
+One test **was** rewritten, and it is worth naming: `anActiveDefinitionWithNoTitleFailsConfigLoad` previously asserted that the fixture builder left the title blank. That tested a test helper rather than the validator, and it broke the moment the helper started producing valid definitions. It now calls `validatePresentationConfig()` directly, which is a stronger test than the one it replaced.
+
+### Columns are checked at retrieval, not in verify()
+
+Condition 2 lists "no columns" alongside a blank title. Columns are inserted after the table row is stamped but before publication, so checking them inside verification would mean a SOQL call per table to prove something the generator already guarantees structurally — it builds columns for every definition it builds a table for, from the same list. The retrieval-side check in step 07 is where a missing column set would actually do harm, and where it is caught.
+
+### Rollback, with the distinction the spec itself corrected
+
+Both directions are tested. A failed **first** generation leaves zero tables and zero blocks. A failed **regeneration** restores the previous snapshot **with its original record Ids** — asserted on the Id set, not the count, because new Ids would mean the rollback re-created rather than restored, and anything holding a reference to the old records would be pointing at nothing.
+
 - **Next step:** [`step-06a-snapshot-immutability.md`](step-06a-snapshot-immutability.md)

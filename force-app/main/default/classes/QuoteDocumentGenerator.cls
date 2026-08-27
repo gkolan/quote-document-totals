@@ -329,9 +329,16 @@ public with sharing class QuoteDocumentGenerator {
                 Quote_Document_Table__c inserted = tableByCode.get(definition.tableCode);
                 List<Quote_Document_Row__c> rows = rowsByCode.get(definition.tableCode);
 
+                // Title and locale are carried onto the stamped record so
+                // verification can actually see them. They were set at insert
+                // and are unchanged here - re-sending two fields is a smaller
+                // price than a presentation assertion that has to re-query the
+                // row it is verifying.
                 Quote_Document_Table__c table = new Quote_Document_Table__c(
                     Id = inserted.Id,
-                    Table_Code__c = inserted.Table_Code__c
+                    Table_Code__c = inserted.Table_Code__c,
+                    Display_Title__c = inserted.Display_Title__c,
+                    Locale__c = inserted.Locale__c
                 );
                 stampTable(table, definition, rows);
                 QuoteDocumentVerification.verify(quote, table, definition, rows);

@@ -165,7 +165,15 @@ private class QuoteDocumentPresentationTest {
         }
     }
 
-    /** An active definition with no title must fail loudly, since there is deliberately no fallback. */
+    /**
+     * The real validator, not a proxy for it.
+     *
+     * An earlier version of this test asserted that the in-memory fixture
+     * builder left the title blank. That was weak - it tested a test helper -
+     * and it broke as soon as the helper started producing valid definitions,
+     * which it must, since verification now refuses to publish a table with no
+     * title. This calls the config-load validation directly instead.
+     */
     @IsTest
     static void anActiveDefinitionWithNoTitleFailsConfigLoad() {
         QuoteDocumentTableDefinition definition = QuoteDocumentTableDefinition.build(
@@ -174,17 +182,39 @@ private class QuoteDocumentPresentationTest {
             new List<Integer>{ 1 },
             QuoteDocumentTableDefinition.FILTER_ALL
         );
+        definition.displayTitle = null;
 
+        String message;
+        try {
+            definition.validatePresentationConfig();
+        } catch (QuoteDocumentGenerator.QuoteDocumentException e) {
+            message = e.getMessage();
+        }
+
+        Assert.isNotNull(message, 'An active definition with no Display_Title__c must fail config load.');
+        Assert.isTrue(message.contains('NO_TITLE'), 'The message must name the definition: ' + message);
         Assert.isTrue(
-            String.isBlank(definition.displayTitle),
-            'The in-memory builder must not invent a title, or this test proves nothing about the real '
-                + 'config path.'
+            message.contains('Table_Name__c'),
+            'And must say why there is no fallback to it, or someone will add one: ' + message
         );
+    }
+
+    /** Title and name stay separate values - conflating them is what prints an internal label. */
+    @IsTest
+    static void titleAndNameAreSeparateConcepts() {
+        QuoteDocumentTableDefinition definition = QuoteDocumentTableDefinition.build(
+            'SEPARATE',
+            new List<String>{ QuoteDocumentTableDefinition.DIM_PRODUCT_FAMILY },
+            new List<Integer>{ 1 },
+            QuoteDocumentTableDefinition.FILTER_ALL
+        );
+        definition.displayTitle = 'What the customer reads';
+
         Assert.areNotEqual(
             definition.tableName,
             definition.displayTitle,
-            'Table name and display title must stay separate values - conflating them is what makes a '
-                + 'document print an internal label.'
+            'The admin-facing name and the printed heading are different things.'
         );
+        definition.validatePresentationConfig();
     }
 }
