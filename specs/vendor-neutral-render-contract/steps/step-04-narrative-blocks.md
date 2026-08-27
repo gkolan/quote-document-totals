@@ -97,7 +97,7 @@ This confirms §2's point rather than contradicting it: **this repository** cont
 
 It matters because "preserved byte-for-byte" is a contract claim this step makes. A clause authored with a trailing space or a trailing blank line does **not** come back the way it went in, and nothing in this framework can change that. `trailingWhitespaceIsStrippedOnSaveAndInteriorWhitespaceIsNot` pins both halves.
 
-- **Test evidence:** `QuoteDocumentBlockTest`, 13/13. Full suite 192 local tests, 97% — only the 5 pre-existing org-only failures.
+- **Test evidence:** `QuoteDocumentBlockTest`, 13/13. Full suite: 192 ran, 187 passed, 5 failed — only the 5 pre-existing org-only failures.
 
 ### Deferred, with reasons
 

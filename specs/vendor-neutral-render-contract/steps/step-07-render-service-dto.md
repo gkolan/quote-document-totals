@@ -104,7 +104,7 @@ New `QuoteDocumentRenderServiceTest`: `payloadOrdersSectionsAndRowsCorrectly`, `
 
 - **Date:** 2026-08-27
 - **Delivered:** [`QuoteDocumentPayload`](../../../force-app/main/default/classes/QuoteDocumentPayload.cls) (DTOs, `SnapshotDescription`, `PayloadRequest`, `PayloadResult`) and [`QuoteDocumentRenderService`](../../../force-app/main/default/classes/QuoteDocumentRenderService.cls).
-- **Test evidence:** `QuoteDocumentRenderServiceTest` 19/19. Full suite **280 local tests**, 98% — only the 5 pre-existing org-only failures.
+- **Test evidence:** `QuoteDocumentRenderServiceTest` 19/19. Full suite: **280 ran, 275 passed, 5 failed** — only the 5 pre-existing org-only failures.
 
 ### There is exactly one signature, and the tests prove no bypass exists
 

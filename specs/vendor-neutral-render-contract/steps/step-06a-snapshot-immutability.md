@@ -87,7 +87,7 @@ sf apex run test --class-names QuoteDocumentIntegrityTest --class-names QuoteDoc
 - **Date:** 2026-08-27
 - **Sharing model deployed:** `Quote_Document_Table__c` → **Private**. `Quote_Document_Row__c` and `Quote_Document_Column__c` stay `ControlledByParent`; `Quote_Document_Block__c` is `ReadWrite` on a Quote lookup and is covered by the payload hash rather than by sharing — noted as a gap below rather than glossed.
 - **Personas split in the permission set:** **not yet.** See "deferred" below.
-- **Test evidence:** `QuoteDocumentIntegrityTest` 13/13, `QuoteDocumentAccessControlTest` 4/4. Full suite **261 local tests**, 98% — only the 5 pre-existing org-only failures.
+- **Test evidence:** `QuoteDocumentIntegrityTest` 13/13, `QuoteDocumentAccessControlTest` 4/4. Full suite: **261 ran, 256 passed, 5 failed** — only the 5 pre-existing org-only failures.
 
 ### The two hashes do genuinely different jobs
 

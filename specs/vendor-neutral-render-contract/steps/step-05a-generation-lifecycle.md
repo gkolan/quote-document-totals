@@ -95,7 +95,7 @@ So the retry *policy* is asserted directly: what counts as retryable, that the l
 
 The five tests §5 names — `firstMismatchRetriesOnce`, `secondMismatchTerminatesWithContention`, `retryRerunsGenerateOrReuse`, `newerPayloadIsNeverSubstituted`, `bulkRetryDoesNotReplaySuccessfulRequests` — move to step 07's acceptance list rather than being written against a placeholder.
 
-- **Test evidence:** `QuoteDocumentLifecycleConcurrencyTest`, 15/15. Full suite **230 local tests**, 98% — only the 5 pre-existing org-only failures.
+- **Test evidence:** `QuoteDocumentLifecycleConcurrencyTest`, 15/15. Full suite: **230 ran, 225 passed, 5 failed** — only the 5 pre-existing org-only failures.
 - **Runbook note still outstanding:** the abandonment window is configuration and is documented here, but [`../war-room-scenarios.md`](../war-room-scenarios.md) has not been updated to point at `LIFECYCLE`/`ABANDON_MINUTES`. That belongs with [step 09](step-09-docs-and-closeout.md)'s documentation pass.
 
 - **Next step:** [`step-06-contract-validation.md`](step-06-contract-validation.md)

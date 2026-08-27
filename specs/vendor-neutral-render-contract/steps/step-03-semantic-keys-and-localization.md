@@ -79,7 +79,7 @@ SELECT Table_Code__c, Locale__c, Display_Title__c FROM Quote_Document_Table__c W
 - **Duplicate keys fail, unlike `QuoteDocumentKeyValueMap`.** Its "first row wins, in query order" policy is right for a rate table and unacceptable here — it would make the printed wording of a customer document depend on an order the platform does not guarantee. Labels load through a strict path instead. The existing class is untouched; its policy is correct for what it was built for.
 - **`{2}` and higher fail at dictionary LOAD, not at render**, so a translator finds out on deployment rather than when the one quote that exercises that table reaches a customer.
 - **An unsupported locale fails.** Falling through to English by accident is the one outcome nobody notices in testing and everybody notices in a signed document. A region-qualified tag falls back to its base language; a base language never expands to a region, so `fr` cannot silently pick up `LABELS_fr_CA`.
-- **Test evidence:** `QuoteDocumentLabelsTest`, 18/18. Full suite 179 local tests, 97% — only the 5 pre-existing org-only failures.
+- **Test evidence:** `QuoteDocumentLabelsTest`, 18/18. Full suite: 179 ran, 174 passed, 5 failed — only the 5 pre-existing org-only failures.
 
 ### One deviation from §5 worth stating plainly
 

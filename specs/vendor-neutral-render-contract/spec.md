@@ -153,9 +153,9 @@ Each step is independently verifiable. A step's verification must pass before th
 | [08](steps/step-08-two-adapters.md) | Two adapters (JSON, HTML) | A second adapter is added with a zero-line core diff | **Complete** — proven by `6c24eea` |
 | [09](steps/step-09-docs-and-closeout.md) | Documentation and closeout | Architecture docs are vendor-neutral | **Complete** |
 
-**Series status as of 2026-08-27: the definition of done in §1 holds.** Commit `6c24eea` added two
+**Series status as of 2026-08-27: BUILT, NOT MERGE-READY.** An independent review after the first close-out found eight real defects, including three tests that passed for the wrong reason. All eight are fixed (`756c786`, `345b5c0`) with reproductions that failed on the old code, and they are listed in [step 09](steps/step-09-docs-and-closeout.md). The definition of done in §1 holds structurally — Commit `6c24eea` added two
 renderers with an empty diff outside the adapter classes and their test — no object, no Custom Metadata
-record, no permission set, no change to generation, calculation, or localization. 290 local tests pass;
+record, no permission set, no change to generation, calculation, or localization. 290 local tests ran, 285 passing and 5 failing;
 the five failures are pre-existing org-only classes that do not exist in this repository.
 
 "Built" rather than "Complete" means every mechanism the step specifies exists and is tested, with named

@@ -110,13 +110,63 @@ easy to get wrong.
 
 ### Test evidence
 
-**290 local tests.** The only failures are the five pre-existing, org-only ones first recorded in
+**290 local tests ran: 285 passed, 5 failed.** The only failures are the five pre-existing, org-only ones first recorded in
 [step 01A](step-01a-extension-contracts.md) §11 — `QuoteDocumentGeneratorGuardTest`,
 `QuoteDocumentTemplateConfigurationTest`, `QuoteDocumentTableDefinitionDefaultsTest`. **None of those
 classes exists in this repository.** They reference `Quote_Document_Template_Table__c` and a
-`fromTemplateTable` method this codebase does not have, and they failed identically before the first
-line of this series was written. They are worth clearing separately, since they will keep polluting
+`fromTemplateTable` method this codebase does not have, and this series did not create them. **Correction (2026-08-27, after review):** an earlier version of this line said they "failed identically before the first line of this step was written". The evidence actually available is that the classes are absent from this repository, which shows this work did not produce them — it does not establish when they first failed, and nobody has checked. The accurate claim is the narrower one. They are worth clearing separately, since they will keep polluting
 every future `RunLocalTests`.
+
+---
+
+## Review, 2026-08-27 — eight defects found after this close-out was written
+
+An independent review of the finished series found eight real defects. They are fixed in commits
+`756c786` and `345b5c0`, each with a reproduction written to fail on the old code. Recorded here
+because a close-out that reads as finished, next to a series that was not, is the more expensive
+mistake.
+
+**Three were tests that passed for the wrong reason** — the exact failure this series criticised
+elsewhere and then shipped:
+
+| # | Defect | Why the test passed anyway |
+|---|---|---|
+| 2 | The contributor-version gate checked whether the metadata **file** changed, not whether the **token** did | Editing anything in the record satisfied it while the version stood still |
+| 3 | Integrity verification cost four queries **per quote** in a batch | The flat-query test requested the *same* quote three times, so it measured the per-quote cache rather than the work |
+| 8 | HTML "equivalence" only scanned for section, column and row identifiers | Wrong amounts, missing wording and reordered rows would all have passed |
+
+**Five were defects with no test at all:**
+
+1. **Table text edits could reuse a stale document.** The fingerprint omitted `Display_Title__c`,
+   `Display_Subtitle__c`, `Intro_Text__c` and `Footer_Text__c` — the words the customer reads. Correct a
+   heading, regenerate, get the old wording back with the quote still `Ready`. The same class of defect
+   the contributor version tokens exist to prevent, introduced by the step that added the fields.
+4. **Integrity hashing used a fixed field list** while rendering selects bindings dynamically, so a
+   subscriber-bound column could be edited after publication and leave the hash identical.
+5. **Locale contradicted its own class comment.** `orgDefault()` returned `UserInfo.getLocale()` while
+   the comment said "DELIBERATELY NOT the running user's locale". And the configured locale path was
+   never added to the query, so it always read as absent.
+6. **The payload lost its currency.** `CurrencyIsoCode` was never selected but was read from the
+   populated-fields map, so it was null in every org and both adapters formatted money with no currency.
+7. **The lifecycle helpers were computed but never acted on.** `isAbandoned()` and `lockTimeout()` had
+   no production callers and the backoff was only logged, so the abandonment window and the terminal
+   lock code were numbers nothing consulted.
+
+**Also added:** `.github/workflows/ci.yml`. The version gate was an npm script nothing invoked — a gate
+nobody runs is documentation.
+
+**Two Apex traps the new tests surfaced, worth knowing:**
+
+- `==` on `String` is **case-insensitive**, so a check for an uppercase token treated the word "Not" in
+  "Not Specified" as a currency code.
+- Assertion **message arguments are evaluated eagerly**, so an index built for the failure path threw on
+  the passing path.
+- Custom Metadata SOQL **throws inside `System.runAs`**, which is why the two-user locale test is
+  structured the way it is rather than the obvious way.
+
+**Status after the fixes:** 302 tests ran, 297 passed, 5 failed — the three org-only classes only. That
+is not the same as merge-ready: the release blockers below are unchanged, and the reviewer's judgement
+that this series is not finished stands.
 
 ---
 

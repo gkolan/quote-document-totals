@@ -115,7 +115,7 @@ Locale, global content version, column definitions (code, order, bound field, da
 
 Blanket invalidation of every `Ready` quote is the accepted v1 policy, per §6.
 
-- **Test evidence:** `QuoteDocumentFailureBoundaryTest` + `QuoteDocumentInvalidationJobTest`, 19/19, plus four new `canonicalize` cases. Full suite **215 local tests**, 98% — only the 5 pre-existing org-only failures.
+- **Test evidence:** `QuoteDocumentFailureBoundaryTest` + `QuoteDocumentInvalidationJobTest`, 19/19, plus four new `canonicalize` cases. Full suite: **215 ran, 210 passed, 5 failed** — only the 5 pre-existing org-only failures.
 
 ### Two acceptance criteria genuinely belong to later steps
 

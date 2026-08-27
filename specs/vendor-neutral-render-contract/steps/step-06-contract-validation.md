@@ -63,7 +63,7 @@ Rollback check: force a failure on a first generation and assert zero `Quote_Doc
 ## 7. Close-out
 
 - **Date:** 2026-08-27
-- **Test evidence:** `QuoteDocumentContractValidationTest`, 13/13. Full suite **244 local tests**, 98% — only the 5 pre-existing org-only failures.
+- **Test evidence:** `QuoteDocumentContractValidationTest`, 13/13. Full suite: **244 ran, 239 passed, 5 failed** — only the 5 pre-existing org-only failures.
 
 ### Most conditions already had owners
 
