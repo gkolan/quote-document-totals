@@ -137,21 +137,32 @@ For CLM this means the generate action is invoked from Salesforce, not from the 
 
 Each step is independently verifiable. A step's verification must pass before the next one starts.
 
-| Step | Title | Gate |
-|---|---|---|
-| [00](steps/step-00-audit-and-contract-principles.md) | Audit sign-off and contract principles | Owner approves the §2 audit and the §3 model |
-| [01A](steps/step-01a-extension-contracts.md) | Apex and Flow extension seam | A Flow contributor changes rows with zero core diff |
-| [01](steps/step-01-table-presentation-fields.md) | Table presentation fields | A `Ready` quote's tables carry printable titles and visibility |
-| [02](steps/step-02-column-snapshot-object.md) | Column snapshot object | Every generated table has ordered, labelled, typed columns |
-| [03](steps/step-03-semantic-keys-and-localization.md) | Semantic keys and central localization | No English literal is constructed outside the dictionary |
-| [04](steps/step-04-narrative-blocks.md) | Narrative blocks | Standalone document content prints, ordered with the tables |
-| [05](steps/step-05-snapshot-integrity.md) | Snapshot integrity | Locale and content version change the fingerprint |
-| [05A](steps/step-05a-generation-lifecycle.md) | Generation lifecycle | Abandonment, lock retry, and launch retry are specified and tested |
-| [06](steps/step-06-contract-validation.md) | Contract validation | Ten named failure conditions each fail loudly |
-| [06A](steps/step-06a-snapshot-immutability.md) | Snapshot immutability and access control | A tampered snapshot cannot render; a renderer persona cannot touch the objects |
-| [07](steps/step-07-render-service-dto.md) | `QuoteDocumentRenderService` and DTOs | Payload is complete and vendor-free |
-| [08](steps/step-08-two-adapters.md) | Two adapters (JSON, HTML) | A second adapter is added with a zero-line core diff |
-| [09](steps/step-09-docs-and-closeout.md) | Documentation and closeout | Architecture docs are vendor-neutral |
+| Step | Title | Gate | Status |
+|---|---|---|---|
+| [00](steps/step-00-audit-and-contract-principles.md) | Audit sign-off and contract principles | Owner approves the §2 audit and the §3 model | **Complete** |
+| [01A](steps/step-01a-extension-contracts.md) | Apex and Flow extension seam | A Flow contributor changes rows with zero core diff | **Built** — §6a invalidation declaration outstanding |
+| [01](steps/step-01-table-presentation-fields.md) | Table presentation fields | A `Ready` quote's tables carry printable titles and visibility | **Complete** |
+| [02](steps/step-02-column-snapshot-object.md) | Column snapshot object | Every generated table has ordered, labelled, typed columns | **Built** — DTO-side items landed in 07 |
+| [03](steps/step-03-semantic-keys-and-localization.md) | Semantic keys and central localization | No English literal is constructed outside the dictionary | **Complete** |
+| [04](steps/step-04-narrative-blocks.md) | Narrative blocks | Standalone document content prints, ordered with the tables | **Built** |
+| [05](steps/step-05-snapshot-integrity.md) | Snapshot integrity | Locale and content version change the fingerprint | **Built** |
+| [05A](steps/step-05a-generation-lifecycle.md) | Generation lifecycle | Abandonment, lock retry, and launch retry are specified and tested | **Built** — §5 retry needs the launch wrapper |
+| [06](steps/step-06-contract-validation.md) | Contract validation | Ten named failure conditions each fail loudly | **Built** |
+| [06A](steps/step-06a-snapshot-immutability.md) | Snapshot immutability and access control | A tampered snapshot cannot render; a renderer persona cannot touch the objects | **Built** — persona split needs the B1 security review |
+| [07](steps/step-07-render-service-dto.md) | `QuoteDocumentRenderService` and DTOs | Payload is complete and vendor-free | **Built** — Flow wrapper outstanding |
+| [08](steps/step-08-two-adapters.md) | Two adapters (JSON, HTML) | A second adapter is added with a zero-line core diff | **Complete** — proven by `6c24eea` |
+| [09](steps/step-09-docs-and-closeout.md) | Documentation and closeout | Architecture docs are vendor-neutral | **Complete** |
+
+**Series status as of 2026-08-27: the definition of done in §1 holds.** Commit `6c24eea` added two
+renderers with an empty diff outside the adapter classes and their test — no object, no Custom Metadata
+record, no permission set, no change to generation, calculation, or localization. 290 local tests pass;
+the five failures are pre-existing org-only classes that do not exist in this repository.
+
+"Built" rather than "Complete" means every mechanism the step specifies exists and is tested, with named
+residual items in that step's close-out. [Step 09](steps/step-09-docs-and-closeout.md) carries the
+consolidated deferred list — chiefly the B1 persona security review, the Flow launch wrapper and the
+retry that lives in it, and the DocuSign CLM adapter rebuild, which is tenant configuration outside this
+repository.
 
 Every implementation step must use the shared [verification protocol](verification-protocol.md). Release cannot close until every [failure scenario](war-room-scenarios.md) has evidence **of the class that row declares** — an automated test, a green CI gate, a recorded drill, or an accepted residual risk. A scenario with no owning step is not covered, whatever the runbook says.
 
