@@ -1,6 +1,6 @@
 # Step 03 — Semantic keys and central localization
 
-**Status: PLANNED**
+**Status: COMPLETE**
 **Blocked by:** [step 02](step-02-column-snapshot-object.md)
 **Blocks:** 05, 06, 07
 
@@ -45,13 +45,13 @@ Audit rows 7 and 8. The template is not the only place English is hardcoded: [`Q
 
 ## 5. Acceptance criteria
 
-- [ ] No `Display_Label__c`, `Display_Title__c`, or column label is produced by string concatenation outside `QuoteDocumentLabels`.
-- [ ] `grep -rn "' Subtotal'\|(unnamed)" force-app/main/default/classes/*.cls` returns nothing outside `QuoteDocumentLabels` and its test.
-- [ ] Generating with `LABELS_fr` present produces French subtotal labels and French column headings on every table, including tables with no row customizer.
-- [ ] A missing *required* key fails generation with a message naming the key and the locale.
-- [ ] A missing *optional* key follows the configured fallback and never blanks.
-- [ ] An unsupported locale fails generation rather than falling through to English by accident.
-- [ ] `Locale__c` is populated on every generated table.
+- [x] No `Display_Label__c`, `Display_Title__c`, or column label is produced by string concatenation outside `QuoteDocumentLabels`.
+- [x] `grep -rn "' Subtotal'\|(unnamed)" force-app/main/default/classes/*.cls` returns nothing outside `QuoteDocumentLabels` and its test.
+- [x] Generating with `LABELS_fr` present produces French subtotal labels and French column headings on every table, including tables with no row customizer.
+- [x] A missing *required* key fails generation with a message naming the key and the locale.
+- [x] A missing *optional* key follows the configured fallback and never blanks.
+- [x] An unsupported locale fails generation rather than falling through to English by accident.
+- [x] `Locale__c` is populated on every generated table.
 
 ## 6. Verification method
 
@@ -69,6 +69,20 @@ SELECT Table_Code__c, Locale__c, Display_Title__c FROM Quote_Document_Table__c W
 
 ## 7. Close-out
 
-- **Date:**
-- **Notes:**
+- **Date:** 2026-08-27
+- **Delivered:** `QuoteDocumentLabels` (strict loader, resolver, formatter), `QuoteDocumentLocale` (resolution order), `Label_Key__c` / `Label_Arg_1__c` / `Label_Arg_2__c` on the row, `Locale__c` populated on every table, and two dictionary categories — `LABELS_en_US` and `LABELS_fr`.
+- **Acceptance grep is clean.** `grep -rn "' Subtotal'\|(unnamed)" force-app/main/default/classes/*.cls` returns nothing outside `QuoteDocumentLabels` and its test.
+- **The grep found a construction site the audit did not name.** [`QuoteDocumentIndustryRowCustomizer.cls:149`](../../../force-app/main/default/classes/QuoteDocumentIndustryRowCustomizer.cls:149) concatenated `bucket.industryName + ' Subtotal'`. Routing only the four sites §2 lists would have left the seam quietly reintroducing exactly the hardcoded English this step removes from core. `QuoteDocumentRowCustomizerContext` now carries `labels`, so **contributors are held to the same rule as core** — which is the more important outcome than the single line fixed.
+- **`'(unnamed)'` is gone rather than relocated.** It lived in `defaultRow()`, the one place a translator could never reach and no test would look. Blank group values now resolve `GROUP_UNNAMED` from the dictionary at the call site, and `defaultRow()` **fails loudly** on a blank label instead of inventing wording. `Display_Label__c` is a required field, so the alternative — passing null through — would have been a DML error with no explanation.
+- **Word order belongs to the dictionary.** `'{0} Subtotal'` in English, `'Sous-total {0}'` in French. A concatenation in Apex cannot express that difference, which is the whole reason this is a template rather than a `+`. Pinned by `theDeployedEnglishAndFrenchDictionariesLoad`.
+- **Substitution is literal and runs exactly once.** Split-and-join rather than `replace()`, so a product named `Widget {1}` or literally `GRAND_TOTAL` prints as itself. Re-resolving substituted values is how a customer's product name silently becomes a total label. Braces, apostrophes, ampersands, Unicode and newlines all pass through untouched, each asserted.
+- **Duplicate keys fail, unlike `QuoteDocumentKeyValueMap`.** Its "first row wins, in query order" policy is right for a rate table and unacceptable here — it would make the printed wording of a customer document depend on an order the platform does not guarantee. Labels load through a strict path instead. The existing class is untouched; its policy is correct for what it was built for.
+- **`{2}` and higher fail at dictionary LOAD, not at render**, so a translator finds out on deployment rather than when the one quote that exercises that table reaches a customer.
+- **An unsupported locale fails.** Falling through to English by accident is the one outcome nobody notices in testing and everybody notices in a signed document. A region-qualified tag falls back to its base language; a base language never expands to a region, so `fr` cannot silently pick up `LABELS_fr_CA`.
+- **Test evidence:** `QuoteDocumentLabelsTest`, 18/18. Full suite 179 local tests, 97% — only the 5 pre-existing org-only failures.
+
+### One deviation from §5 worth stating plainly
+
+`duplicateKeyInOneCategoryFails` asserts the strict loader's behaviour rather than deploying a deliberately duplicated metadata record. A real duplicate would break every other test in the org, since the dictionary loads on any generation. The throw path is implemented and named; it is not exercised by fixture, and calling that a passing test without saying so would be dishonest.
+
 - **Next step:** [`step-04-narrative-blocks.md`](step-04-narrative-blocks.md)

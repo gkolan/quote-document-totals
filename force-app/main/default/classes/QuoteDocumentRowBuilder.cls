@@ -86,8 +86,20 @@ public with sharing class QuoteDocumentRowBuilder {
     private final List<Quote_Document_Row__c> rows = new List<Quote_Document_Row__c>();
     private Integer nextOrder = 10;
 
+    /**
+     * The locale dictionary this table's labels resolve from. Held rather
+     * than looked up per row so one table's labels can never come from two
+     * different locales, and so the dictionary loads once per transaction.
+     */
+    private final QuoteDocumentLabels labels;
+
     public QuoteDocumentRowBuilder(QuoteDocumentTableDefinition definition) {
+        this(definition, QuoteDocumentLabels.forLocale(QuoteDocumentLocale.resolve(new SBQQ__Quote__c())));
+    }
+
+    public QuoteDocumentRowBuilder(QuoteDocumentTableDefinition definition, QuoteDocumentLabels labels) {
         this.definition = definition;
+        this.labels = labels;
     }
 
     /** Guards against a composite quietly producing an unreadable document. */
@@ -200,7 +212,15 @@ public with sharing class QuoteDocumentRowBuilder {
     // -----------------------------------------------------------------------
 
     private void emitGroup(GroupNode g) {
-        Quote_Document_Row__c header = newRow('Group Header', g.level, 'HEADER:' + g.groupKey, g.value);
+        // A blank group value is the one place a row could reach persistence
+        // with no wording. It resolves from the dictionary like every other
+        // string rather than being patched with an English placeholder deep
+        // in defaultRow(), where no translator could ever reach it.
+        String headerLabel = String.isBlank(g.value)
+            ? labels.resolve(QuoteDocumentLabels.KEY_GROUP_UNNAMED)
+            : g.value;
+
+        Quote_Document_Row__c header = newRow('Group Header', g.level, 'HEADER:' + g.groupKey, headerLabel);
         header.Group_Dimension__c = g.dimension;
         header.Group_Value__c = g.value;
         header.Group_Key__c = g.groupKey;
@@ -225,7 +245,16 @@ public with sharing class QuoteDocumentRowBuilder {
             }
         }
 
-        Quote_Document_Row__c row = newRow('Subtotal', g.level, 'SUBTOTAL:' + g.groupKey, g.value + ' Subtotal');
+        // '{0} Subtotal' is the dictionary's template, not Apex's
+        // concatenation. In French the qualifier follows the noun, which a
+        // concatenation here could never express - that difference is the
+        // whole point of routing this through the resolver.
+        Quote_Document_Row__c row = newRow(
+            'Subtotal', g.level, 'SUBTOTAL:' + g.groupKey,
+            labels.format(QuoteDocumentLabels.KEY_SUBTOTAL, new List<String>{ g.value })
+        );
+        row.Label_Key__c = QuoteDocumentLabels.KEY_SUBTOTAL;
+        row.Label_Arg_1__c = g.value;
         row.Group_Dimension__c = g.dimension;
         row.Group_Value__c = g.value;
         row.Group_Key__c = g.groupKey;
@@ -279,8 +308,12 @@ public with sharing class QuoteDocumentRowBuilder {
         sections.sort();
 
         for (String section : sections) {
-            Quote_Document_Row__c row = newRow('Section Total', 0, 'SECTION:CHARGE_TYPE:' + section,
-                                               'Total ' + section + ' Charges');
+            Quote_Document_Row__c row = newRow(
+                'Section Total', 0, 'SECTION:CHARGE_TYPE:' + section,
+                labels.format(QuoteDocumentLabels.KEY_SECTION_TOTAL, new List<String>{ section })
+            );
+            row.Label_Key__c = QuoteDocumentLabels.KEY_SECTION_TOTAL;
+            row.Label_Arg_1__c = section;
             row.Group_Dimension__c = QuoteDocumentTableDefinition.DIM_CHARGE_TYPE;
             row.Group_Value__c = section;
             byChargeType.get(section).writeTo(row, definition.measureSet);
@@ -295,7 +328,10 @@ public with sharing class QuoteDocumentRowBuilder {
             }
         }
 
-        Quote_Document_Row__c row = newRow('Grand Total', 0, 'GRAND_TOTAL', 'Total');
+        Quote_Document_Row__c row = newRow(
+            'Grand Total', 0, 'GRAND_TOTAL', labels.resolve(QuoteDocumentLabels.KEY_GRAND_TOTAL)
+        );
+        row.Label_Key__c = QuoteDocumentLabels.KEY_GRAND_TOTAL;
         total.writeTo(row, definition.measureSet);
     }
 
@@ -318,6 +354,29 @@ public with sharing class QuoteDocumentRowBuilder {
      * aggregation, never an input to it - counting one would double-count
      * everything beneath it. A validation rule enforces the same thing.
      */
+    /**
+     * Every row must arrive with wording already resolved.
+     *
+     * This used to substitute a hardcoded placeholder. That was an English
+     * string constructed outside the dictionary, in the one place a
+     * translator could never reach and no test would ever look - exactly the
+     * failure step 03 exists to remove. Callers resolve GROUP_UNNAMED from
+     * the dictionary instead; reaching here with a blank label now means a
+     * caller skipped that, which fails loudly rather than printing English
+     * into a French document.
+     */
+    private static String requireLabel(String label, String rowType, String key) {
+        if (String.isBlank(label)) {
+            throw QuoteDocumentContributorError.build(
+                'LABEL_KEY_MISSING',
+                'Row "' + key + '" (' + rowType + ') was created with no Display_Label__c. Every printable '
+                    + 'string is resolved from the label dictionary before the row is built - resolve '
+                    + 'GROUP_UNNAMED, or the key this row should carry, rather than leaving it blank.'
+            );
+        }
+        return label.abbreviate(255);
+    }
+
     public static Quote_Document_Row__c defaultRow(String rowType, Integer level, String key, String label, Integer displayOrder) {
         Boolean isAggregate = rowType != 'Detail';
 
@@ -325,7 +384,7 @@ public with sharing class QuoteDocumentRowBuilder {
             Row_Type__c = rowType,
             Group_Level__c = level,
             Row_Key__c = String.isBlank(key) ? null : key.abbreviate(255),
-            Display_Label__c = String.isBlank(label) ? '(unnamed)' : label.abbreviate(255),
+            Display_Label__c = requireLabel(label, rowType, key),
             Display_Order__c = displayOrder,
             Is_Displayed__c = true,
             Include_In_Subtotal__c = !isAggregate,

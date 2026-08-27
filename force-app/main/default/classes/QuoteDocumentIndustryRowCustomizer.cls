@@ -145,9 +145,15 @@ public class QuoteDocumentIndustryRowCustomizer implements QuoteDocumentRowCusto
         header.Group_Dimension__c = 'INDUSTRY_ALLEGIANCE';
         header.Group_Value__c = bucket.industryName;
 
+        // Resolved from the dictionary, not concatenated. A customizer is held
+        // to the same rule as core - it is a generation stage, not a place
+        // where English gets to sneak back in.
         Quote_Document_Row__c subtotal = context.newRow(
-            'Subtotal', 1, 'SUBTOTAL:INDUSTRY:' + key, bucket.industryName + ' Subtotal'
+            'Subtotal', 1, 'SUBTOTAL:INDUSTRY:' + key,
+            context.labels.format(QuoteDocumentLabels.KEY_SUBTOTAL, new List<String>{ bucket.industryName })
         );
+        subtotal.Label_Key__c = QuoteDocumentLabels.KEY_SUBTOTAL;
+        subtotal.Label_Arg_1__c = bucket.industryName;
         subtotal.Group_Dimension__c = 'INDUSTRY_ALLEGIANCE';
         subtotal.Group_Value__c = bucket.industryName;
         bucket.measures.writeTo(subtotal, context.definition.measureSet);

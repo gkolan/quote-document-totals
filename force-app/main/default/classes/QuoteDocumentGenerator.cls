@@ -223,6 +223,14 @@ public with sharing class QuoteDocumentGenerator {
                 return outcome;
             }
 
+            // One locale per snapshot, decided once, before any string is
+            // resolved. Held for the whole quote so two tables can never come
+            // out in different languages - the locale is part of the
+            // fingerprint, so "this snapshot, in this language" is a single
+            // identity.
+            String locale = QuoteDocumentLocale.resolve(quote);
+            QuoteDocumentLabels labels = QuoteDocumentLabels.forLocale(locale);
+
             String requestId = newRequestId();
             outcome.requestId = requestId;
             outcome.status = 'Ready';
@@ -233,10 +241,11 @@ public with sharing class QuoteDocumentGenerator {
             for (QuoteDocumentTableDefinition definition : definitions) {
                 List<QuoteDocumentLine> lines = applyFilter(allLines, definition.lineFilter);
 
-                Quote_Document_Table__c table = newTable(quote, definition, !lines.isEmpty());
+                Quote_Document_Table__c table = newTable(quote, definition, !lines.isEmpty(), locale);
                 tables.add(table);
-                List<Quote_Document_Row__c> rows = new QuoteDocumentRowBuilder(definition).build(lines);
-                rows = applyRowCustomizer(quote, definition, lines, rows);
+                List<Quote_Document_Row__c> rows =
+                    new QuoteDocumentRowBuilder(definition, labels).build(lines);
+                rows = applyRowCustomizer(quote, definition, lines, rows, labels);
                 rowsByCode.put(definition.tableCode, rows);
             }
             insert tables;
@@ -253,7 +262,7 @@ public with sharing class QuoteDocumentGenerator {
             for (QuoteDocumentTableDefinition definition : definitions) {
                 Id tableId = tableByCode.get(definition.tableCode).Id;
                 for (QuoteDocumentColumnDefinition column : QuoteDocumentColumnDefinition.forTable(definition)) {
-                    allColumns.add(newColumn(tableId, column));
+                    allColumns.add(newColumn(tableId, column, labels));
                 }
             }
             insert allColumns;
@@ -472,7 +481,8 @@ public with sharing class QuoteDocumentGenerator {
         SBQQ__Quote__c quote,
         QuoteDocumentTableDefinition definition,
         List<QuoteDocumentLine> lines,
-        List<Quote_Document_Row__c> rows
+        List<Quote_Document_Row__c> rows,
+        QuoteDocumentLabels labels
     ) {
         if (!definition.hasContributor()) {
             return rows;
@@ -484,6 +494,8 @@ public with sharing class QuoteDocumentGenerator {
         context.lines = lines;
         context.rows = rows;
         context.currencyIsoCode = currencyOf(quote);
+        context.locale = labels.getLocale();
+        context.labels = labels;
 
         // Apex first, then Flow. This order is public contract, not incidental
         // - step 01A section 7. The Flow sees the Apex customizer's rows and
@@ -546,11 +558,13 @@ public with sharing class QuoteDocumentGenerator {
      * schema label rather than constructing an English phrase here keeps the
      * "no English literal outside the dictionary" rule intact in the meantime.
      */
-    private static Quote_Document_Column__c newColumn(Id tableId, QuoteDocumentColumnDefinition column) {
+    private static Quote_Document_Column__c newColumn(
+        Id tableId, QuoteDocumentColumnDefinition column, QuoteDocumentLabels labels
+    ) {
         return new Quote_Document_Column__c(
             Quote_Document_Table__c = tableId,
             Column_Code__c = column.columnCode,
-            Display_Label__c = columnLabel(column),
+            Display_Label__c = columnLabel(column, labels),
             Display_Order__c = column.displayOrder,
             Value_Field__c = column.valueField,
             Data_Type__c = column.dataType,
@@ -558,12 +572,24 @@ public with sharing class QuoteDocumentGenerator {
         );
     }
 
-    private static String columnLabel(QuoteDocumentColumnDefinition column) {
+    /**
+     * The dictionary first, the schema label only as a documented fallback.
+     *
+     * A column code that has a dictionary entry is translatable; one that does
+     * not falls back to the field's own label, which at least follows the
+     * org's own translations of that field rather than a string invented here.
+     * The fallback is deliberate and visible - it is never a blank.
+     */
+    private static String columnLabel(QuoteDocumentColumnDefinition column, QuoteDocumentLabels labels) {
         if (column.isLabelColumn()) {
-            // The one heading with no schema label behind it. Step 03 resolves
-            // COL_LABEL from the dictionary like every other code.
-            return 'Description';
+            // The one heading with no field behind it, so the dictionary is
+            // the only possible source and a missing key must fail.
+            return labels.resolve(QuoteDocumentLabels.KEY_COLUMN_LABEL);
         }
+        if (labels.has(column.columnCode)) {
+            return labels.resolve(column.columnCode);
+        }
+
         SObjectField field = Quote_Document_Row__c.SObjectType.getDescribe()
             .fields.getMap().get(column.valueField.toLowerCase());
         return field == null
@@ -586,7 +612,8 @@ public with sharing class QuoteDocumentGenerator {
     private static Quote_Document_Table__c newTable(
         SBQQ__Quote__c quote,
         QuoteDocumentTableDefinition definition,
-        Boolean hasQualifyingLines
+        Boolean hasQualifyingLines,
+        String locale
     ) {
         // The name carries the quote number so a table is identifiable in a
         // list view or search result. Quote_Number__c is the field to trust
@@ -611,7 +638,8 @@ public with sharing class QuoteDocumentGenerator {
             Display_Subtitle__c = definition.displaySubtitle,
             Intro_Text__c = definition.introText,
             Footer_Text__c = definition.footerText,
-            Is_Displayed__c = hasQualifyingLines
+            Is_Displayed__c = hasQualifyingLines,
+            Locale__c = locale
         );
         copyCurrency(quote, table);
         return table;

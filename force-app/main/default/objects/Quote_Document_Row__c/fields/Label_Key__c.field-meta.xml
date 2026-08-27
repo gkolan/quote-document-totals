@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Label_Key__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>The semantic key Display Label was resolved from, e.g. SUBTOTAL or GRAND_TOTAL. Display Label is the already-localized wording a renderer prints; this is what it MEANS, which is what styling, testing and re-translation should key off. Blank on a detail row, whose label is data (a product name) rather than a dictionary string.</inlineHelpText>
+    <label>Label Key</label>
+    <length>60</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

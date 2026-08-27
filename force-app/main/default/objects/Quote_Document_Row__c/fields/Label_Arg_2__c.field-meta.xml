@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Label_Arg_2__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>The value substituted for {1} in this row's label template. Only {0} and {1} are supported; a dictionary entry referencing {2} or higher fails at load rather than at render.</inlineHelpText>
+    <label>Label Arg 2</label>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

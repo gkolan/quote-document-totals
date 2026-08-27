@@ -31,6 +31,16 @@ public class QuoteDocumentRowCustomizerContext {
     public String currencyIsoCode;
 
     /**
+     * The label dictionary for this snapshot's locale.
+     *
+     * Contributors are held to the same rule as core: no printable string is
+     * built by concatenation. Without this the seam would quietly reintroduce
+     * the hardcoded English step 03 exists to remove - and a shipped
+     * customizer did exactly that until this was added.
+     */
+    public QuoteDocumentLabels labels;
+
+    /**
      * The rows QuoteDocumentRowBuilder produced for this table, in render
      * order (group headers, subtotals, details, then the grand total last).
      * Modify in place - add, remove, or edit rows and their measure fields -
