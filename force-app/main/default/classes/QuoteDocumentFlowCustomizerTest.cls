@@ -115,6 +115,51 @@ private class QuoteDocumentFlowCustomizerTest {
         );
     }
 
+    /**
+     * The section 9 acceptance criterion: a sample Flow contributor changes a
+     * label and adds a row, with no change to core Apex. The Flow and its
+     * Custom Metadata record are the whole extension - nothing in
+     * QuoteDocumentGenerator, RowBuilder, Fingerprint or Verification moves.
+     */
+    @IsTest
+    static void theSampleFlowContributorRelabelsAndAddsARowWithNoCoreChange() {
+        QuoteDocumentRowCustomizerContext ctx = context('QuoteDocumentSampleFlowContributor');
+
+        Test.startTest();
+        List<Quote_Document_Row__c> out = new QuoteDocumentFlowRowCustomizer().customize(ctx);
+        Test.stopTest();
+
+        Assert.areEqual(3, out.size(), 'The sample appends one Note row.');
+
+        Map<String, Quote_Document_Row__c> byKey = new Map<String, Quote_Document_Row__c>();
+        for (Quote_Document_Row__c row : out) {
+            byKey.put(row.Row_Key__c, row);
+        }
+
+        Assert.areEqual(
+            'Total Due',
+            byKey.get('GT').Display_Label__c,
+            'The sample renames the Grand Total, which proves a declarative contributor can change a label.'
+        );
+        Assert.areEqual(
+            'First',
+            byKey.get('D1').Display_Label__c,
+            'Rows the sample does not target must come back untouched.'
+        );
+
+        Quote_Document_Row__c note = byKey.get('FLOW_SAMPLE_NOTE');
+        Assert.isNotNull(note, 'The sample adds a Note row.');
+        Assert.areEqual('Note', note.Row_Type__c, 'The added row is a Note.');
+        Assert.isFalse(
+            note.Include_In_Grand_Total__c,
+            'A Note carries no amount and must count toward nothing, or verify() would reconcile against it.'
+        );
+
+        // The output the generator would then validate must be clean, or the
+        // sample is teaching a shape that fails in production.
+        QuoteDocumentContributorOutput.validate(out, ctx.definition);
+    }
+
     /** A fault inside the Flow must surface as CONTRIBUTOR_FLOW_FAULT, naming the Flow. */
     @IsTest
     static void aFlowFaultFailsWithFlowFault() {
