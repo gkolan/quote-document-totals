@@ -1,6 +1,6 @@
 # Row generation extensibility — spec
 
-**Status: BUILT, with three steps partial and saying so.** Steps 00-06 are complete as of 2026-08-28; §6 records each one's status and §3.1 records what that means per use case. **Sixteen of twenty use cases are built and tested; four are *enabled, needs its own implementation*** - and those four are blocked on data or sources that do not exist in this org, not on missing framework. That is the honest count, and "enabled" is not a synonym for done. Read the step close-outs before assuming anything below was delivered as originally planned - three of them were not.
+**Status: BUILT, with three steps partial and saying so.** Steps 00-06 are complete as of 2026-08-28; §6 records each one's status and §3.1 records what that means per use case. **Eleven of twenty use cases are built and tested; nine are *enabled, needs its own implementation*.** Every one of the nine is blocked on data or a supplied input that does not exist in this org, rather than on missing framework - but that is an explanation, not a promotion, and §3.1 lists each one individually. "Enabled" is not a synonym for done. Read the step close-outs before assuming anything below was delivered as originally planned - three of them were not.
 
 **Status of this file:** planning spec and index. Nothing here is built except what §2 lists as already deployed. It does not re-describe the architecture — [`docs/quote-document-totals.md`](../../docs/quote-document-totals.md) is the source of truth for that, and [`specs/vendor-neutral-render-contract/spec.md`](../vendor-neutral-render-contract/spec.md) owns everything downstream of the snapshot. This spec owns only the stage **before** the snapshot: how the rows get produced.
 
@@ -100,17 +100,23 @@ A capability existing is not a use case working. Every use case carries one of f
 | 19 | Non-additive measures | **Built and tested** | `QuoteDocumentAggregationTest`, 15 tests |
 | 20 | Separate purchasing entities | **Built and tested** | `QuoteDocumentPartitionTest.aPartitionCanBeRetrievedAsItsOwnDocument` |
 
-Four of twenty are "enabled, needs its own implementation", and each is blocked on something outside the framework rather than inside it:
+**Nine of twenty are "enabled, needs its own implementation".** Each is blocked on something outside the framework rather than inside it, and each is listed rather than summarised - a grouped count is how nine quietly becomes four:
 
 | # | Use case | What is actually missing |
 |---|---|---|
-| 5 | Amendment before/after | The engine and matching are built. This org holds no amendment quotes, so the amendment-specific baseline cannot be verified against real data |
+| 5 | Amendment before/after | The engine and matching are built. This org holds no amendment quotes, so an amendment-specific baseline cannot be verified against real data |
+| 6 | Renewal / co-term schedules | The renewal *price*. An existing quoted amount cannot establish what the next term costs, so it is a supplied input with no shipped source |
 | 7 | Usage-tier explanation | A pricing engine's tier breakdown. The framework must consume one, never recompute it |
+| 10 | Delivery schedules | The delivery event list, which exists nowhere on the quote. A subscriber expander supplies it |
 | 12 | Package composition | Which components belong to which package - no schedule expresses that, so it needs a subscriber expander |
+| 15 | Minimum commitment / shortfall | The commitment amount. `RATIO` and `Informational` rows give the measure and the "gap, not a charge" treatment |
+| 16 | Rebate / incentive illustration | The rebate rule. Partitioning and `Informational` rows give guaranteed-versus-contingent |
+| 17 | Consumption scenarios | The scenario inputs. Partitioning and the assumptions guard are built |
 | 18 | Customer part-number mapping | The mapping data itself |
-| 15, 16, 17 | Commitments, rebates, scenarios | Built as *mechanisms* (partitioning, non-additive measures, the assumptions guard); the commitment amount, rebate rule and scenario inputs are supplied values by design - see §3, "permanently out of scope" |
 
-That is the honest number and it must not drift upward in a close-out without a test to back the change.
+15, 16 and 17 are supplied values *by design* - see §3, "permanently out of scope". The others need a subscriber class or org data.
+
+**This number must not drift upward in a close-out without a test to back the change.** It was briefly written as "sixteen of twenty" during the final pass and corrected by counting the table rather than trusting the sentence; count the rows.
 
 ### 3.2 Known defect, found while writing this spec
 
