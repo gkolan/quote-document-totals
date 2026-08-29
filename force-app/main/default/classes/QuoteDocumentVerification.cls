@@ -170,9 +170,18 @@ public with sharing class QuoteDocumentVerification {
         // 4. The check that matters commercially: a price-waterfall table built
         //    from everything except optional products has to land on the same
         //    Net Amount that CPQ itself rolled up onto the Quote.
+        //    A PARTITION covers a share of the quote and can never equal the
+        //    whole of it, so this check would fail every partitioned table by
+        //    construction. The claim does not disappear - it moves up a level:
+        //    QuoteDocumentGenerator.assertCrossPartitionTotals holds the SET to
+        //    the quote where the definition says the partitions add up, and
+        //    holds it to nothing where it says they do not. Dropping the check
+        //    here without that would have been the one place this framework
+        //    stopped reconciling to CPQ.
         Boolean reconcilesToQuote =
             QuoteDocumentTableDefinition.MEASURES_PRICE_WATERFALL.equals(definition.measureSet)
-            && QuoteDocumentTableDefinition.FILTER_EXCLUDE_OPTIONAL.equals(definition.lineFilter);
+            && QuoteDocumentTableDefinition.FILTER_EXCLUDE_OPTIONAL.equals(definition.lineFilter)
+            && !definition.isPartitioned();
 
         if (reconcilesToQuote) {
             // CPQ's own SBQQ__NetAmount__c has no idea a Discount, Rounding,

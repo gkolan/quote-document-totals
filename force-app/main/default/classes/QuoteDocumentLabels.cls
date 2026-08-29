@@ -37,6 +37,14 @@ public with sharing class QuoteDocumentLabels {
     public static final String KEY_GROUP_UNNAMED = 'GROUP_UNNAMED';
     public static final String KEY_COLUMN_LABEL = 'COL_LABEL';
 
+    /**
+     * '{0} - {1}': a partitioned table's heading, the definition's title and
+     * the partition it covers. A renderer may not compose this, and Apex may
+     * not concatenate it, so it resolves from the dictionary like every other
+     * printable string.
+     */
+    public static final String KEY_PARTITIONED_TITLE = 'PARTITIONED_TITLE';
+
     private final String locale;
     private final Map<String, String> entries;
 
@@ -66,8 +74,7 @@ public with sharing class QuoteDocumentLabels {
      * silently picks up `LABELS_fr_CA` - guessing a region is how a Canadian
      * price list ends up in a French document.
      */
-    @TestVisible
-    private static String normalize(String rawLocale) {
+    public static String normalize(String rawLocale) {
         if (String.isBlank(rawLocale)) {
             return null;
         }
@@ -159,6 +166,11 @@ public with sharing class QuoteDocumentLabels {
      * than at render - a translator who writes {2} finds out on deployment,
      * not when the one quote that exercises that table reaches a customer.
      */
+    @TestVisible
+    private static void assertSupportedPlaceholdersForTest(String category, String key, String template) {
+        assertSupportedPlaceholders(category, key, template);
+    }
+
     private static void assertSupportedPlaceholders(String category, String key, String template) {
         if (String.isBlank(template)) {
             return;
@@ -224,9 +236,18 @@ public with sharing class QuoteDocumentLabels {
         // containing "{1}" is never treated as a placeholder on the next pass.
         List<String> pieces = new List<String>();
         String remaining = template;
-        Integer guard = 0;
 
-        while (guard < 20) {
+        // Bounded by the template's own length, not by a magic 20. Every pass
+        // consumes at least one character of `remaining`, so this terminates -
+        // and unlike the old bound it cannot run out early. A template with more
+        // than twenty brace pairs before its placeholder (literal braces in
+        // contractual prose count) used to exit the loop quietly and append the
+        // untouched remainder, printing "{0}" to the customer. Every other route
+        // to that outcome throws LABEL_ARGUMENT_MISSING; this one was silent.
+        Integer guard = 0;
+        Integer maxPasses = template.length() + 1;
+
+        while (guard < maxPasses) {
             guard++;
             Integer open = remaining.indexOf('{');
             if (open == -1) {
@@ -261,7 +282,18 @@ public with sharing class QuoteDocumentLabels {
         }
         pieces.add(remaining);
 
-        return String.join(pieces, '');
+        String rendered = String.join(pieces, '');
+
+        // No post-scan of the rendered text: a SUBSTITUTED ARGUMENT may legitimately
+        // contain "{1}" - that is exactly why this method splits and joins instead
+        // of calling replace(), and QuoteDocumentLabelsTest pins it. Scanning the
+        // output would reject a valid argument as an unresolved placeholder.
+        //
+        // The guard bound above is what actually fixes the defect: bounded by the
+        // template's length, the loop cannot exit early, so a real placeholder is
+        // always reached and a missing argument always throws
+        // LABEL_ARGUMENT_MISSING rather than printing "{0}" to a customer.
+        return rendered;
     }
 
     @TestVisible

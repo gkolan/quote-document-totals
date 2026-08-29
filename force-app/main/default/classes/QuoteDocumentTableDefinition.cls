@@ -143,6 +143,21 @@ public with sharing class QuoteDocumentTableDefinition {
      * The baseline this table compares against, if it compares at all. Blank
      * is every table that existed before comparison did.
      */
+    /**
+     * Splits this definition into separate tables, one per distinct value.
+     *
+     * Not a grouping level. Grouping nests rows inside ONE table under one
+     * grand total; partitioning produces several tables, each reconciling
+     * against its own share, with nothing spanning them unless the author says
+     * a spanning total is meaningful.
+     */
+    public String partitionDimension;
+    public String crossPartitionTotal;
+
+    public Boolean isPartitioned() {
+        return String.isNotBlank(partitionDimension);
+    }
+
     public String comparisonSourceCode;
     public String comparisonSourceVersion;
     public String comparisonSourceField;
@@ -227,6 +242,8 @@ public with sharing class QuoteDocumentTableDefinition {
         introText = record.Intro_Text__c;
         footerText = record.Footer_Text__c;
         cachePolicy = record.Cache_Policy__c;
+        partitionDimension = record.Partition_Dimension__c;
+        crossPartitionTotal = record.Cross_Partition_Total__c;
         comparisonSourceCode = record.Comparison_Source_Code__c;
         comparisonSourceVersion = record.Comparison_Source_Version__c;
         comparisonSourceField = record.Comparison_Source_Field__c;
@@ -472,6 +489,61 @@ public with sharing class QuoteDocumentTableDefinition {
         }
     }
 
+    public static final String CROSS_PARTITION_NONE = 'NONE';
+    public static final String CROSS_PARTITION_SUM = 'SUM';
+
+    /** At most nine, because Display_Order__c is a whole number and definitions are spaced by ten. */
+    public static final Integer MAX_PARTITIONS = 9;
+
+    /**
+     * A partitioned definition must say whether a total across its partitions
+     * means anything.
+     *
+     * There is deliberately no default. Alternatives and scenarios are
+     * mutually exclusive, and summing them states a number the customer is not
+     * being asked to pay; departments and entities are complementary, and
+     * refusing to sum them hides the deal. Only the author knows which, and
+     * making them choose is the whole safeguard.
+     */
+    @TestVisible
+    private void validatePartitionConfig() {
+        if (!isPartitioned()) {
+            if (String.isNotBlank(crossPartitionTotal)) {
+                throw new QuoteDocumentGenerator.QuoteDocumentException(
+                    'Table ' + tableCode + ' sets Cross_Partition_Total__c but has no '
+                    + 'Partition_Dimension__c. There are no partitions for a total to span.'
+                );
+            }
+            return;
+        }
+
+        if (String.isBlank(crossPartitionTotal)) {
+            throw new QuoteDocumentGenerator.QuoteDocumentException(
+                'Table ' + tableCode + ' is partitioned but does not say whether a total across its '
+                + 'partitions is meaningful. Set Cross_Partition_Total__c to NONE for mutually exclusive '
+                + 'partitions - alternatives, scenarios - or SUM where they are complementary parts of one '
+                + 'whole. There is no default: the wrong one prints a number the customer is not being '
+                + 'asked to pay.'
+            );
+        }
+
+        if (!CROSS_PARTITION_NONE.equals(crossPartitionTotal)
+            && !CROSS_PARTITION_SUM.equals(crossPartitionTotal)) {
+            throw new QuoteDocumentGenerator.QuoteDocumentException(
+                'Table ' + tableCode + ' sets Cross_Partition_Total__c = ' + crossPartitionTotal
+                + '. Use NONE or SUM.'
+            );
+        }
+
+        if (hasComparison()) {
+            throw new QuoteDocumentGenerator.QuoteDocumentException(
+                'Table ' + tableCode + ' both partitions and compares against a baseline. Which partition '
+                + 'a baseline line belongs to has no agreed answer, and a change document is the last '
+                + 'place to guess.'
+            );
+        }
+    }
+
     public Boolean usesChangeMeasures() {
         return MEASURES_CHANGE.equals(measureSet);
     }
@@ -544,7 +616,8 @@ public with sharing class QuoteDocumentTableDefinition {
                    Expander_Code__c, Expander_Version__c, Period_Months__c,
                    Period_One_Time_Placement__c, Allocation_Basis__c, Allocation_Scale__c,
                    Suppress_Amounts__c,
-                   Comparison_Source_Code__c, Comparison_Source_Version__c, Comparison_Source_Field__c
+                   Comparison_Source_Code__c, Comparison_Source_Version__c, Comparison_Source_Field__c,
+                   Partition_Dimension__c, Cross_Partition_Total__c
             FROM Quote_Document_Table_Def__mdt
             WHERE Is_Active__c = true
             ORDER BY Display_Order__c
@@ -622,6 +695,7 @@ public with sharing class QuoteDocumentTableDefinition {
             definition.validateContributorConfig();
             definition.validateExpansionConfig();
             definition.validateComparisonConfig();
+            definition.validatePartitionConfig();
             definitions.add(definition);
         }
 

@@ -89,14 +89,14 @@ A capability existing is not a use case working. Every use case carries one of f
 | 10 | Delivery schedules | **Enabled, needs its own implementation** | Moved out of 01 — the event list is an enrichment source (04). The seam covers it; no expander ships. |
 | 11 | Project phase breakdown | **Enabled, needs its own implementation** | 02's `WEIGHTED_SOURCE` covers the split; phase source is the subscriber's |
 | 12 | Package composition | Delivered by a planned step | 02 §3.5 |
-| 13 | Alternative proposals | Delivered by a planned step | 05 (`SCENARIO`) |
+| 13 | Alternative proposals | **Built and tested** | `QuoteDocumentPartitionTest`, 14 tests — any dimension partitions, so this is configuration |
 | 14 | Quote revision comparison | **Built and tested** | `QuoteDocumentComparisonTest`, 15 tests (`SOURCE_QUOTE`, not `PRIOR_SNAPSHOT` — see step 04 close-out) |
 | 15 | Minimum commitment / shortfall | **Enabled, needs its own implementation** | 03 gives the measure; the commitment value is a supplied input |
 | 16 | Rebate / incentive illustration | **Enabled, needs its own implementation** | 04 + 05 give the mechanisms; the rebate rule is the subscriber's |
 | 17 | Consumption scenarios | **Enabled, needs its own implementation** | 05 partitions and requires assumptions; the scenario inputs are supplied |
 | 18 | Customer part-number mapping | **Enabled, needs its own implementation** | Mapping data is the subscriber's |
 | 19 | Non-additive measures | **Built and tested** | `QuoteDocumentAggregationTest`, 15 tests |
-| 20 | Separate purchasing entities | Delivered by a planned step, if 05 §3.4 is built | 05 §3.4 is explicitly optional — see its close-out |
+| 20 | Separate purchasing entities | **Enabled, needs its own implementation** | Partitioned tables built; 05 §3.4's separately addressable documents were not |
 
 Eight of twenty are "enabled, needs its own implementation". That is the honest number and it must not drift upward in a close-out without a test to back the change.
 
@@ -147,6 +147,6 @@ Stated once here rather than repeated five times.
 | 02 | [Allocation primitive](steps/step-02-allocation-primitive.md) | **PARTIAL** 2026-08-28 — primitive and per-measure rule shipped; `WEIGHTED_SOURCE` / `SCHEDULE` need a subscriber expander |
 | 03 | [Non-additive measures](steps/step-03-non-additive-measures.md) | **BUILT** 2026-08-28 |
 | 04 | [Comparison and enrichment sources](steps/step-04-comparison-and-enrichment.md) | **PARTIAL** 2026-08-28 — `SOURCE_QUOTE` shipped; `PRIOR_SNAPSHOT` blocked by snapshot replacement |
-| 05 | [Partitioning](steps/step-05-partitioning.md) | Planned |
+| 05 | [Partitioning](steps/step-05-partitioning.md) | **PARTIAL** 2026-08-28 — partitioned tables built; separate documents and required assumptions not |
 | 06 | [Docs and close-out](steps/step-06-docs-and-closeout.md) | Planned |
 | — | [Worked examples](steps/worked-examples.md) — end-to-end config and expected rows for the four cases that are configuration, not code | Planned |

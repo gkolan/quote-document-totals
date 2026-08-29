@@ -1,6 +1,6 @@
 # Step 05 — Partitioning
 
-**Status: PLANNED**
+**Status: PARTIAL** — §3.1–3.2 built, §3.3–3.4 not; see close-out
 **Blocked by:** [step 02](step-02-allocation-primitive.md), [step 04](step-04-comparison-and-enrichment.md)
 **Blocks:** nothing
 **Use cases:** 13, 16, 17 and the document half of 4 ([`spec.md`](../spec.md) §3)
@@ -137,6 +137,36 @@ New test class `QuoteDocumentPartitionTest`: `threeScenariosProduceThreeTables`,
 
 ## 7. Close-out
 
-*(To be filled: whether per-partition reconciliation already existed or had to be added, and whether §3.4 was built or deliberately left unbuilt — with the reason either way.)*
+- **Date:** 2026-08-28
+- **Status: PARTIAL.** §3.1, §3.1a and §3.2 shipped. §3.3 (required scenario assumptions) and §3.4 (separate documents) did not, and §3.4 was always optional.
+
+### Per-partition reconciliation had to be added — the step's real work, as predicted
+
+§3.1a said to confirm rather than assume that `verify()` does the right thing per partition. It did not. `verify()` holds every `PRICE_WATERFALL` + `EXCLUDE_OPTIONAL` table to CPQ's own `SBQQ__NetAmount__c`, which a partition covering a *share* of the quote can never satisfy — every partitioned table failed by construction, exactly as §3.1a warned.
+
+The fix deliberately does **not** simply drop the check. It moves up a level: `assertCrossPartitionTotals` holds the **set** to the quote where `Cross_Partition_Total__c = SUM`, and to nothing where it is `NONE`. Dropping it without that replacement would have been the one place this framework stopped reconciling to CPQ, and it would have looked like a passing test suite.
+
+### Built
+
+- `Partition_Dimension__c` and `Cross_Partition_Total__c` on the definition; `Partition_Value__c`, `Partition_Dimension__c` and `Cross_Partition_Total__c` on the generated table, with permission-set entries.
+- **The generator now plans table *instances* rather than definitions.** One definition still produces one table unless it partitions; every internal map is keyed by an instance key that is the bare table code when it does not, so nothing about an unpartitioned table moved.
+- **Three-segment `Table_Key__c`** where a definition partitions, and the **byte-identical two-segment form** where it does not — asserted by a test, because an unpartitioned table's identity must not change just because partitioning now exists.
+- `PARTITION_TOTAL_UNRECONCILED` when a `SUM` set does not add up: a line reached no partition, or reached two.
+- **The partition reaches the printed heading through the dictionary** (`PARTITIONED_TITLE`, en_US and fr), not through Apex concatenation and not by asking a renderer to compose one.
+- **Partitioning and comparing at once is refused.** Which partition a baseline line belongs to has no agreed answer, and a change document is the last place to guess.
+
+### A constraint discovered in build: at most nine partitions
+
+`Quote_Document_Table__c.Display_Order__c` is a whole number, and definitions are spaced by ten. Partitions take consecutive orders from their definition's, so a tenth would collide with the next table — and blocks share that one document-wide sequence, so a collision is a real ambiguity rather than untidiness. Ten or more partitions fails with a message that says exactly this. Raising the ceiling means renumbering the ordering scheme, which is its own change.
+
+### Not built
+
+- **§3.3, required scenario assumptions.** `SCENARIO_ASSUMPTIONS_MISSING` is not implemented: narrative blocks are quote-scoped today, and attaching one *per partition* is a block-model change this step did not open. **This matters** — the spec argues a consumption estimate printed without its assumptions is the most dangerous document the framework could produce, and that guard is currently a documentation requirement rather than an enforced one. Any scenario table authored before it lands relies on discipline.
+- **§3.4, separate addressable documents.** Explicitly optional in the step, and §3.1 has not yet been used in anger. Left unbuilt on purpose; use case 20 (separate purchasing entities) therefore stays *enabled, needs its own implementation* rather than delivered.
+- The `SCENARIO` partition dimension as a named thing. Any existing dimension partitions — the test uses `PRODUCT_FAMILY` — so a scenario field on the line needs no new code, only configuration.
+
+- **Test evidence:** `QuoteDocumentPartitionTest` 14/14. Full suite 478 ran, 473 passed, 5 failed — the five pre-existing org-only failures, unchanged.
+
+- **Next step:** [`step-06-docs-and-closeout.md`](step-06-docs-and-closeout.md)
 
 - **Next step:** [`step-06-docs-and-closeout.md`](step-06-docs-and-closeout.md)

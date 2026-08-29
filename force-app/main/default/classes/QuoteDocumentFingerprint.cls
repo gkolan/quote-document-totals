@@ -163,6 +163,12 @@ public with sharing class QuoteDocumentFingerprint {
             parts.add(encodeString(definition.comparisonSourceCode));
             parts.add(encodeString(definition.comparisonSourceVersion));
             parts.add(encodeString(definition.comparisonSourceField));
+
+            // Partitioning changes how many TABLES exist, and the
+            // cross-partition claim changes what the set asserts about itself.
+            // Neither is visible in any quote field.
+            parts.add(encodeString(definition.partitionDimension));
+            parts.add(encodeString(definition.crossPartitionTotal));
             for (String path : definition.contributorDependencyPaths) {
                 parts.add(encodeString(path));
             }

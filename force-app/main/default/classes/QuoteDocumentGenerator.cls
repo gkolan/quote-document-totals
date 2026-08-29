@@ -345,10 +345,20 @@ public with sharing class QuoteDocumentGenerator {
             delete [SELECT Id FROM Quote_Document_Table__c WHERE Quote__c = :quote.Id];
             delete [SELECT Id FROM Quote_Document_Block__c WHERE Quote__c = :quote.Id];
 
-            for (QuoteDocumentTableDefinition definition : definitions) {
-                List<QuoteDocumentLine> lines = applyFilter(allLines, definition.lineFilter);
+            // One entry per TABLE RECORD, which is one per definition unless
+            // that definition partitions - then one per partition value. Every
+            // map below is keyed by the instance key rather than the table
+            // code, because a partitioned definition produces several tables
+            // and a code no longer identifies one of them.
+            List<TableInstance> instances = planTables(definitions, allLines, labels);
 
-                Quote_Document_Table__c table = newTable(quote, definition, !lines.isEmpty(), locale);
+            for (TableInstance instance : instances) {
+                QuoteDocumentTableDefinition definition = instance.definition;
+                List<QuoteDocumentLine> lines = instance.lines;
+
+                Quote_Document_Table__c table = newTable(
+                    quote, definition, !lines.isEmpty(), locale, instance, labels
+                );
                 tables.add(table);
 
                 // Expansion runs BEFORE the builder and hands it a longer line
@@ -357,11 +367,11 @@ public with sharing class QuoteDocumentGenerator {
                 // unchanged code that cannot tell an expanded line from an
                 // ordinary one.
                 lines = compare(quote, definition, lines);
-                lines = expand(quote, definition, lines, labels, nonAdditiveByCode);
+                lines = expand(quote, definition, lines, labels, nonAdditiveByCode, instance.key);
 
                 List<Quote_Document_Row__c> rows =
                     new QuoteDocumentRowBuilder(definition, labels)
-                        .withNonAdditiveMeasures(nonAdditiveByCode.get(definition.tableCode))
+                        .withNonAdditiveMeasures(nonAdditiveByCode.get(instance.key))
                         .build(lines);
 
                 // A measure that is a ratio, a peak or a running balance is
@@ -373,26 +383,29 @@ public with sharing class QuoteDocumentGenerator {
                     QuoteDocumentAggregation.rulesFor(
                         definition,
                         QuoteDocumentColumnDefinition.forTable(definition),
-                        nonAdditiveByCode.get(definition.tableCode)
+                        nonAdditiveByCode.get(instance.key)
                     );
                 QuoteDocumentAggregation.apply(rows, rules, definition);
-                rulesByCode.put(definition.tableCode, rules);
-                rows = applyRowCustomizer(quote, definition, lines, rows, labels, nonAdditiveByCode);
-                rowsByCode.put(definition.tableCode, rows);
+                rulesByCode.put(instance.key, rules);
+                rows = applyRowCustomizer(
+                    quote, definition, lines, rows, labels, nonAdditiveByCode, instance.key
+                );
+                rowsByCode.put(instance.key, rows);
             }
             insert tables;
 
             Map<String, Quote_Document_Table__c> tableByCode = new Map<String, Quote_Document_Table__c>();
-            for (Quote_Document_Table__c t : tables) {
-                tableByCode.put(t.Table_Code__c, t);
+            for (Integer i = 0; i < instances.size(); i++) {
+                tableByCode.put(instances[i].key, tables[i]);
             }
 
             // Columns, once the tables have Ids. Built from the same
             // definitions the rows came from, so a table can never state a
             // column layout that its rows were not generated against.
             List<Quote_Document_Column__c> allColumns = new List<Quote_Document_Column__c>();
-            for (QuoteDocumentTableDefinition definition : definitions) {
-                Id tableId = tableByCode.get(definition.tableCode).Id;
+            for (TableInstance instance : instances) {
+                QuoteDocumentTableDefinition definition = instance.definition;
+                Id tableId = tableByCode.get(instance.key).Id;
                 for (QuoteDocumentColumnDefinition column : QuoteDocumentColumnDefinition.forTable(definition)) {
                     allColumns.add(newColumn(tableId, column, labels));
                 }
@@ -424,9 +437,10 @@ public with sharing class QuoteDocumentGenerator {
             // harmlessly, but sending only what changed is still the better
             // habit and keeps the update independent of the relationship type.)
             List<Quote_Document_Table__c> stamped = new List<Quote_Document_Table__c>();
-            for (QuoteDocumentTableDefinition definition : definitions) {
-                Quote_Document_Table__c inserted = tableByCode.get(definition.tableCode);
-                List<Quote_Document_Row__c> rows = rowsByCode.get(definition.tableCode);
+            for (TableInstance instance : instances) {
+                QuoteDocumentTableDefinition definition = instance.definition;
+                Quote_Document_Table__c inserted = tableByCode.get(instance.key);
+                List<Quote_Document_Row__c> rows = rowsByCode.get(instance.key);
 
                 // Title and locale are carried onto the stamped record so
                 // verification can actually see them. They were set at insert
@@ -442,11 +456,17 @@ public with sharing class QuoteDocumentGenerator {
                 stampTable(table, definition, rows);
                 QuoteDocumentVerification.verify(
                     quote, table, definition, rows,
-                    nonAdditiveByCode.get(definition.tableCode),
-                    rulesByCode.get(definition.tableCode)
+                    nonAdditiveByCode.get(instance.key),
+                    rulesByCode.get(instance.key)
                 );
                 stamped.add(table);
             }
+
+            // A partitioned set that claims its partitions add up has to be
+            // checked, exactly like any other total. verify() cannot do it:
+            // it sees one table at a time, and this is a claim ABOUT the set.
+            assertCrossPartitionTotals(quote, instances, stamped);
+
             update stamped;
 
             // Only now is the quote safe to print from. Written last and in the
@@ -694,6 +714,150 @@ public with sharing class QuoteDocumentGenerator {
     }
 
     /**
+     * One generated TABLE RECORD: a definition, and the partition of it this
+     * record covers.
+     *
+     * `key` identifies it through generation. It is the table code alone for
+     * an unpartitioned definition - so every existing keying is byte-identical
+     * - and code plus partition value where a definition partitions.
+     */
+    private class TableInstance {
+        QuoteDocumentTableDefinition definition;
+        String partitionValue;
+        String key;
+        Integer displayOrder;
+        List<QuoteDocumentLine> lines;
+
+        TableInstance(
+            QuoteDocumentTableDefinition definition,
+            String partitionValue,
+            Integer displayOrder,
+            List<QuoteDocumentLine> lines
+        ) {
+            this.definition = definition;
+            this.partitionValue = partitionValue;
+            this.displayOrder = displayOrder;
+            this.lines = lines;
+            this.key = partitionValue == null
+                ? definition.tableCode
+                : definition.tableCode + '::' + partitionValue;
+        }
+    }
+
+    /**
+     * Expands the definition list into the table records it will produce.
+     *
+     * A partitioned definition contributes one record per distinct value of
+     * its partition dimension, in value order so the document is stable, each
+     * taking a Display_Order__c one past the definition's own. That ordering
+     * is why MAX_PARTITIONS exists: Display_Order__c is a whole number and
+     * definitions are spaced by ten, so a tenth partition would collide with
+     * whatever comes next.
+     */
+    private static List<TableInstance> planTables(
+        List<QuoteDocumentTableDefinition> definitions,
+        List<QuoteDocumentLine> allLines,
+        QuoteDocumentLabels labels
+    ) {
+        List<TableInstance> instances = new List<TableInstance>();
+
+        for (QuoteDocumentTableDefinition definition : definitions) {
+            List<QuoteDocumentLine> lines = applyFilter(allLines, definition.lineFilter);
+
+            if (!definition.isPartitioned()) {
+                instances.add(new TableInstance(definition, null, definition.displayOrder, lines));
+                continue;
+            }
+
+            Map<String, List<QuoteDocumentLine>> byPartition =
+                new Map<String, List<QuoteDocumentLine>>();
+            for (QuoteDocumentLine line : lines) {
+                String value = line.getGroupingValue(definition.partitionDimension);
+                if (!byPartition.containsKey(value)) {
+                    byPartition.put(value, new List<QuoteDocumentLine>());
+                }
+                byPartition.get(value).add(line);
+            }
+
+            List<String> values = new List<String>(byPartition.keySet());
+            values.sort();
+
+            if (values.size() > QuoteDocumentTableDefinition.MAX_PARTITIONS) {
+                throw new QuoteDocumentException(
+                    definition.tableCode + ': partitioning by ' + definition.partitionDimension
+                    + ' produced ' + values.size() + ' partitions, more than the '
+                    + QuoteDocumentTableDefinition.MAX_PARTITIONS + ' a document can order unambiguously. '
+                    + 'Table order is a whole number and definitions are spaced by ten, so a tenth '
+                    + 'partition would collide with the next table.'
+                );
+            }
+
+            // A partitioned definition with no lines still produces nothing
+            // rather than an empty table: there is no partition to name.
+            for (Integer i = 0; i < values.size(); i++) {
+                instances.add(new TableInstance(
+                    definition, values[i], definition.displayOrder + i, byPartition.get(values[i])
+                ));
+            }
+        }
+        return instances;
+    }
+
+    /**
+     * The claim a partitioned set makes about itself.
+     *
+     * NONE means no total spans the partitions - there is nothing to check,
+     * and nothing in the snapshot may state one. SUM means they are
+     * complementary parts of one whole, and that is a checkable arithmetic
+     * claim: their net amounts must add to what CPQ rolled up onto the quote.
+     */
+    private static void assertCrossPartitionTotals(
+        SBQQ__Quote__c quote, List<TableInstance> instances, List<Quote_Document_Table__c> stamped
+    ) {
+        Map<String, Decimal> netByCode = new Map<String, Decimal>();
+        Map<String, QuoteDocumentTableDefinition> definitionByCode =
+            new Map<String, QuoteDocumentTableDefinition>();
+
+        for (Integer i = 0; i < instances.size(); i++) {
+            TableInstance instance = instances[i];
+            if (!instance.definition.isPartitioned()
+                || !QuoteDocumentTableDefinition.CROSS_PARTITION_SUM.equals(
+                        instance.definition.crossPartitionTotal)) {
+                continue;
+            }
+            String code = instance.definition.tableCode;
+            definitionByCode.put(code, instance.definition);
+
+            Decimal net = (Decimal) stamped[i].get('Amount_Net__c');
+            Decimal running = netByCode.containsKey(code) ? netByCode.get(code) : 0;
+            netByCode.put(code, running + (net == null ? 0 : net));
+        }
+
+        for (String code : netByCode.keySet()) {
+            QuoteDocumentTableDefinition definition = definitionByCode.get(code);
+
+            // Only a table that would reconcile to the quote on its own can be
+            // held to it as a set - the same condition verify() applies.
+            Boolean reconcilesToQuote =
+                QuoteDocumentTableDefinition.MEASURES_PRICE_WATERFALL.equals(definition.measureSet)
+                && QuoteDocumentTableDefinition.FILTER_EXCLUDE_OPTIONAL.equals(definition.lineFilter);
+
+            if (!reconcilesToQuote || quote.SBQQ__NetAmount__c == null) {
+                continue;
+            }
+            if (Math.abs(quote.SBQQ__NetAmount__c - netByCode.get(code)) > 0.01) {
+                throw QuoteDocumentContributorError.build(
+                    'PARTITION_TOTAL_UNRECONCILED',
+                    'Table ' + code + ' declares Cross_Partition_Total__c = SUM, but its partitions total '
+                        + netByCode.get(code) + ' against a Quote Net Amount of ' + quote.SBQQ__NetAmount__c
+                        + '. Either a line reached no partition, or one reached two. A set that claims to '
+                        + 'add up has to add up.'
+                );
+            }
+        }
+    }
+
+    /**
      * Pairs the quote against a baseline, if this table declares a comparison
      * source. Returns the lines untouched when it does not.
      */
@@ -723,7 +887,8 @@ public with sharing class QuoteDocumentGenerator {
         QuoteDocumentTableDefinition definition,
         List<QuoteDocumentLine> lines,
         QuoteDocumentLabels labels,
-        Map<String, Set<String>> nonAdditiveByCode
+        Map<String, Set<String>> nonAdditiveByCode,
+        String instanceKey
     ) {
         if (!definition.hasExpander() || lines.isEmpty()) {
             return lines;
@@ -735,7 +900,7 @@ public with sharing class QuoteDocumentGenerator {
         );
 
         if (!result.nonAdditiveMeasures.isEmpty()) {
-            nonAdditiveByCode.put(definition.tableCode, result.nonAdditiveMeasures);
+            nonAdditiveByCode.put(instanceKey, result.nonAdditiveMeasures);
         }
         return result.lines;
     }
@@ -750,7 +915,8 @@ public with sharing class QuoteDocumentGenerator {
         List<QuoteDocumentLine> lines,
         List<Quote_Document_Row__c> rows,
         QuoteDocumentLabels labels,
-        Map<String, Set<String>> nonAdditiveByCode
+        Map<String, Set<String>> nonAdditiveByCode,
+        String instanceKey
     ) {
         if (!definition.hasContributor()) {
             return rows;
@@ -781,7 +947,7 @@ public with sharing class QuoteDocumentGenerator {
 
         QuoteDocumentContributorOutput.validate(context.rows, definition);
         if (!context.nonAdditiveMeasures.isEmpty()) {
-            nonAdditiveByCode.put(definition.tableCode, context.nonAdditiveMeasures);
+            nonAdditiveByCode.put(instanceKey, context.nonAdditiveMeasures);
         }
         return context.rows;
     }
@@ -884,8 +1050,12 @@ public with sharing class QuoteDocumentGenerator {
         SBQQ__Quote__c quote,
         QuoteDocumentTableDefinition definition,
         Boolean hasQualifyingLines,
-        String locale
+        String locale,
+        TableInstance instance,
+        QuoteDocumentLabels labels
     ) {
+        String partitionValue = instance == null ? null : instance.partitionValue;
+        Boolean partitioned = partitionValue != null;
         // The name carries the quote number so a table is identifiable in a
         // list view or search result. Quote_Number__c is the field to trust
         // though - it is a formula and cannot drift.
@@ -893,8 +1063,16 @@ public with sharing class QuoteDocumentGenerator {
             Name = (quote.Name + ' - ' + definition.tableName).abbreviate(80),
             Quote__c = quote.Id,
             Table_Code__c = definition.tableCode,
-            Table_Key__c = quote.Id + ':' + definition.tableCode,
-            Display_Order__c = definition.displayOrder,
+            // Three segments where the definition partitions, and byte-identical
+            // to the old two-segment form where it does not - an unpartitioned
+            // table's identity must not move just because partitioning exists.
+            Table_Key__c = partitioned
+                ? quote.Id + ':' + definition.tableCode + ':' + partitionValue
+                : quote.Id + ':' + definition.tableCode,
+            Partition_Value__c = partitionValue,
+            Partition_Dimension__c = partitioned ? definition.partitionDimension : null,
+            Cross_Partition_Total__c = partitioned ? definition.crossPartitionTotal : null,
+            Display_Order__c = instance == null ? definition.displayOrder : instance.displayOrder,
             Amount_Basis__c = definition.amountBasis,
             Group_Dimensions__c = definition.groupDimensionsLabel(),
             Line_Filter__c = definition.lineFilter,
@@ -905,7 +1083,15 @@ public with sharing class QuoteDocumentGenerator {
             // configuration - the whole point of the contract. Title is
             // guaranteed non-blank by config load; the rest are legitimately
             // optional and blank is a valid value, not a missing one.
-            Display_Title__c = definition.displayTitle,
+            // The partition has to reach the printed heading, and a renderer
+            // may not compose one. Resolved from the dictionary like every
+            // other string rather than concatenated here.
+            Display_Title__c = partitioned
+                ? labels.format(
+                    QuoteDocumentLabels.KEY_PARTITIONED_TITLE,
+                    new List<String>{ definition.displayTitle, partitionValue }
+                  )
+                : definition.displayTitle,
             Display_Subtitle__c = definition.displaySubtitle,
             Intro_Text__c = definition.introText,
             Footer_Text__c = definition.footerText,
