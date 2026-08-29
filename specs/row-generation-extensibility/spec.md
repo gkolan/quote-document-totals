@@ -167,7 +167,7 @@ Stated once here rather than repeated five times.
 | 04 | [Comparison and enrichment sources](steps/step-04-comparison-and-enrichment.md) | **PARTIAL** 2026-08-28 — `SOURCE_QUOTE` shipped; `PRIOR_SNAPSHOT` blocked by snapshot replacement |
 | 05 | [Partitioning](steps/step-05-partitioning.md) | **BUILT** 2026-08-28 — including per-partition documents and the assumptions guard |
 | 06 | [Docs and close-out](steps/step-06-docs-and-closeout.md) | **BUILT** 2026-08-28 — the monthly migration was assessed and declined, with the reason |
-| — | [Worked examples](steps/worked-examples.md) — end-to-end config and expected rows for the four cases that are configuration, not code | **Reference** — examples 3 and 4 are buildable today; 1 and 2 need a subscriber expander |
+| — | [Worked examples](steps/worked-examples.md) — end-to-end config and expected rows for the four cases that are configuration, not code | **All four built and tested** 2026-08-28 |
 
 ### What was actually delivered
 

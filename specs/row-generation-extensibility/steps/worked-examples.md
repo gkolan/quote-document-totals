@@ -1,6 +1,19 @@
 # Worked examples — end to end
 
-**Status: PLANNED (specification, not a build log)**
+**Status: BUILT 2026-08-28 — three examples asserted number-for-number, one by mechanism.** This began as a specification written before any of it existed. The tables below are unchanged from what was specified in advance, which is the point of having written them first.
+
+| Example | Test | Asserted |
+|---|---|---|
+| 1. Payment installments | `QuoteDocumentScheduleTest.anInstallmentScheduleSplitsTheQuoteToTheCent` | **These exact figures** — \$60,000 at 30/40/30 → 18,000 / 24,000 / 18,000 |
+| 2. Department allocation | `QuoteDocumentScheduleTest.aDepartmentScheduleDividesQuantitiesWhenToldTo` | **Mechanism only** — the 50/30/20 split and the quantity division, on a \$60,000 quote. The \$120,000 figures below have *not* been asserted |
+| 3. Promotional pricing | `QuoteDocumentScheduleTest.aFreePeriodPrintsExactlyZeroAndNeverTheResidual` | **These exact figures**, rescaled to the \$60,000 fixture: free months at exactly 0.00, half-rate and full-rate months, total unchanged |
+| 4. One-time versus recurring | `QuoteDocumentExpansionTest.aOneTimeChargeLandsInOnePeriodOnly` and `.spreadingAOneTimeChargeIsAvailableButMustBeChosen` | **These exact figures** — the fee in period 1 only at 5,000.00, and both placements totalling the same |
+
+Two deviations worth recording:
+
+- Examples 1 and 2 were specified as needing subscriber expanders (`SCHEDULE_MILESTONE`, `ALLOCATION_TARGET`). Both are served by the one shipped `SCHEDULE` expander instead — the difference between a milestone and a department turned out to be `Schedule_Divides_Quantity__c` and nothing else. The configuration tables below still name the original expanders; read them as "a schedule whose buckets are milestones / departments".
+- `Allocation_Basis__c` values `SCHEDULE` and `WEIGHTED_SOURCE` were never implemented as separate constants. The **weights** carry the shape, so `EVEN` over weighted placements *is* the weighted allocation; a second constant would have been a second name for the same arithmetic. Read `Allocation_Basis__c = EVEN` wherever the tables below say `SCHEDULE` or `WEIGHTED_SOURCE`.
+
 **Companion to:** [step 01](step-01-expansion-contract.md), [step 02](step-02-allocation-primitive.md), [step 03](step-03-non-additive-measures.md)
 
 ---

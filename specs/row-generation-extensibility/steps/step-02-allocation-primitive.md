@@ -1,6 +1,6 @@
 # Step 02 — Allocation primitive
 
-**Status: PARTIAL** — see close-out
+**Status: BUILT** — the primitive and the per-measure rule shipped 2026-08-28; weighted allocation closed the same day by the `SCHEDULE` expander. See close-out.
 **Blocked by:** [step 01](step-01-expansion-contract.md)
 **Blocks:** 05
 **Use cases:** 2, 3, 4, 8, 10, 11, 12, 18 ([`spec.md`](../spec.md) §3)
@@ -171,7 +171,7 @@ New test class `QuoteDocumentAllocationTest` (pure) plus additions to `QuoteDocu
 ## 7. Close-out
 
 - **Date:** 2026-08-28
-- **Status: PARTIAL — the primitive and the per-measure rule shipped; three of the four bases did not.** See below; the honest split matters more than the tick.
+- **Status: BUILT.** The primitive and the per-measure rule shipped first; the weighted bases followed the same day once `QuoteDocumentScheduleExpander` existed to supply non-uniform weights. The "Not built" list below has been updated in place rather than rewritten, so what was outstanding and for how long stays visible.
 
 **Built and tested**
 
