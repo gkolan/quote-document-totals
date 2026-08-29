@@ -11,6 +11,8 @@ public with sharing class QuoteDocumentExpanderRegistry {
         switch on expanderCode {
             when 'PERIOD'   { return new QuoteDocumentPeriodExpander(); }
             when 'SCHEDULE' { return new QuoteDocumentScheduleExpander(); }
+            when 'PRODUCT_ALIAS' { return new QuoteDocumentAliasExpander(); }
+            when 'CONSUMPTION_TIER' { return new QuoteDocumentTierExpander(); }
             when else {
                 throw new QuoteDocumentGenerator.QuoteDocumentException(
                     'Unknown expander code: ' + expanderCode + '. Register the class in '

@@ -1,6 +1,10 @@
 # Row generation extensibility — spec
 
-**Status: BUILT, with three steps partial and saying so.** Steps 00-06 are complete as of 2026-08-28; §6 records each one's status and §3.1 records what that means per use case. **Eleven of twenty use cases are built and tested; nine are *enabled, needs its own implementation*.** Every one of the nine is blocked on data or a supplied input that does not exist in this org, rather than on missing framework - but that is an explanation, not a promotion, and §3.1 lists each one individually. "Enabled" is not a synonym for done. Read the step close-outs before assuming anything below was delivered as originally planned - three of them were not.
+**Status: BUILT.** Steps 00-06 are complete; §6 records each one's status and §3.1 records what that means per use case. **Seventeen of twenty use cases are built - fifteen built and tested, two PROVISIONAL. Three are supplied-value by design.**
+
+The count reached seventeen only after the org was actually probed. Six cases had been recorded as "blocked on data that does not exist here", and that was wrong: `SBQQ__Subscription__c`, `SBQQ__QuoteLineConsumptionRate__c`, `SBQQ__RenewalPrice__c` and `SBQQ__RequiredBy__c` were all present the whole time. The claim survived three close-outs because it was repeated rather than checked. Count the rows in §3.1; do not trust a sentence about them.
+
+Read the step close-outs before assuming anything below was delivered as originally planned - three of them were not.
 
 **Status of this file:** planning spec and index. Nothing here is built except what §2 lists as already deployed. It does not re-describe the architecture — [`docs/quote-document-totals.md`](../../docs/quote-document-totals.md) is the source of truth for that, and [`specs/vendor-neutral-render-contract/spec.md`](../vendor-neutral-render-contract/spec.md) owns everything downstream of the snapshot. This spec owns only the stage **before** the snapshot: how the rows get produced.
 
@@ -83,38 +87,34 @@ A capability existing is not a use case working. Every use case carries one of f
 | 2 | Multi-year / phased rollout | **Built and tested** | `QuoteDocumentExpansionTest.anAnnualScheduleSectionsTheQuoteByYearAndFootsToIt` |
 | 3 | Payment installments and milestones | **Built and tested** | `QuoteDocumentScheduleTest` — the spec's own \$60,000 at 30/40/30 |
 | 4 | Department / location cost allocation | **Built and tested** | `QuoteDocumentScheduleTest.aDepartmentScheduleDividesQuantitiesWhenToldTo` |
-| 5 | Amendment before/after | **Enabled, needs its own implementation** | Engine and matching built; the amendment baseline is untestable in an org with no amendment quotes |
-| 6 | Renewal / co-term schedules | **Enabled, needs its own implementation** | 01 gives the axis; the renewal *price* is a supplied input with no shipped source |
-| 7 | Usage-tier explanation | **Enabled, needs its own implementation** | 04 §3.7 defines the consumption rule; no tier source ships |
+| 5 | Amendment before/after | **Built — PROVISIONAL** | `QuoteDocumentAmendmentComparison`, tested against constructed `SBQQ__Subscription__c` records. Not verified against a real CPQ amendment; this org has none |
+| 6 | Renewal / co-term schedules | **Built — PROVISIONAL** | `SBQQ__RenewalPrice__c` exists on the subscription, so the amendment baseline carries it. Same caveat as 5 |
+| 7 | Usage-tier explanation | **Built and tested** | `QuoteDocumentTierExpander` consumes CPQ's own `SBQQ__QuoteLineConsumptionRate__c` records and never recomputes them |
 | 8 | Free periods / promotional pricing | **Built and tested** | `QuoteDocumentScheduleTest.aFreePeriodPrintsExactlyZeroAndNeverTheResidual` |
 | 9 | Prepaid vs recurring in one schedule | **Built and tested** | `QuoteDocumentExpansionTest.aOneTimeChargeLandsInOnePeriodOnly` |
-| 10 | Delivery schedules | **Enabled, needs its own implementation** | Moved out of 01 — the event list is an enrichment source (04). The seam covers it; no expander ships. |
+| 10 | Delivery schedules | **Built and tested** | No new expander needed — a delivery is a `SCHEDULE` whose sections divide quantity. `QuoteDocumentSubscriberCasesTest.aDeliveryScheduleSplitsUnitsAcrossDeliveries` |
 | 11 | Project phase breakdown | **Built and tested** | A phase schedule is the same shape as a milestone one — `QuoteDocumentScheduleTest` |
-| 12 | Package composition | **Enabled, needs its own implementation** | No schedule expresses which components belong to which package — see step 02 close-out |
+| 12 | Package composition | **Built and tested** | `QuoteDocumentCompositionCustomizer` — `SBQQ__RequiredBy__c` already says which components belong to which package |
 | 13 | Alternative proposals | **Built and tested** | `QuoteDocumentPartitionTest` — any dimension partitions, so this is configuration |
 | 14 | Quote revision comparison | **Built and tested** | `QuoteDocumentComparisonTest`, 15 tests (`SOURCE_QUOTE`, not `PRIOR_SNAPSHOT` — see step 04 close-out) |
 | 15 | Minimum commitment / shortfall | **Enabled, needs its own implementation** | 03 gives the measure; the commitment value is a supplied input |
 | 16 | Rebate / incentive illustration | **Enabled, needs its own implementation** | 04 + 05 give the mechanisms; the rebate rule is the subscriber's |
 | 17 | Consumption scenarios | **Enabled, needs its own implementation** | Partitioning and the assumptions guard are built; the scenario *inputs* are still supplied from outside |
-| 18 | Customer part-number mapping | **Enabled, needs its own implementation** | Mapping data is the subscriber's |
+| 18 | Customer part-number mapping | **Built and tested** | `QuoteDocumentAliasExpander` + `Quote_Document_Product_Alias__mdt` |
 | 19 | Non-additive measures | **Built and tested** | `QuoteDocumentAggregationTest`, 15 tests |
 | 20 | Separate purchasing entities | **Built and tested** | `QuoteDocumentPartitionTest.aPartitionCanBeRetrievedAsItsOwnDocument` |
 
-**Nine of twenty are "enabled, needs its own implementation".** Each is blocked on something outside the framework rather than inside it, and each is listed rather than summarised - a grouped count is how nine quietly becomes four:
+**Two cases are PROVISIONAL and three are supplied-value by design.** Listed individually rather than grouped - a grouped count is how a real number quietly becomes a smaller one:
 
-| # | Use case | What is actually missing |
+| # | Use case | Status |
 |---|---|---|
-| 5 | Amendment before/after | The engine and matching are built. This org holds no amendment quotes, so an amendment-specific baseline cannot be verified against real data |
-| 6 | Renewal / co-term schedules | The renewal *price*. An existing quoted amount cannot establish what the next term costs, so it is a supplied input with no shipped source |
-| 7 | Usage-tier explanation | A pricing engine's tier breakdown. The framework must consume one, never recompute it |
-| 10 | Delivery schedules | The delivery event list, which exists nowhere on the quote. A subscriber expander supplies it |
-| 12 | Package composition | Which components belong to which package - no schedule expresses that, so it needs a subscriber expander |
-| 15 | Minimum commitment / shortfall | The commitment amount. `RATIO` and `Informational` rows give the measure and the "gap, not a charge" treatment |
-| 16 | Rebate / incentive illustration | The rebate rule. Partitioning and `Informational` rows give guaranteed-versus-contingent |
-| 17 | Consumption scenarios | The scenario inputs. Partitioning and the assumptions guard are built |
-| 18 | Customer part-number mapping | The mapping data itself |
+| 5 | Amendment before/after | **PROVISIONAL.** Built and tested against constructed subscriptions. `QuoteDocumentLine.classify` already warns that this org holds no amendment quotes and its transaction-type branches are unverified against production; the same caution applies here. Run it against a genuine CPQ amendment before a customer-facing document depends on it |
+| 6 | Renewal / co-term | **PROVISIONAL**, same reason and same test data. `SBQQ__RenewalPrice__c` is on the subscription, so the baseline carries it |
+| 15 | Minimum commitment / shortfall | Commitment amount is a **supplied value by design** - §3, "permanently out of scope". `RATIO` and `Informational` rows give the measure and the "gap, not a charge" treatment |
+| 16 | Rebate / incentive illustration | Rebate rule is a supplied value, same clause. Partitioning and `Informational` rows give guaranteed-versus-contingent |
+| 17 | Consumption scenarios | Scenario inputs are supplied values, same clause. Partitioning and the assumptions guard are built |
 
-15, 16 and 17 are supplied values *by design* - see §3, "permanently out of scope". The others need a subscriber class or org data.
+An earlier version of this section listed **nine** cases as blocked on missing data. Six of them were not - the data was in the org the whole time.
 
 **This number must not drift upward in a close-out without a test to back the change.** It was briefly written as "sixteen of twenty" during the final pass and corrected by counting the table rather than trusting the sentence; count the rows.
 
@@ -164,7 +164,7 @@ Stated once here rather than repeated five times.
 | 01 | [Expansion contract](steps/step-01-expansion-contract.md) | **BUILT** 2026-08-28 |
 | 02 | [Allocation primitive](steps/step-02-allocation-primitive.md) | **BUILT** 2026-08-28 — weighted allocation closed by the `SCHEDULE` expander |
 | 03 | [Non-additive measures](steps/step-03-non-additive-measures.md) | **BUILT** 2026-08-28 |
-| 04 | [Comparison and enrichment sources](steps/step-04-comparison-and-enrichment.md) | **PARTIAL** 2026-08-28 — `SOURCE_QUOTE` shipped; `PRIOR_SNAPSHOT` blocked by snapshot replacement |
+| 04 | [Comparison and enrichment sources](steps/step-04-comparison-and-enrichment.md) | **BUILT** 2026-08-29 — `SOURCE_QUOTE` and `AMENDED_SUBSCRIPTION`; `PRIOR_SNAPSHOT` impossible as specified |
 | 05 | [Partitioning](steps/step-05-partitioning.md) | **BUILT** 2026-08-28 — including per-partition documents and the assumptions guard |
 | 06 | [Docs and close-out](steps/step-06-docs-and-closeout.md) | **BUILT** 2026-08-28 — the monthly migration was assessed and declined, with the reason |
 | — | [Worked examples](steps/worked-examples.md) — end-to-end config and expected rows for the four cases that are configuration, not code | **All four built and tested** 2026-08-28 |

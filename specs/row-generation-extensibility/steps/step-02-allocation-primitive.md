@@ -184,7 +184,9 @@ New test class `QuoteDocumentAllocationTest` (pure) plus additions to `QuoteDocu
 **Not built**
 
 - ~~`WEIGHTED_SOURCE` and `SCHEDULE` as configuration~~ — **closed 2026-08-28.** `QuoteDocumentScheduleExpander` supplies non-uniform weights from `Quote_Document_Schedule__mdt`, which is what those two bases were for. `Allocation_Basis__c` still accepts only `EVEN`, and that is now correct rather than a gap: the *weights* carry the shape, and `EVEN` over weighted placements is exactly the weighted allocation. A second basis constant would have been a second name for the same arithmetic.
-- Package composition (use case 12) still needs a subscriber expander: allocating a package price down to its components requires knowing which components belong to which package, which no schedule expresses. It stays *enabled, needs its own implementation*.
+- ~~Package composition (use case 12)~~ — **built 2026-08-29** as `QuoteDocumentCompositionCustomizer`. "Which components belong to which package" is `SBQQ__RequiredBy__c`, which this framework already read for bundle grouping; it needed exposing as `requiredByLineId` and nothing more.
+
+  **A finding any guide must carry:** CPQ leaves `SBQQ__ListTotal__c` at zero on a bundled component — its price lives in the parent, which is why components are excluded from totals everywhere else — so there is no relative worth on the quote to weight by and **the split is even in practice**. That is a policy a customer can disagree with, and it has to be stated in the words they will read. Measured, not assumed: the first test expected a 6,000/3,000/1,000 split from component list prices and got 3,333.33 three times.
 - The installment table (use case 3) is **built and tested** — see `QuoteDocumentScheduleTest.anInstallmentScheduleSplitsTheQuoteToTheCent`, which asserts the specification's own \$60,000 at 30/40/30.
 - `Allocation_Behaviour__c` on `Quote_Document_Column_Def__mdt`. The behaviour is currently the expander's declaration, which is the right default and covers every shipped case; a per-column override earns its field when a table needs one, not before.
 

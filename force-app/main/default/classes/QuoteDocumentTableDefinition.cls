@@ -174,11 +174,23 @@ public with sharing class QuoteDocumentTableDefinition {
         return String.isNotBlank(comparisonSourceCode);
     }
 
-    /** The configured baseline lookup, or CPQ's own revision link. */
+    /**
+     * The quote field this table's baseline is reached through.
+     *
+     * Each comparison source has its own natural one - a revision link for a
+     * quote-to-quote comparison, the Account for an amendment against live
+     * subscriptions - and an author can override it. Whichever it is, it goes
+     * through allDependencyPaths(), so the field is SELECTed and its VALUE is
+     * hashed: re-pointing a quote at a different source or a different account
+     * is a different baseline, and nothing else in the fingerprint would see it.
+     */
     public String comparisonSourceFieldOrDefault() {
-        return String.isBlank(comparisonSourceField)
-            ? QuoteDocumentSourceQuoteComparison.DEFAULT_SOURCE_FIELD
-            : comparisonSourceField;
+        if (String.isNotBlank(comparisonSourceField)) {
+            return comparisonSourceField;
+        }
+        return QuoteDocumentAmendmentComparison.CODE.equals(comparisonSourceCode)
+            ? 'SBQQ__Account__c'
+            : QuoteDocumentSourceQuoteComparison.DEFAULT_SOURCE_FIELD;
     }
 
     public String cachePolicy;

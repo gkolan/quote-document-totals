@@ -9,6 +9,7 @@ public with sharing class QuoteDocumentComparisonRegistry {
     public static QuoteDocumentComparisonSource resolve(String sourceCode) {
         switch on sourceCode {
             when 'SOURCE_QUOTE' { return new QuoteDocumentSourceQuoteComparison(); }
+            when 'AMENDED_SUBSCRIPTION' { return new QuoteDocumentAmendmentComparison(); }
             when else {
                 throw new QuoteDocumentGenerator.QuoteDocumentException(
                     'Unknown comparison source code: ' + sourceCode + '. Register the class in '

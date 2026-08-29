@@ -38,6 +38,20 @@ public with sharing class QuoteDocumentLine {
     public Integer optionLevel;
     public String packageName;
 
+    /** The bundle parent's own quote line, so a composition table can find it. */
+    public Id requiredByLineId;
+
+    /**
+     * What makes this line's row key unique within its group.
+     *
+     * The quote line Id for every ordinary line - so keys are byte-identical to
+     * what they always were - and the SOURCE record's Id for a baseline line
+     * built from something that is not a quote line at all. Without it, two
+     * products removed from the same group would both key on a null quote line
+     * and collide.
+     */
+    public String rowIdentity;
+
     // Inclusion. Whether a line is shown is intrinsic; whether it counts also
     // depends on what the table is for - see countsIn().
     public Boolean isDisplayed;
@@ -94,6 +108,8 @@ public with sharing class QuoteDocumentLine {
         isOptional = line.SBQQ__Optional__c == true;
         optionLevel = line.SBQQ__OptionLevel__c == null ? 0 : Integer.valueOf(line.SBQQ__OptionLevel__c);
         packageName = line.SBQQ__RequiredBy__r == null ? null : line.SBQQ__RequiredBy__r.SBQQ__ProductName__c;
+        requiredByLineId = line.SBQQ__RequiredBy__c;
+        rowIdentity = String.valueOf(line.Id);
 
         amountList = zero(line.SBQQ__ListTotal__c);
         amountRegular = zero(line.SBQQ__RegularTotal__c);
@@ -107,6 +123,52 @@ public with sharing class QuoteDocumentLine {
 
         isDisplayed = true;
         classify(line);
+    }
+
+    /**
+     * A baseline line built from an existing subscription rather than a quoted
+     * one, for a before-and-after table.
+     *
+     * Only what a comparison reads is populated: identity, the amounts, and the
+     * window. Bundle context, option level and the change measures are left at
+     * their defaults, because a subscription is a position the customer holds -
+     * it has no place in a quote's bundle structure and no transaction type of
+     * its own until this amendment gives it one.
+     */
+    public static QuoteDocumentLine fromSubscription(SBQQ__Subscription__c subscription) {
+        QuoteDocumentLine line = new QuoteDocumentLine();
+
+        // NOT quoteLineId: that becomes Quote_Line__c on the row, and a
+        // subscription Id in a quote-line lookup is rejected at insert. A
+        // baseline position has no quote line, and saying so is correct.
+        line.rowIdentity = String.valueOf(subscription.Id);
+        line.productId = subscription.SBQQ__Product__c;
+        line.productName = subscription.SBQQ__ProductName__c;
+        line.chargeType = subscription.SBQQ__ChargeType__c;
+        line.quantity = zero(subscription.SBQQ__Quantity__c);
+        line.subscriptionStartDate = subscription.SBQQ__SubscriptionStartDate__c;
+        line.subscriptionEndDate = subscription.SBQQ__SubscriptionEndDate__c;
+
+        // A subscription stores a unit price; the comparison works in totals,
+        // as every other line in this framework does.
+        Decimal net = zero(subscription.SBQQ__NetPrice__c) * line.quantity;
+        line.amountList = net;
+        line.amountRegular = net;
+        line.amountNet = net;
+        line.amountCustomer = net;
+        line.amountFinal = net;
+
+        return line;
+    }
+
+    /** Only for fromSubscription, which populates what it needs explicitly. */
+    private QuoteDocumentLine() {
+        isPackage = false;
+        isBundledComponent = false;
+        isOptional = false;
+        optionLevel = 0;
+        isDisplayed = true;
+        sequence = 0;
     }
 
     /**
@@ -347,6 +409,8 @@ public with sharing class QuoteDocumentLine {
         isOptional = source.isOptional;
         optionLevel = source.optionLevel;
         packageName = source.packageName;
+        requiredByLineId = source.requiredByLineId;
+        rowIdentity = source.rowIdentity;
         isDisplayed = source.isDisplayed;
         amountList = source.amountList;
         amountRegular = source.amountRegular;

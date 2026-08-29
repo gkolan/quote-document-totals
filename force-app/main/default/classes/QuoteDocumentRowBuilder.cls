@@ -301,7 +301,10 @@ public with sharing class QuoteDocumentRowBuilder {
     private void emitDetail(QuoteDocumentLine line, GroupNode g) {
         Integer level = line.indentUnder(g.level, g.isBundleLevel);
 
-        Quote_Document_Row__c row = newRow('Detail', level, 'DETAIL:' + g.groupKey + ':' + line.quoteLineId,
+        // rowIdentity is the quote line Id for every ordinary line, so this key
+        // is unchanged; it differs only for a baseline line that has no quote
+        // line of its own.
+        Quote_Document_Row__c row = newRow('Detail', level, 'DETAIL:' + g.groupKey + ':' + line.rowIdentity,
                                            line.productName);
         row.Quote_Line__c = line.quoteLineId;
         row.Group_Dimension__c = g.dimension;

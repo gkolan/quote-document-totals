@@ -1,6 +1,6 @@
 # Step 04 — Comparison and enrichment sources
 
-**Status: PARTIAL** — see close-out
+**Status: BUILT** — `SOURCE_QUOTE` and `AMENDED_SUBSCRIPTION` ship; `PRIOR_SNAPSHOT` is impossible as specified, see close-out
 **Blocked by:** [step 01](step-01-expansion-contract.md)
 **Blocks:** 05 (partially — scenario and rebate cases need enrichment)
 **Use cases:** 5, 6, 7, 14, 15, 16, 17, 18 ([`spec.md`](../spec.md) §3)
@@ -147,8 +147,12 @@ New test class `QuoteDocumentComparisonTest`: `priorSnapshotProducesBeforeAfterD
 ### Not built
 
 - `PRIOR_SNAPSHOT` — blocked, above.
-- `AMENDED_SUBSCRIPTION` — this org holds no amendment or renewal quotes, which [`QuoteDocumentLine.classify`](../../../force-app/main/default/classes/QuoteDocumentLine.cls) already flags as provisional for the same reason. Building an untestable source against unverified semantics would produce confident output nobody has checked.
-- §3.7's tier expansion and part-number mapping — both need an enrichment source no org here has.
+- ~~`AMENDED_SUBSCRIPTION`~~ — **built 2026-08-29** as `QuoteDocumentAmendmentComparison`. The earlier "no org here has the data" was **wrong**: `SBQQ__Subscription__c` exists and carries product, quantity, net price, charge type, dates and `SBQQ__RenewalPrice__c`. It stays **PROVISIONAL** — tested against constructed subscriptions, not a real CPQ amendment — and its class header says so.
+- ~~§3.7's tier expansion and part-number mapping~~ — **both built 2026-08-29.** Tiers read CPQ's own `SBQQ__QuoteLineConsumptionSchedule__c` / `SBQQ__QuoteLineConsumptionRate__c` and are *consumed, never recomputed*; part numbers come from a new `Quote_Document_Product_Alias__mdt`.
+
+**A bug in shipped code, found by building these.** `QuoteDocumentLine.fromSubscription` first set `quoteLineId` from the subscription. That reached `Quote_Line__c` on the row and the platform rejected it at insert — a quote-line lookup cannot hold a subscription Id. Fixed by separating `rowIdentity` (what makes a row key unique within its group) from `quoteLineId` (a real quote line, or nothing). Ordinary lines set both to the same value, so every existing row key is byte-identical.
+
+**The tier design decision worth keeping.** Tier rows explain an amount; they do not recalculate it. The bands and rates are used as *weights* and the line's own quoted total is what gets divided — so the breakdown foots to what the customer pays even where CPQ applied a discount or override this expander knows nothing about. A breakdown that footed to a recomputed price would be a second opinion about the deal.
 - The `CHANGE`-table agreement finding (§3.5): not established, because no quote in this org exercises both tables meaningfully.
 
 ### Use-case status after this step

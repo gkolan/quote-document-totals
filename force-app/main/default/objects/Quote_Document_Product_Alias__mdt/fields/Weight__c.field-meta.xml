@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Weight__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>This part number RELATIVE share of the quoted line - of both the money and the quantity. Three part numbers weighted 2/1/1 split 100 units into 50/25/25. Weights are proportions, not percentages.</inlineHelpText>
+    <label>Weight</label>
+    <precision>9</precision>
+    <required>false</required>
+    <scale>4</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

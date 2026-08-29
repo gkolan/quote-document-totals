@@ -314,6 +314,46 @@ on different terms. Where the key is genuinely ambiguous the framework refuses
 rather than guessing, because the difference column is the number a customer
 trusts most.
 
+## Recipe 7 — allocate a package price to what is inside it
+
+Set `Row_Customizer_Code__c = PACKAGE_COMPOSITION`, `Line_Filter__c = ALL` (any
+other filter removes the components), and group by `BUNDLE`. The parent keeps
+its printed price and stops counting; each component starts counting and carries
+a share, so the package is totalled exactly once.
+
+**The share is even.** CPQ leaves bundled components at zero list total, so
+there is nothing on the quote to weight by. Say so in the guide — "Training:
+$3,333.34" looks exactly like a price and is not one; it is an allocation of a
+negotiated package price for display, and says nothing about cost or what the
+component would sell for alone.
+
+## Recipe 8 — print customer part numbers instead of yours
+
+Set `Expander_Code__c = PRODUCT_ALIAS` and author
+`Quote_Document_Product_Alias__mdt` rows: product code, the customer's part
+number, a relative weight, an order. One quoted assembly becomes one row per
+part number, with money **and quantity** divided among them — three part numbers
+are three different physical things.
+
+An unmapped product **fails generation**. It does not fall back to your own
+product code: a document that silently mixes the two is one the customer's
+purchasing system rejects, far away from the cause.
+
+## Recipe 9 — explain a usage price as its tiers
+
+Set `Expander_Code__c = CONSUMPTION_TIER`. The bands and rates come from CPQ's
+own `SBQQ__QuoteLineConsumptionRate__c` records.
+
+**They are consumed, never recomputed.** The bands are used as weights and the
+line's own quoted total is divided among them, so the breakdown foots to what
+the customer actually pays even where a discount or override applied. A
+breakdown that footed to a recomputed price would be a second opinion about the
+deal, and the document would be the thing that was wrong.
+
+A line with no consumption schedule fails rather than printing as one
+unexplained row — a table mixing explained and unexplained lines invites the
+reader to assume the unexplained ones have a single tier.
+
 ## Recipe 6 — separate tables per scenario or entity
 
 Set `Partition_Dimension__c` to any dimension a grouping accepts, and
@@ -395,6 +435,10 @@ Every code below is a stable string. Grep for it; do not parse the message.
 | `SCHEDULE_CODE_UNDECLARED` / `SCHEDULE_NOT_FOUND` | A `SCHEDULE` table names no schedule, or one with no active rows |
 | `SCHEDULE_WEIGHTS_INVALID` | Every weight in a schedule is zero — there is nowhere for the money to land |
 | `SCHEDULE_LABEL_ARGUMENT_MISSING` | A schedule section uses a parameterised dictionary key with no `Label_Arg_1__c`, so every section would print and key identically |
+| `COMPOSITION_FILTER_UNSUPPORTED` | A package-composition table uses a filter that removes the components it exists to print |
+| `COMPOSITION_PACKAGE_HAS_NO_COMPONENTS` / `COMPOSITION_COMPONENT_HAS_NO_PACKAGE` | A composition table with nothing inside its packages, or a component whose parent is absent |
+| `ALIAS_PRODUCT_UNMAPPED` / `ALIAS_SET_NOT_FOUND` | A product with no customer part number, or no mapping records at all. It never falls back to the vendor code |
+| `TIER_SCHEDULE_MISSING` / `TIER_RATES_MISSING` / `TIER_BANDS_UNPRICED` | A usage line with no consumption schedule, a quantity outside every band, or bands that multiply out to nothing |
 
 ### Retrieval
 
