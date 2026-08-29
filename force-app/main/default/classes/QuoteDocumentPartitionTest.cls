@@ -97,6 +97,17 @@ private class QuoteDocumentPartitionTest {
         );
     }
 
+    /** Payload sections are tables AND narrative blocks; these assertions mean tables. */
+    private static List<QuoteDocumentPayload.Section> tableSections(QuoteDocumentPayload payload) {
+        List<QuoteDocumentPayload.Section> sections = new List<QuoteDocumentPayload.Section>();
+        for (QuoteDocumentPayload.Section section : payload.sections) {
+            if ('Table'.equals(section.sectionType)) {
+                sections.add(section);
+            }
+        }
+        return sections;
+    }
+
     private static List<Quote_Document_Table__c> tables() {
         return [
             SELECT Id, Table_Code__c, Table_Key__c, Display_Title__c, Display_Order__c,
@@ -358,6 +369,133 @@ private class QuoteDocumentPartitionTest {
         } catch (QuoteDocumentGenerator.QuoteDocumentException e) {
             Assert.isTrue(e.getMessage().contains('change document'), e.getMessage());
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // One document per partition
+    // -----------------------------------------------------------------------
+
+    /**
+     * The purchasing-entity case: one negotiated quote, a separate document for
+     * each party, each showing only its own products and its own payable total.
+     *
+     * A VIEW of one snapshot rather than a second snapshot - the whole payload
+     * is retrieved and verified first, so both documents provably came from the
+     * same generation.
+     */
+    @IsTest
+    static void aPartitionCanBeRetrievedAsItsOwnDocument() {
+        use(partitioned(QuoteDocumentTableDefinition.CROSS_PARTITION_SUM));
+
+        Test.startTest();
+        List<QuoteDocumentGenerator.GenerationOutcome> outcomes =
+            QuoteDocumentGenerator.generate(new Set<Id>{ quoteId() });
+        Test.stopTest();
+
+        QuoteDocumentGenerator.GenerationOutcome outcome = outcomes[0];
+
+        QuoteDocumentPayload whole = QuoteDocumentRenderService.getPayload(
+            quoteId(), outcome.requestId, outcome.fingerprint
+        );
+        QuoteDocumentPayload hardware = QuoteDocumentRenderService.getPayloadForPartition(
+            quoteId(), outcome.requestId, outcome.fingerprint, 'Hardware'
+        );
+
+        Assert.areEqual(2, tableSections(whole).size(), 'The whole quote carries both partitions.');
+
+        List<QuoteDocumentPayload.Section> theirs = tableSections(hardware);
+        Assert.areEqual(1, theirs.size(), 'One party sees one table.');
+        Assert.areEqual('Hardware', theirs[0].partitionValue, 'And it is theirs.');
+        Assert.areEqual(QuoteDocumentTableDefinition.CROSS_PARTITION_SUM, theirs[0].crossPartitionTotal,
+                        'The section states whether a spanning total exists, so a renderer never guesses.');
+
+        // Narrative blocks belong to nobody exclusively - an introduction or a
+        // terms block is in every party's copy, so filtering must not drop them.
+        Assert.areEqual(
+            whole.sections.size() - tableSections(whole).size(),
+            hardware.sections.size() - theirs.size(),
+            'Every unpartitioned section survives the filter.'
+        );
+    }
+
+    /**
+     * Returning the unpartitioned remainder would hand a signer a document with
+     * their own products missing and nothing to say so.
+     */
+    @IsTest
+    static void anUnknownPartitionFailsRatherThanReturningARemainder() {
+        use(partitioned(QuoteDocumentTableDefinition.CROSS_PARTITION_SUM));
+
+        Test.startTest();
+        List<QuoteDocumentGenerator.GenerationOutcome> outcomes =
+            QuoteDocumentGenerator.generate(new Set<Id>{ quoteId() });
+        Test.stopTest();
+
+        try {
+            QuoteDocumentRenderService.getPayloadForPartition(
+                quoteId(), outcomes[0].requestId, outcomes[0].fingerprint, 'Nonexistent Entity'
+            );
+            Assert.fail('A document missing its whole point must not be produced.');
+        } catch (Exception e) {
+            Assert.isTrue(e.getMessage().contains('PARTITION_NOT_FOUND'), e.getMessage());
+        }
+    }
+
+    /** No selector means the whole quote, exactly as before. */
+    @IsTest
+    static void anUnpartitionedRetrievalIsUnchanged() {
+        use(partitioned(QuoteDocumentTableDefinition.CROSS_PARTITION_SUM));
+
+        Test.startTest();
+        List<QuoteDocumentGenerator.GenerationOutcome> outcomes =
+            QuoteDocumentGenerator.generate(new Set<Id>{ quoteId() });
+        Test.stopTest();
+
+        QuoteDocumentPayload payload = QuoteDocumentRenderService.getPayloadForPartition(
+            quoteId(), outcomes[0].requestId, outcomes[0].fingerprint, null
+        );
+        Assert.areEqual(2, tableSections(payload).size(), 'A blank selector is the whole document.');
+    }
+
+    // -----------------------------------------------------------------------
+    // Estimates cannot print without their assumptions
+    // -----------------------------------------------------------------------
+
+    /**
+     * The guard exists for the case where the block was deactivated, or has no
+     * wording in the resolved locale, while the table that depends on it kept
+     * generating happily. The number would print and the caveat would not.
+     */
+    @IsTest
+    static void aTableRequiringAssumptionsWillNotPublishWithoutThem() {
+        QuoteDocumentTableDefinition definition =
+            partitioned(QuoteDocumentTableDefinition.CROSS_PARTITION_NONE);
+        definition.assumptionsBlockCode = 'CONSUMPTION_ASSUMPTIONS_THAT_DO_NOT_EXIST';
+        use(definition);
+
+        Test.startTest();
+        try {
+            QuoteDocumentGenerator.generate(new Set<Id>{ quoteId() });
+            Assert.fail('An estimate without its assumptions must not reach a customer.');
+        } catch (Exception e) {
+            Assert.isTrue(e.getMessage().contains('SCENARIO_ASSUMPTIONS_MISSING'),
+                          'Coded failure: ' + e.getMessage());
+            Assert.isTrue(e.getMessage().contains('CONSUMPTION_ASSUMPTIONS_THAT_DO_NOT_EXIST'),
+                          'And it names the block that is missing.');
+        }
+        Test.stopTest();
+    }
+
+    /** A table that requires nothing is unaffected, which is every table today. */
+    @IsTest
+    static void aTableRequiringNoAssumptionsIsUnaffected() {
+        use(partitioned(QuoteDocumentTableDefinition.CROSS_PARTITION_SUM));
+
+        Test.startTest();
+        QuoteDocumentGenerator.generate(new Set<Id>{ quoteId() });
+        Test.stopTest();
+
+        Assert.areEqual(2, tables().size(), 'Generation is untouched when nothing is required.');
     }
 
     @IsTest

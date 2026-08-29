@@ -50,6 +50,23 @@ public class QuoteDocumentPayload {
     public List<Section> sections = new List<Section>();
 
     public class Section {
+
+        /**
+         * Which partition of its definition this section is - the scenario,
+         * entity or department it covers - or null on an ordinary table.
+         *
+         * Carried as its own field rather than left inside the table key
+         * because a composite key is an identity, not an API: a renderer
+         * filtering to one entity's document should not have to parse one.
+         */
+        public String partitionValue;
+
+        /**
+         * Whether a total across the partitions of this section's definition
+         * means anything: NONE or SUM, and null when it is not partitioned.
+         * A renderer must not invent a spanning total where this says NONE.
+         */
+        public String crossPartitionTotal;
         /** 'Table' or 'Block'. A renderer switches styling on this, nothing more. */
         public String sectionType;
         public String code;

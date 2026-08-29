@@ -151,6 +151,14 @@ public with sharing class QuoteDocumentTableDefinition {
      * against its own share, with nothing spanning them unless the author says
      * a spanning total is meaningful.
      */
+    /**
+     * A narrative block this table cannot be published without. See
+     * QuoteDocumentGenerator.assertAssumptionsPresent - an estimate printed
+     * without its assumptions is a number a reader will act on and a caveat
+     * nobody attached.
+     */
+    public String assumptionsBlockCode;
+
     public String partitionDimension;
     public String crossPartitionTotal;
 
@@ -189,6 +197,8 @@ public with sharing class QuoteDocumentTableDefinition {
     public String expanderVersion;
     public Integer periodMonths;
     public String periodOneTimePlacement;
+    public String scheduleCode;
+    public Boolean scheduleDividesQuantity = false;
     public String allocationBasis;
     public Integer allocationScale;
     public Boolean suppressAmounts = false;
@@ -242,6 +252,7 @@ public with sharing class QuoteDocumentTableDefinition {
         introText = record.Intro_Text__c;
         footerText = record.Footer_Text__c;
         cachePolicy = record.Cache_Policy__c;
+        assumptionsBlockCode = record.Assumptions_Block_Code__c;
         partitionDimension = record.Partition_Dimension__c;
         crossPartitionTotal = record.Cross_Partition_Total__c;
         comparisonSourceCode = record.Comparison_Source_Code__c;
@@ -252,6 +263,8 @@ public with sharing class QuoteDocumentTableDefinition {
         expanderVersion = record.Expander_Version__c;
         periodMonths = record.Period_Months__c == null ? null : Integer.valueOf(record.Period_Months__c);
         periodOneTimePlacement = record.Period_One_Time_Placement__c;
+        scheduleCode = record.Schedule_Code__c;
+        scheduleDividesQuantity = record.Schedule_Divides_Quantity__c == true;
         allocationBasis = record.Allocation_Basis__c;
         allocationScale = record.Allocation_Scale__c == null
             ? null : Integer.valueOf(record.Allocation_Scale__c);
@@ -431,6 +444,15 @@ public with sharing class QuoteDocumentTableDefinition {
                 'Table ' + tableCode + ' both expands its lines and shows section totals. A section total '
                 + 'cuts across every bucket at once, which has no defined meaning on an expanded table. '
                 + 'Turn off Show_Section_Totals__c, or drop the expansion.'
+            );
+        }
+
+        if (QuoteDocumentScheduleExpander.CODE.equals(expanderCode)
+            && String.isBlank(scheduleCode)) {
+            throw new QuoteDocumentGenerator.QuoteDocumentException(
+                'Table ' + tableCode + ' uses the SCHEDULE expander but names no Schedule_Code__c. Its '
+                + 'sections and their weights are authored in Quote_Document_Schedule__mdt - there is '
+                + 'nothing on a quote that says "30% at signing".'
             );
         }
 
@@ -615,9 +637,10 @@ public with sharing class QuoteDocumentTableDefinition {
                    Display_Title__c, Display_Subtitle__c, Intro_Text__c, Footer_Text__c,
                    Expander_Code__c, Expander_Version__c, Period_Months__c,
                    Period_One_Time_Placement__c, Allocation_Basis__c, Allocation_Scale__c,
+                   Schedule_Code__c, Schedule_Divides_Quantity__c,
                    Suppress_Amounts__c,
                    Comparison_Source_Code__c, Comparison_Source_Version__c, Comparison_Source_Field__c,
-                   Partition_Dimension__c, Cross_Partition_Total__c
+                   Partition_Dimension__c, Cross_Partition_Total__c, Assumptions_Block_Code__c
             FROM Quote_Document_Table_Def__mdt
             WHERE Is_Active__c = true
             ORDER BY Display_Order__c

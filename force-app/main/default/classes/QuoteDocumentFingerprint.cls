@@ -154,6 +154,8 @@ public with sharing class QuoteDocumentFingerprint {
             parts.add(encodeString(definition.expanderVersion));
             parts.add(encodeDecimal(definition.periodMonths));
             parts.add(encodeString(definition.periodOneTimePlacement));
+            parts.add(encodeString(definition.scheduleCode));
+            parts.add(encodeBoolean(definition.scheduleDividesQuantity));
             parts.add(encodeString(definition.allocationBasis));
             parts.add(encodeDecimal(definition.allocationScale));
             parts.add(encodeBoolean(definition.suppressAmounts));
@@ -169,6 +171,7 @@ public with sharing class QuoteDocumentFingerprint {
             // Neither is visible in any quote field.
             parts.add(encodeString(definition.partitionDimension));
             parts.add(encodeString(definition.crossPartitionTotal));
+            parts.add(encodeString(definition.assumptionsBlockCode));
             for (String path : definition.contributorDependencyPaths) {
                 parts.add(encodeString(path));
             }

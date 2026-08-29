@@ -217,7 +217,23 @@ Then add one `Quote_Document_Grouping__mdt` record with `Dimension__c = EXPANSIO
 Put it at level 1 for period-then-product, or level 2 for product-then-period; both
 work, and that is the point of the design.
 
-For a different axis, implement `QuoteDocumentLineExpander` and register it:
+**For milestones, departments, phases or promotional periods, use `SCHEDULE`
+instead** — also no code. The sections and their relative weights are authored
+as `Quote_Document_Schedule__mdt` rows, and the definition names the schedule:
+
+| Field | Value |
+|---|---|
+| `Expander_Code__c` | `SCHEDULE` |
+| `Schedule_Code__c` | the code your schedule rows share |
+| `Schedule_Divides_Quantity__c` | tick for a department or delivery split (different units per section); leave clear for a payment schedule (the same products covered by every instalment) |
+
+Each schedule row carries a `Bucket_Code__c`, a `Label_Key__c` resolved from the
+dictionary, an optional `Label_Arg_1__c` for a parameterised key, a `Weight__c`,
+and a `Display_Order__c`. Weights are **relative**: 30/40/30 and 3/4/3 split
+identically, and a weight of `0` is a genuinely free section that receives
+exactly zero and never the rounding residual.
+
+For a different axis again, implement `QuoteDocumentLineExpander` and register it:
 
 ```apex
 public with sharing class MyDeliveryExpander implements QuoteDocumentLineExpander {
@@ -374,6 +390,11 @@ Every code below is a stable string. Grep for it; do not parse the message.
 | `COMPARISON_MEASURE_SET_UNSUPPORTED` | A comparison on the price waterfall. Every difference would be silently zero |
 | `ENRICHMENT_SOURCE_MISSING` | The baseline could not be read, or the source lookup is blank. An empty baseline prints "everything is new" — a confident statement built on a missing input |
 | `PARTITION_TOTAL_UNRECONCILED` | A `SUM` partition set does not add to the quote. A line reached no partition, or reached two |
+| `PARTITION_NOT_FOUND` | A partition was requested from a snapshot that has none by that name. Returning the remainder would hand a signer a document with their own products missing |
+| `SCENARIO_ASSUMPTIONS_MISSING` | A table that states estimates requires a narrative block that no active content supplies for this locale |
+| `SCHEDULE_CODE_UNDECLARED` / `SCHEDULE_NOT_FOUND` | A `SCHEDULE` table names no schedule, or one with no active rows |
+| `SCHEDULE_WEIGHTS_INVALID` | Every weight in a schedule is zero — there is nowhere for the money to land |
+| `SCHEDULE_LABEL_ARGUMENT_MISSING` | A schedule section uses a parameterised dictionary key with no `Label_Arg_1__c`, so every section would print and key identically |
 
 ### Retrieval
 

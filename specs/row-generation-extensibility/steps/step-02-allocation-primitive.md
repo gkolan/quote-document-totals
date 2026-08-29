@@ -183,8 +183,9 @@ New test class `QuoteDocumentAllocationTest` (pure) plus additions to `QuoteDocu
 
 **Not built**
 
-- `WEIGHTED_SOURCE` and `SCHEDULE` as configuration. The **primitive already takes arbitrary weights** and `placements()` already carries them, so the mechanism is complete - what is missing is a shipped expander that produces non-uniform weights, and `Allocation_Basis__c` therefore accepts only `EVEN` and refuses anything else by name rather than accepting a value that would silently behave as `EVEN`.
-- Package composition (use case 12) and the installment table (use case 3). Both need a subscriber expander; neither has one, so both stay *enabled, needs its own implementation* in [`spec.md`](../spec.md) §3.1 rather than being claimed.
+- ~~`WEIGHTED_SOURCE` and `SCHEDULE` as configuration~~ — **closed 2026-08-28.** `QuoteDocumentScheduleExpander` supplies non-uniform weights from `Quote_Document_Schedule__mdt`, which is what those two bases were for. `Allocation_Basis__c` still accepts only `EVEN`, and that is now correct rather than a gap: the *weights* carry the shape, and `EVEN` over weighted placements is exactly the weighted allocation. A second basis constant would have been a second name for the same arithmetic.
+- Package composition (use case 12) still needs a subscriber expander: allocating a package price down to its components requires knowing which components belong to which package, which no schedule expresses. It stays *enabled, needs its own implementation*.
+- The installment table (use case 3) is **built and tested** — see `QuoteDocumentScheduleTest.anInstallmentScheduleSplitsTheQuoteToTheCent`, which asserts the specification's own \$60,000 at 30/40/30.
 - `Allocation_Behaviour__c` on `Quote_Document_Column_Def__mdt`. The behaviour is currently the expander's declaration, which is the right default and covers every shipped case; a per-column override earns its field when a table needs one, not before.
 
 - **Test evidence:** `QuoteDocumentAllocationTest` 16/16, `QuoteDocumentExpansionTest` 18/18. Full suite 434 ran, 429 passed, 5 pre-existing failures.

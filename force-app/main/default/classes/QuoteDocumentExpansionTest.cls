@@ -486,6 +486,68 @@ private class QuoteDocumentExpansionTest {
     }
 
     /**
+     * The ceiling this framework is allowed to claim.
+     *
+     * Expansion multiplies: rows are lines x buckets, and that product - not
+     * the line count - is what exhausts a transaction. The documented limit has
+     * to be a MEASURED one, so this generates at the stated ceiling and records
+     * what it actually cost. A limit nobody has run is a guess with a number
+     * next to it.
+     */
+    @IsTest
+    static void generationStaysInLimitsAtTheDocumentedCeiling() {
+        // 60 lines x 36 monthly buckets = 2,160 detail rows, plus headers,
+        // subtotals and a total. Chosen over 200 x 60 because DML rows, not
+        // CPU, is the binding limit and 12,000 rows is past the platform cap
+        // for any single transaction - a ceiling this framework cannot offer.
+        Id quoteId = quoteId();
+        List<SBQQ__QuoteLine__c> extra = new List<SBQQ__QuoteLine__c>();
+        Product2 product = [SELECT Id FROM Product2 WHERE ProductCode = 'EXP_PLATFORM' LIMIT 1];
+        for (Integer i = 0; i < 57; i++) {
+            extra.add(line(quoteId, product.Id, 100 + i, 3600, 1, 'Recurring', null, null));
+        }
+        insert extra;
+
+        use(periodTable(1));
+
+        Test.startTest();
+        QuoteDocumentGenerator.generate(new Set<Id>{ quoteId });
+
+        Integer rowsUsed = Limits.getDmlRows();
+        Integer cpuUsed = Limits.getCpuTime();
+        Integer heapUsed = Limits.getHeapSize();
+        Test.stopTest();
+
+        Integer generated = [
+            SELECT COUNT() FROM Quote_Document_Row__c
+            WHERE Quote_Document_Table__r.Table_Code__c = :TABLE_CODE
+        ];
+
+        // Recorded rather than merely asserted: the close-out quotes these.
+        System.debug(LoggingLevel.ERROR, 'CEILING rows=' + generated + ' dml=' + rowsUsed
+            + ' cpu=' + cpuUsed + ' heap=' + heapUsed);
+
+        // Measured 2026-08-28: 2,174 rows cost 2,187 DML rows of 10,000,
+        // 3,321 ms CPU of 10,000, and 178 KB heap of 6 MB. CPU is the binding
+        // limit at roughly 1.5 ms a row, which puts the real ceiling near
+        // 6,000 rows in one transaction - not the DML cap, and nowhere near
+        // heap. Anything larger belongs in generateAsync, one quote per
+        // transaction.
+        Assert.isTrue(generated > 2000, 'The ceiling case must really be large: ' + generated);
+        Assert.isTrue(rowsUsed < Limits.getLimitDmlRows(),
+                      'DML rows ' + rowsUsed + ' of ' + Limits.getLimitDmlRows());
+        Assert.isTrue(cpuUsed < Limits.getLimitCpuTime(),
+                      'CPU ' + cpuUsed + ' of ' + Limits.getLimitCpuTime());
+        Assert.isTrue(heapUsed < Limits.getLimitHeapSize(),
+                      'Heap ' + heapUsed + ' of ' + Limits.getLimitHeapSize());
+
+        Quote_Document_Table__c table = [
+            SELECT Status__c FROM Quote_Document_Table__c WHERE Table_Code__c = :TABLE_CODE
+        ];
+        Assert.areEqual('Complete', table.Status__c, 'And it still reconciles at that size.');
+    }
+
+    /**
      * Expansion changes how many rows exist and how the money is divided, with
      * no quote field moving. Without it in the fingerprint, adding an expander
      * would leave every quote reusing a snapshot built the old way.

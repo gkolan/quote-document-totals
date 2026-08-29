@@ -33,6 +33,60 @@ public with sharing class QuoteDocumentRenderService {
     // Entry points
     // -----------------------------------------------------------------------
 
+    /**
+     * One partition's view of the snapshot: the same payload with only the
+     * sections belonging to `partitionValue`, plus every unpartitioned section.
+     *
+     * This is how one negotiated quote produces a document per purchasing
+     * entity. It is deliberately a VIEW and not a second snapshot: the whole
+     * payload is retrieved and verified exactly as usual - same request Id,
+     * same fingerprint, same integrity check over the whole quote - and only
+     * then filtered. Generating per entity instead would give one quote
+     * several snapshots that can drift apart, and the atomicity invariant is
+     * worth more than the convenience.
+     *
+     * Unpartitioned sections are kept because they belong to nobody
+     * exclusively: an introduction, a terms block or a whole-quote summary
+     * belongs in every entity's copy.
+     */
+    public static QuoteDocumentPayload getPayloadForPartition(
+        Id quoteId, String expectedRequestId, String expectedFingerprint, String partitionValue
+    ) {
+        QuoteDocumentPayload payload = getPayload(quoteId, expectedRequestId, expectedFingerprint);
+
+        if (String.isBlank(partitionValue)) {
+            return payload;
+        }
+
+        List<QuoteDocumentPayload.Section> kept = new List<QuoteDocumentPayload.Section>();
+        Boolean matchedAny = false;
+
+        for (QuoteDocumentPayload.Section section : payload.sections) {
+            if (String.isBlank(section.partitionValue)) {
+                kept.add(section);
+                continue;
+            }
+            if (partitionValue.equals(section.partitionValue)) {
+                kept.add(section);
+                matchedAny = true;
+            }
+        }
+
+        // Silently returning the unpartitioned remainder would hand a signer a
+        // document with their own products missing and nothing to say so.
+        if (!matchedAny) {
+            throw QuoteDocumentContributorError.build(
+                'PARTITION_NOT_FOUND',
+                'This snapshot has no partition "' + partitionValue + '". Returning what is left would '
+                    + 'produce a document whose entire point - one party own products - is absent, with '
+                    + 'nothing to indicate the omission.'
+            );
+        }
+
+        payload.sections = kept;
+        return payload;
+    }
+
     public static QuoteDocumentPayload getPayload(
         Id quoteId, String expectedRequestId, String expectedFingerprint
     ) {
@@ -97,6 +151,17 @@ public with sharing class QuoteDocumentRenderService {
         Map<Id, String> actualHashByQuote = QuoteDocumentPayloadHash.computeAll(quoteIds);
         Map<Id, String> integrityFailureByQuote = new Map<Id, String>();
 
+        // A column bound to a field that does not exist fails the quotes whose
+        // tables carry it, and leaves every other request in the batch alone.
+        for (Id quoteId : tablesByQuote.keySet()) {
+            for (Quote_Document_Table__c table : tablesByQuote.get(quoteId)) {
+                if (badColumnByTable.containsKey(table.Id)) {
+                    integrityFailureByQuote.put(quoteId, badColumnByTable.get(table.Id));
+                    break;
+                }
+            }
+        }
+
         for (QuoteDocumentPayload.PayloadRequest request : requests) {
             results.add(build(
                 request, quotes, tablesByQuote, columnsByTable, rowsByTable, blocksByQuote,
@@ -122,6 +187,14 @@ public with sharing class QuoteDocumentRenderService {
      * Bind variable `quoteIds` is resolved by the caller's scope.
      */
     @TestVisible
+    /**
+     * Tables whose column binding names a field that does not exist, with the
+     * message explaining it. Populated by rowsFor and read by getPayloads, which
+     * turns each entry into a failure for the quotes that own those tables -
+     * and only those quotes.
+     */
+    private static final Map<Id, String> badColumnByTable = new Map<Id, String>();
+
     private static String quoteSoql() {
         String currencyField = UserInfo.isMultiCurrencyOrganization() ? ', CurrencyIsoCode' : '';
 
@@ -197,7 +270,8 @@ public with sharing class QuoteDocumentRenderService {
         }
         for (Quote_Document_Table__c table : [
             SELECT Id, Quote__c, Table_Code__c, Display_Title__c, Display_Subtitle__c, Intro_Text__c,
-                   Footer_Text__c, Is_Displayed__c, Display_Order__c, Locale__c, Status__c, Row_Count__c
+                   Footer_Text__c, Is_Displayed__c, Display_Order__c, Locale__c, Status__c, Row_Count__c,
+                   Partition_Value__c, Cross_Partition_Total__c
             FROM Quote_Document_Table__c
             WHERE Quote__c IN :quoteIds
             ORDER BY Display_Order__c, Table_Code__c
@@ -269,6 +343,7 @@ public with sharing class QuoteDocumentRenderService {
         Set<String> fields = new Set<String>(BASE_ROW_FIELDS);
         Map<String, SObjectField> rowFields =
             Quote_Document_Row__c.SObjectType.getDescribe().fields.getMap();
+        badColumnByTable.clear();
 
         for (List<Quote_Document_Column__c> columns : columnsByTable.values()) {
             for (Quote_Document_Column__c column : columns) {
@@ -276,13 +351,22 @@ public with sharing class QuoteDocumentRenderService {
                     continue;
                 }
                 if (!rowFields.containsKey(column.Value_Field__c.toLowerCase())) {
-                    throw QuoteDocumentContributorError.build(
-                        'COLUMN_VALUE_NOT_QUERIED',
-                        'Column ' + column.Column_Code__c + ' binds ' + column.Value_Field__c
+                    // Recorded against this table rather than thrown for the
+                    // whole batch. Thrown here it escaped getPayloads before the
+                    // per-request loop, so ONE misconfigured column returned no
+                    // PayloadResult for any quote - contradicting this class's
+                    // own contract: "One mismatch fails THAT request; it never
+                    // degrades the rest, and it never lets a partial batch look
+                    // like a whole one." The binding is still fatal, just fatal
+                    // for the quotes that actually use it.
+                    // Same 'CODE: detail' shape QuoteDocumentContributorError.build
+                    // produces, so the error code survives into the result.
+                    badColumnByTable.put(column.Quote_Document_Table__c,
+                        'COLUMN_VALUE_NOT_QUERIED: Column ' + column.Column_Code__c + ' binds ' + column.Value_Field__c
                             + ', which is not a field on Quote_Document_Row__c. It cannot be queried, and a '
                             + 'column that cannot be queried must fail rather than print an empty cell - a '
-                            + 'null must always mean "no value", never "nobody selected it".'
-                    );
+                            + 'null must always mean "no value", never "nobody selected it".');
+                    continue;
                 }
                 fields.add(column.Value_Field__c);
             }
@@ -530,6 +614,8 @@ public with sharing class QuoteDocumentRenderService {
         QuoteDocumentPayload.Section section = new QuoteDocumentPayload.Section();
         section.sectionType = 'Table';
         section.code = table.Table_Code__c;
+        section.partitionValue = table.Partition_Value__c;
+        section.crossPartitionTotal = table.Cross_Partition_Total__c;
         section.displayOrder = table.Display_Order__c;
         section.title = table.Display_Title__c;
         section.subtitle = table.Display_Subtitle__c;

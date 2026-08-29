@@ -9,7 +9,8 @@ public with sharing class QuoteDocumentExpanderRegistry {
 
     public static QuoteDocumentLineExpander resolve(String expanderCode) {
         switch on expanderCode {
-            when 'PERIOD' { return new QuoteDocumentPeriodExpander(); }
+            when 'PERIOD'   { return new QuoteDocumentPeriodExpander(); }
+            when 'SCHEDULE' { return new QuoteDocumentScheduleExpander(); }
             when else {
                 throw new QuoteDocumentGenerator.QuoteDocumentException(
                     'Unknown expander code: ' + expanderCode + '. Register the class in '

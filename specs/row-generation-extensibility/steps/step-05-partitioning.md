@@ -1,6 +1,6 @@
 # Step 05 — Partitioning
 
-**Status: PARTIAL** — §3.1–3.2 built, §3.3–3.4 not; see close-out
+**Status: BUILT** — §3.1–3.4 built; per-*partition* assumptions remain out of reach, see close-out
 **Blocked by:** [step 02](step-02-allocation-primitive.md), [step 04](step-04-comparison-and-enrichment.md)
 **Blocks:** nothing
 **Use cases:** 13, 16, 17 and the document half of 4 ([`spec.md`](../spec.md) §3)
@@ -161,8 +161,8 @@ The fix deliberately does **not** simply drop the check. It moves up a level: `a
 
 ### Not built
 
-- **§3.3, required scenario assumptions.** `SCENARIO_ASSUMPTIONS_MISSING` is not implemented: narrative blocks are quote-scoped today, and attaching one *per partition* is a block-model change this step did not open. **This matters** — the spec argues a consumption estimate printed without its assumptions is the most dangerous document the framework could produce, and that guard is currently a documentation requirement rather than an enforced one. Any scenario table authored before it lands relies on discipline.
-- **§3.4, separate addressable documents.** Explicitly optional in the step, and §3.1 has not yet been used in anger. Left unbuilt on purpose; use case 20 (separate purchasing entities) therefore stays *enabled, needs its own implementation* rather than delivered.
+- ~~**§3.3, required scenario assumptions**~~ — **closed 2026-08-28, at table scope.** `Assumptions_Block_Code__c` names a narrative block the table cannot publish without, checked against the blocks the generation actually produced rather than against metadata — so the failure it guards is the real one: a block deactivated, or with no wording in the resolved locale, while the table depending on it kept generating. `SCENARIO_ASSUMPTIONS_MISSING` names the missing block. **Per-partition** assumptions are still not possible: narrative blocks belong to the quote, so "this table has its assumptions" is enforceable and "this partition has its own" needs the block-model change. The dangerous case — an estimate printing with no assumptions at all — is now closed.
+- ~~**§3.4, separate addressable documents**~~ — **closed 2026-08-28.** `QuoteDocumentRenderService.getPayloadForPartition` returns one partition's sections plus every unpartitioned one, and `PARTITION_NOT_FOUND` refuses a partition the snapshot does not have rather than returning the remainder. It is deliberately a **view**: the whole payload is retrieved and verified first — same request Id, same fingerprint, same integrity check — so two parties' documents provably came from one generation. `Section` gained `partitionValue` and `crossPartitionTotal` so a renderer selects and knows whether a spanning total exists without parsing a composite key.
 - The `SCENARIO` partition dimension as a named thing. Any existing dimension partitions — the test uses `PRODUCT_FAMILY` — so a scenario field on the line needs no new code, only configuration.
 
 - **Test evidence:** `QuoteDocumentPartitionTest` 14/14. Full suite 478 ran, 473 passed, 5 failed — the five pre-existing org-only failures, unchanged.

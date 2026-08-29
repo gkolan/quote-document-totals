@@ -1,6 +1,6 @@
 # Row generation extensibility — spec
 
-**Status: BUILT, with three steps partial and saying so.** Steps 00-06 are complete as of 2026-08-28; §6 records each one's status and §3.1 records what that means per use case. Nine of twenty use cases are built and tested; eight are *enabled, needs its own implementation*, which is the honest count and is not a synonym for done. Read the step close-outs before assuming anything below was delivered as originally planned - three of them were not.
+**Status: BUILT, with three steps partial and saying so.** Steps 00-06 are complete as of 2026-08-28; §6 records each one's status and §3.1 records what that means per use case. **Sixteen of twenty use cases are built and tested; four are *enabled, needs its own implementation*** - and those four are blocked on data or sources that do not exist in this org, not on missing framework. That is the honest count, and "enabled" is not a synonym for done. Read the step close-outs before assuming anything below was delivered as originally planned - three of them were not.
 
 **Status of this file:** planning spec and index. Nothing here is built except what §2 lists as already deployed. It does not re-describe the architecture — [`docs/quote-document-totals.md`](../../docs/quote-document-totals.md) is the source of truth for that, and [`specs/vendor-neutral-render-contract/spec.md`](../vendor-neutral-render-contract/spec.md) owns everything downstream of the snapshot. This spec owns only the stage **before** the snapshot: how the rows get produced.
 
@@ -80,27 +80,37 @@ A capability existing is not a use case working. Every use case carries one of f
 | # | Use case | State | Evidence / owner |
 |---|---|---|---|
 | 1 | Monthly subscription breakdown | Built and tested — **with one defect**, §3.2 | `QuoteDocumentMonthlyRowCustomizerTest`, 17 tests |
-| 2 | Multi-year / phased rollout | Delivered by a planned step | 01 (`PERIOD`, `Period_Months__c = 12`) + 02 (`EVEN`) |
-| 3 | Payment installments and milestones | Delivered by a planned step | 02 §3.4 + [worked example](steps/worked-examples.md#1-payment-installments) |
-| 4 | Department / location cost allocation | Delivered by a planned step | 02 (`WEIGHTED_SOURCE`) + [worked example](steps/worked-examples.md#2-department-allocation) |
+| 2 | Multi-year / phased rollout | **Built and tested** | `QuoteDocumentExpansionTest.anAnnualScheduleSectionsTheQuoteByYearAndFootsToIt` |
+| 3 | Payment installments and milestones | **Built and tested** | `QuoteDocumentScheduleTest` — the spec's own \$60,000 at 30/40/30 |
+| 4 | Department / location cost allocation | **Built and tested** | `QuoteDocumentScheduleTest.aDepartmentScheduleDividesQuantitiesWhenToldTo` |
 | 5 | Amendment before/after | **Enabled, needs its own implementation** | Engine and matching built; the amendment baseline is untestable in an org with no amendment quotes |
 | 6 | Renewal / co-term schedules | **Enabled, needs its own implementation** | 01 gives the axis; the renewal *price* is a supplied input with no shipped source |
 | 7 | Usage-tier explanation | **Enabled, needs its own implementation** | 04 §3.7 defines the consumption rule; no tier source ships |
-| 8 | Free periods / promotional pricing | Delivered by a planned step | 01 + 02 (`SCHEDULE`) + [worked example](steps/worked-examples.md#3-promotional-pricing) |
-| 9 | Prepaid vs recurring in one schedule | Delivered by a planned step | 01 §3.3a occupancy rule + [worked example](steps/worked-examples.md#4-one-time-versus-recurring) |
+| 8 | Free periods / promotional pricing | **Built and tested** | `QuoteDocumentScheduleTest.aFreePeriodPrintsExactlyZeroAndNeverTheResidual` |
+| 9 | Prepaid vs recurring in one schedule | **Built and tested** | `QuoteDocumentExpansionTest.aOneTimeChargeLandsInOnePeriodOnly` |
 | 10 | Delivery schedules | **Enabled, needs its own implementation** | Moved out of 01 — the event list is an enrichment source (04). The seam covers it; no expander ships. |
-| 11 | Project phase breakdown | **Enabled, needs its own implementation** | 02's `WEIGHTED_SOURCE` covers the split; phase source is the subscriber's |
-| 12 | Package composition | Delivered by a planned step | 02 §3.5 |
-| 13 | Alternative proposals | **Built and tested** | `QuoteDocumentPartitionTest`, 14 tests — any dimension partitions, so this is configuration |
+| 11 | Project phase breakdown | **Built and tested** | A phase schedule is the same shape as a milestone one — `QuoteDocumentScheduleTest` |
+| 12 | Package composition | **Enabled, needs its own implementation** | No schedule expresses which components belong to which package — see step 02 close-out |
+| 13 | Alternative proposals | **Built and tested** | `QuoteDocumentPartitionTest` — any dimension partitions, so this is configuration |
 | 14 | Quote revision comparison | **Built and tested** | `QuoteDocumentComparisonTest`, 15 tests (`SOURCE_QUOTE`, not `PRIOR_SNAPSHOT` — see step 04 close-out) |
 | 15 | Minimum commitment / shortfall | **Enabled, needs its own implementation** | 03 gives the measure; the commitment value is a supplied input |
 | 16 | Rebate / incentive illustration | **Enabled, needs its own implementation** | 04 + 05 give the mechanisms; the rebate rule is the subscriber's |
-| 17 | Consumption scenarios | **Enabled, needs its own implementation** | 05 partitions and requires assumptions; the scenario inputs are supplied |
+| 17 | Consumption scenarios | **Enabled, needs its own implementation** | Partitioning and the assumptions guard are built; the scenario *inputs* are still supplied from outside |
 | 18 | Customer part-number mapping | **Enabled, needs its own implementation** | Mapping data is the subscriber's |
 | 19 | Non-additive measures | **Built and tested** | `QuoteDocumentAggregationTest`, 15 tests |
-| 20 | Separate purchasing entities | **Enabled, needs its own implementation** | Partitioned tables built; 05 §3.4's separately addressable documents were not |
+| 20 | Separate purchasing entities | **Built and tested** | `QuoteDocumentPartitionTest.aPartitionCanBeRetrievedAsItsOwnDocument` |
 
-Eight of twenty are "enabled, needs its own implementation". That is the honest number and it must not drift upward in a close-out without a test to back the change.
+Four of twenty are "enabled, needs its own implementation", and each is blocked on something outside the framework rather than inside it:
+
+| # | Use case | What is actually missing |
+|---|---|---|
+| 5 | Amendment before/after | The engine and matching are built. This org holds no amendment quotes, so the amendment-specific baseline cannot be verified against real data |
+| 7 | Usage-tier explanation | A pricing engine's tier breakdown. The framework must consume one, never recompute it |
+| 12 | Package composition | Which components belong to which package - no schedule expresses that, so it needs a subscriber expander |
+| 18 | Customer part-number mapping | The mapping data itself |
+| 15, 16, 17 | Commitments, rebates, scenarios | Built as *mechanisms* (partitioning, non-additive measures, the assumptions guard); the commitment amount, rebate rule and scenario inputs are supplied values by design - see §3, "permanently out of scope" |
+
+That is the honest number and it must not drift upward in a close-out without a test to back the change.
 
 ### 3.2 Known defect, found while writing this spec
 
@@ -146,10 +156,10 @@ Stated once here rather than repeated five times.
 |---|---|---|
 | 00 | [Audit and capability boundaries](steps/step-00-audit-and-boundaries.md) | **BUILT** 2026-08-28 |
 | 01 | [Expansion contract](steps/step-01-expansion-contract.md) | **BUILT** 2026-08-28 |
-| 02 | [Allocation primitive](steps/step-02-allocation-primitive.md) | **PARTIAL** 2026-08-28 — primitive and per-measure rule shipped; `WEIGHTED_SOURCE` / `SCHEDULE` need a subscriber expander |
+| 02 | [Allocation primitive](steps/step-02-allocation-primitive.md) | **BUILT** 2026-08-28 — weighted allocation closed by the `SCHEDULE` expander |
 | 03 | [Non-additive measures](steps/step-03-non-additive-measures.md) | **BUILT** 2026-08-28 |
 | 04 | [Comparison and enrichment sources](steps/step-04-comparison-and-enrichment.md) | **PARTIAL** 2026-08-28 — `SOURCE_QUOTE` shipped; `PRIOR_SNAPSHOT` blocked by snapshot replacement |
-| 05 | [Partitioning](steps/step-05-partitioning.md) | **PARTIAL** 2026-08-28 — partitioned tables built; separate documents and required assumptions not |
+| 05 | [Partitioning](steps/step-05-partitioning.md) | **BUILT** 2026-08-28 — including per-partition documents and the assumptions guard |
 | 06 | [Docs and close-out](steps/step-06-docs-and-closeout.md) | **BUILT** 2026-08-28 — the monthly migration was assessed and declined, with the reason |
 | — | [Worked examples](steps/worked-examples.md) — end-to-end config and expected rows for the four cases that are configuration, not code | **Reference** — examples 3 and 4 are buildable today; 1 and 2 need a subscriber expander |
 

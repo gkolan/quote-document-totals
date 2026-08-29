@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Assumptions_Block_Code__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>The narrative block this table cannot be published without - the assumptions behind an estimate, a scenario or a projection. Generation fails if no active Quote_Document_Content__mdt supplies that block for the resolved locale. Set it on any table whose numbers are an estimate rather than a price: an estimate printed without its assumptions is a number a reader acts on with the caveat missing.</inlineHelpText>
+    <label>Assumptions Block Code</label>
+    <length>40</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

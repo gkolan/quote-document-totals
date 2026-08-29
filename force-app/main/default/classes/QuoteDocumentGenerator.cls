@@ -417,6 +417,7 @@ public with sharing class QuoteDocumentGenerator {
             // included; the renderer never does.
             List<Quote_Document_Block__c> blocks = QuoteDocumentBlockBuilder.build(quote, locale);
             QuoteDocumentBlockBuilder.assertOrderingIsUnambiguous(blocks, tables);
+            assertAssumptionsPresent(definitions, blocks, locale);
             insert blocks;
 
             List<Quote_Document_Row__c> allRows = new List<Quote_Document_Row__c>();
@@ -711,6 +712,49 @@ public with sharing class QuoteDocumentGenerator {
             lines.add(new QuoteDocumentLine(line, quote));
         }
         return lines;
+    }
+
+    /**
+     * A table whose numbers are an ESTIMATE may not publish without the
+     * assumptions behind them.
+     *
+     * Checked against the blocks this generation actually produced rather than
+     * against the metadata, because the failure being guarded against is a
+     * block that was deactivated, or has no wording in the resolved locale,
+     * while the table that depends on it kept generating. A consumption
+     * scenario printed without its assumptions is a number a reader will act on
+     * and a caveat nobody attached, which is the most dangerous document this
+     * framework can produce.
+     *
+     * Table-scoped, not partition-scoped: narrative blocks belong to the quote,
+     * so "this table has its assumptions" is enforceable today and "this
+     * partition has its own" is not.
+     */
+    private static void assertAssumptionsPresent(
+        List<QuoteDocumentTableDefinition> definitions,
+        List<Quote_Document_Block__c> blocks,
+        String locale
+    ) {
+        Set<String> present = new Set<String>();
+        for (Quote_Document_Block__c block : blocks) {
+            present.add(block.Block_Code__c);
+        }
+
+        for (QuoteDocumentTableDefinition definition : definitions) {
+            if (String.isBlank(definition.assumptionsBlockCode)
+                || present.contains(definition.assumptionsBlockCode)) {
+                continue;
+            }
+            QuoteDocumentContributorError.fail(
+                'SCENARIO_ASSUMPTIONS_MISSING',
+                'Table ' + definition.tableCode + ' requires the narrative block "'
+                    + definition.assumptionsBlockCode + '", and no active Quote_Document_Content__mdt '
+                    + 'supplies it for locale ' + locale + '. This table states estimates, and an estimate '
+                    + 'printed without its assumptions is a number a reader will act on with the caveat '
+                    + 'missing. Restore the block, or clear Assumptions_Block_Code__c if the table no '
+                    + 'longer needs it.'
+            );
+        }
     }
 
     /**
