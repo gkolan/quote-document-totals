@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Suppress_Amounts__c</fullName>
+    <defaultValue>false</defaultValue>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Set on an expanded table that carries no money at all - a coverage calendar, a delivery list. It is the only way an expansion may run without an Allocation Basis, and it is deliberately explicit: an expansion that neither allocates nor suppresses would print each line's full amount in every bucket it occupies.</inlineHelpText>
+    <label>Suppress Amounts</label>
+    <type>Checkbox</type>
+</CustomField>

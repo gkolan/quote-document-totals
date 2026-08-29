@@ -182,7 +182,7 @@ public with sharing class QuoteDocumentGenerator {
         }
 
         throw QuoteDocumentContributorError.build(
-            'GENERATION_ALREADY_RUNNING',
+            QuoteDocumentLifecycle.CODE_ALREADY_RUNNING,
             'Quote ' + quote.Id + ' is already being generated (request '
                 + quote.Document_Data_Request_Id__c + ', started ' + startedAt + '). Starting a second '
                 + 'attempt would mean two workers building the same snapshot. It becomes available for '
@@ -235,9 +235,32 @@ public with sharing class QuoteDocumentGenerator {
      * skip-unless-stale behaviour belongs to a refresh triggered by a save, and
      * lives in QuoteDocumentGenerateJob's one-argument constructor.
      *
-     * A synchronous context can queue only 50 jobs, so cap the caller's batch.
+     * The batch is capped at what this transaction can still enqueue.
      */
     public static void generateAsync(Set<Id> quoteIds) {
+        // Asked of the platform rather than assumed, because the number is not
+        // always 50. It was a constant 50 before, which two callers get wrong:
+        // one that already enqueued a job of its own (49 left, 50 accepted),
+        // and one calling from a Queueable or Batch, where the budget is a
+        // single enqueue rather than fifty. Both passed a 50-under check and
+        // then hit the uncatchable LimitException the check exists to prevent.
+        //
+        // Refusing up front is the honest failure. The alternative is not a
+        // partial run either: an unhandled LimitException aborts the
+        // transaction and rolls the enqueues back with it, so the caller gets
+        // neither the jobs nor a message it could act on.
+        Integer remaining = Limits.getLimitQueueableJobs() - Limits.getQueueableJobs();
+        Integer requested = quoteIds == null ? 0 : quoteIds.size();
+        if (requested > remaining) {
+            throw new QuoteDocumentException(
+                'GENERATION_BATCH_TOO_LARGE: ' + requested + ' quotes were passed to generateAsync, '
+                    + 'but this transaction can still enqueue only ' + remaining + ' job(s) - '
+                    + Limits.getQueueableJobs() + ' of ' + Limits.getLimitQueueableJobs()
+                    + ' are already used, and an asynchronous context is allowed fewer than a '
+                    + 'synchronous one. Split the batch, or use a Batchable for a backfill of '
+                    + 'this size.'
+            );
+        }
         for (Id quoteId : quoteIds) {
             System.enqueueJob(new QuoteDocumentGenerateJob(quoteId, false));
         }
@@ -259,6 +282,11 @@ public with sharing class QuoteDocumentGenerator {
         List<Quote_Document_Table__c> tables = new List<Quote_Document_Table__c>();
         Map<String, List<Quote_Document_Row__c>> rowsByCode =
             new Map<String, List<Quote_Document_Row__c>>();
+
+        // Per table, the measures its contributor declared non-additive.
+        // Collected here rather than re-derived at verification time, because
+        // the contributor is the only thing that knows.
+        Map<String, Set<String>> nonAdditiveByCode = new Map<String, Set<String>>();
 
         try {
             List<QuoteDocumentTableDefinition> definitions = QuoteDocumentTableDefinition.getAll();
@@ -316,9 +344,19 @@ public with sharing class QuoteDocumentGenerator {
 
                 Quote_Document_Table__c table = newTable(quote, definition, !lines.isEmpty(), locale);
                 tables.add(table);
+
+                // Expansion runs BEFORE the builder and hands it a longer line
+                // list, each line stamped with its bucket. Everything after
+                // this point - grouping, subtotals, ordering, verification - is
+                // unchanged code that cannot tell an expanded line from an
+                // ordinary one.
+                lines = expand(quote, definition, lines, labels, nonAdditiveByCode);
+
                 List<Quote_Document_Row__c> rows =
-                    new QuoteDocumentRowBuilder(definition, labels).build(lines);
-                rows = applyRowCustomizer(quote, definition, lines, rows, labels);
+                    new QuoteDocumentRowBuilder(definition, labels)
+                        .withNonAdditiveMeasures(nonAdditiveByCode.get(definition.tableCode))
+                        .build(lines);
+                rows = applyRowCustomizer(quote, definition, lines, rows, labels, nonAdditiveByCode);
                 rowsByCode.put(definition.tableCode, rows);
             }
             insert tables;
@@ -381,7 +419,9 @@ public with sharing class QuoteDocumentGenerator {
                     Locale__c = inserted.Locale__c
                 );
                 stampTable(table, definition, rows);
-                QuoteDocumentVerification.verify(quote, table, definition, rows);
+                QuoteDocumentVerification.verify(
+                    quote, table, definition, rows, nonAdditiveByCode.get(definition.tableCode)
+                );
                 stamped.add(table);
             }
             update stamped;
@@ -420,6 +460,14 @@ public with sharing class QuoteDocumentGenerator {
             if (de.getNumDml() > 0) {
                 detail += ' | fields: ' + de.getDmlFieldNames(0) + ' | ' + de.getDmlMessage(0);
             }
+            // Same rule as the general handler below: a lock failure is not a
+            // document failure. UNABLE_TO_LOCK_ROW arrives here, not there, so
+            // the classification has to run on the assembled DML detail too -
+            // otherwise the quote is marked Failed and the automatic retry,
+            // which only regenerates when Stale, silently does nothing.
+            if (QuoteDocumentLifecycle.isRetryable(de) || isRetryableDetail(detail)) {
+                throw de;
+            }
             throw fail(quote, detail, de, requestId);
         } catch (Exception e) {
             Database.rollback(sp);
@@ -433,8 +481,28 @@ public with sharing class QuoteDocumentGenerator {
             if (QuoteDocumentLifecycle.isRetryable(e)) {
                 throw e;
             }
+            // Same reasoning for a lifecycle rejection: neither a rejected
+            // second attempt nor a superseded worker ever became the quote's
+            // live generation, so neither has anything to record. Writing
+            // Failed here would replace the LIVE attempt's status, request Id
+            // and start time with the rejected one's.
+            //
+            // Asks QuoteDocumentLifecycle rather than searching this message
+            // for one code. The first version matched GENERATION_ALREADY_
+            // RUNNING literally, which left REQUEST_SUPERSEDED - raised by the
+            // other guard in the same class - falling through to fail(), where
+            // it took the winning attempt's claim with it.
+            if (QuoteDocumentLifecycle.isNonMutatingRejection(e)) {
+                throw e;
+            }
             throw fail(quote, e.getMessage(), e, requestId);
         }
+    }
+
+    /** DML detail carries the lock code the exception message may not. */
+    @TestVisible
+    private static Boolean isRetryableDetail(String detail) {
+        return String.isNotBlank(detail) && detail.contains('UNABLE_TO_LOCK_ROW');
     }
 
     /**
@@ -603,6 +671,35 @@ public with sharing class QuoteDocumentGenerator {
     }
 
     /**
+     * Expands and allocates, if this table declares an expander.
+     *
+     * Returns the lines untouched when it does not, which is every table that
+     * existed before this seam - the no-expander path must stay byte-identical,
+     * and a test asserts the fingerprint does not move.
+     */
+    private static List<QuoteDocumentLine> expand(
+        SBQQ__Quote__c quote,
+        QuoteDocumentTableDefinition definition,
+        List<QuoteDocumentLine> lines,
+        QuoteDocumentLabels labels,
+        Map<String, Set<String>> nonAdditiveByCode
+    ) {
+        if (!definition.hasExpander() || lines.isEmpty()) {
+            return lines;
+        }
+
+        QuoteDocumentExpansion.Result result = QuoteDocumentExpansion.apply(
+            QuoteDocumentExpanderRegistry.resolve(definition.expanderCode),
+            quote, definition, lines, labels
+        );
+
+        if (!result.nonAdditiveMeasures.isEmpty()) {
+            nonAdditiveByCode.put(definition.tableCode, result.nonAdditiveMeasures);
+        }
+        return result.lines;
+    }
+
+    /**
      * Runs the table definition's row customizer, if one is set, resolved
      * through the closed registry (spec quote-docusign-launch Increment 4).
      */
@@ -611,7 +708,8 @@ public with sharing class QuoteDocumentGenerator {
         QuoteDocumentTableDefinition definition,
         List<QuoteDocumentLine> lines,
         List<Quote_Document_Row__c> rows,
-        QuoteDocumentLabels labels
+        QuoteDocumentLabels labels,
+        Map<String, Set<String>> nonAdditiveByCode
     ) {
         if (!definition.hasContributor()) {
             return rows;
@@ -641,6 +739,9 @@ public with sharing class QuoteDocumentGenerator {
         }
 
         QuoteDocumentContributorOutput.validate(context.rows, definition);
+        if (!context.nonAdditiveMeasures.isEmpty()) {
+            nonAdditiveByCode.put(definition.tableCode, context.nonAdditiveMeasures);
+        }
         return context.rows;
     }
 

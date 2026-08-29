@@ -50,6 +50,13 @@ public with sharing class QuoteDocumentLine {
     public Decimal amountCustomer = 0;
     public Decimal quantity = 0;
 
+    // The subscription window this line is priced for. Blank means "the whole
+    // quote term" - the same thing CPQ's own SBQQ__EffectiveStartDate__c
+    // formula says. The writable pair is read rather than the formula pair so
+    // a test can set a window without going through CPQ's calculator.
+    public Date subscriptionStartDate;
+    public Date subscriptionEndDate;
+
     // Change measures, decided by classify. Removals are always negative.
     public String transactionType;
     public Decimal amountNetNew = 0;
@@ -91,6 +98,9 @@ public with sharing class QuoteDocumentLine {
         amountNet = zero(line.SBQQ__NetTotal__c);
         amountCustomer = zero(line.SBQQ__CustomerTotal__c);
         quantity = zero(line.SBQQ__Quantity__c);
+
+        subscriptionStartDate = line.SBQQ__StartDate__c;
+        subscriptionEndDate = line.SBQQ__EndDate__c;
 
         isDisplayed = true;
         classify(line);
@@ -243,13 +253,32 @@ public with sharing class QuoteDocumentLine {
             }
             when 'BUNDLE' {
                 if (String.isNotBlank(packageName)) { return packageName; }
-                return isPackage ? productName : STANDALONE;
+                // normalize() like every sibling branch: a bundle parent whose
+                // SBQQ__ProductName__c is null used to return null here, and the
+                // null reached buildGroupKey's value.toUpperCase() as a
+                // dereference - generation failing on a quote with a message
+                // that explained nothing.
+                return normalize(isPackage ? productName : STANDALONE);
             }
             when 'TRANSACTION_TYPE' {
                 return normalize(transactionType);
             }
             when 'INDUSTRY' {
                 return normalize(industry);
+            }
+            when 'EXPANSION' {
+                // Already localized by the expander, which is the only thing
+                // that knows what its own buckets are called. normalize() would
+                // only ever fire on a line the expander failed to stamp, and
+                // that is a bug worth seeing rather than papering over.
+                if (String.isBlank(expansionValue)) {
+                    throw new QuoteDocumentGenerator.QuoteDocumentException(
+                        'A table grouped by EXPANSION contains a line that was never expanded ('
+                        + productName + '). Set Expander_Code__c on the table definition, or group by '
+                        + 'something the lines actually carry.'
+                    );
+                }
+                return expansionValue;
             }
             when else {
                 throw new QuoteDocumentGenerator.QuoteDocumentException(
@@ -263,6 +292,127 @@ public with sharing class QuoteDocumentLine {
      * Whether a table built with this filter should include this line at all.
      * Mirrors the filter fields on CPQ's own Template Section.
      */
+    // -----------------------------------------------------------------------
+    // Expansion - see QuoteDocumentLineExpander
+    // -----------------------------------------------------------------------
+
+    /**
+     * The bucket this line was expanded into, or null on an ordinary line.
+     *
+     * Three fields rather than one because they answer three different
+     * questions: the KEY is stable identity (row keys, fingerprints), the
+     * VALUE is the already-localized text a group header prints, and the ORDER
+     * is what stops month 10 sorting before month 2.
+     */
+    public String expansionKey;
+    public String expansionValue;
+    public Integer expansionOrder;
+
+    public Boolean isExpanded() {
+        return expansionKey != null;
+    }
+
+    /**
+     * A copy carrying one bucket's share of this line.
+     *
+     * Everything identifying is shared with the original - same quote line Id,
+     * same product, same filter behaviour - so a table can still group, filter
+     * and indent an expanded line exactly as it would the line it came from.
+     * Only the measures differ, and only because the caller overwrites them.
+     */
+    public QuoteDocumentLine copyInto(String bucketKey, String bucketValue, Integer bucketOrder) {
+        QuoteDocumentLine copy = new QuoteDocumentLine(this);
+        copy.expansionKey = bucketKey;
+        copy.expansionValue = bucketValue;
+        copy.expansionOrder = bucketOrder;
+        return copy;
+    }
+
+    private QuoteDocumentLine(QuoteDocumentLine source) {
+        raw = source.raw;
+        quoteLineId = source.quoteLineId;
+        productId = source.productId;
+        sequence = source.sequence;
+        productName = source.productName;
+        productCode = source.productCode;
+        productFamily = source.productFamily;
+        chargeType = source.chargeType;
+        industry = source.industry;
+        quoteLineGroup = source.quoteLineGroup;
+        isPackage = source.isPackage;
+        isBundledComponent = source.isBundledComponent;
+        isOptional = source.isOptional;
+        optionLevel = source.optionLevel;
+        packageName = source.packageName;
+        isDisplayed = source.isDisplayed;
+        amountList = source.amountList;
+        amountRegular = source.amountRegular;
+        amountDiscount = source.amountDiscount;
+        amountNet = source.amountNet;
+        amountCustomer = source.amountCustomer;
+        quantity = source.quantity;
+        subscriptionStartDate = source.subscriptionStartDate;
+        subscriptionEndDate = source.subscriptionEndDate;
+        transactionType = source.transactionType;
+        amountNetNew = source.amountNetNew;
+        amountCancellation = source.amountCancellation;
+        amountReplacementRemoved = source.amountReplacementRemoved;
+        amountReplacementAdded = source.amountReplacementAdded;
+        amountTermination = source.amountTermination;
+        amountNetChange = source.amountNetChange;
+        amountFinal = source.amountFinal;
+    }
+
+    /**
+     * One measure by its Quote_Document_Row__c API name, so allocation can
+     * iterate whatever measureFields() returns rather than naming each measure
+     * itself. An unknown field answers zero rather than silently reading a
+     * different measure's money.
+     */
+    public Decimal measureValue(String field) {
+        switch on field {
+            when 'Amount_List__c'                { return amountList; }
+            when 'Amount_Regular__c'             { return amountRegular; }
+            when 'Amount_Discount__c'            { return amountDiscount; }
+            when 'Amount_Net__c'                 { return amountNet; }
+            when 'Amount_Customer__c'            { return amountCustomer; }
+            when 'Quantity__c'                   { return quantity; }
+            when 'Amount_Net_New__c'             { return amountNetNew; }
+            when 'Amount_Cancellation__c'        { return amountCancellation; }
+            when 'Amount_Replacement_Removed__c' { return amountReplacementRemoved; }
+            when 'Amount_Replacement_Added__c'   { return amountReplacementAdded; }
+            when 'Amount_Termination__c'         { return amountTermination; }
+            when 'Amount_Net_Change__c'          { return amountNetChange; }
+            when 'Amount_Final__c'               { return amountFinal; }
+            when else                            { return 0; }
+        }
+    }
+
+    /** The setter half of measureValue. Same reasoning, same field names. */
+    public void setMeasure(String field, Decimal value) {
+        Decimal amount = value == null ? 0 : value;
+        switch on field {
+            when 'Amount_List__c'                { amountList = amount; }
+            when 'Amount_Regular__c'             { amountRegular = amount; }
+            when 'Amount_Discount__c'            { amountDiscount = amount; }
+            when 'Amount_Net__c'                 { amountNet = amount; }
+            when 'Amount_Customer__c'            { amountCustomer = amount; }
+            when 'Quantity__c'                   { quantity = amount; }
+            when 'Amount_Net_New__c'             { amountNetNew = amount; }
+            when 'Amount_Cancellation__c'        { amountCancellation = amount; }
+            when 'Amount_Replacement_Removed__c' { amountReplacementRemoved = amount; }
+            when 'Amount_Replacement_Added__c'   { amountReplacementAdded = amount; }
+            when 'Amount_Termination__c'         { amountTermination = amount; }
+            when 'Amount_Net_Change__c'          { amountNetChange = amount; }
+            when 'Amount_Final__c'               { amountFinal = amount; }
+            when else {
+                throw new QuoteDocumentGenerator.QuoteDocumentException(
+                    'Cannot allocate ' + field + ': it is not a measure this framework writes.'
+                );
+            }
+        }
+    }
+
     public Boolean matchesFilter(String filter) {
         switch on filter {
             when 'ALL' {

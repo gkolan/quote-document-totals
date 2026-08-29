@@ -29,6 +29,15 @@ public with sharing class QuoteDocumentTableDefinition {
     public static final String DIM_TRANSACTION_TYPE = 'TRANSACTION_TYPE';
     public static final String DIM_INDUSTRY         = 'INDUSTRY';
 
+    /**
+     * The bucket an expander put a line in. Unlike every dimension above it is
+     * not read off the line's own data - it is stamped on during expansion -
+     * but it is an ordinary grouping dimension everywhere else, which is the
+     * whole point: "year then family" and "family then year" are both a
+     * metadata change rather than a second class.
+     */
+    public static final String DIM_EXPANSION        = 'EXPANSION';
+
     // Line filters. QuoteDocumentLine.matchesFilter applies each one.
     public static final String FILTER_ALL                 = 'ALL';
     public static final String FILTER_EXCLUDE_OPTIONAL    = 'EXCLUDE_OPTIONAL';
@@ -46,6 +55,12 @@ public with sharing class QuoteDocumentTableDefinition {
     // prints first, regardless of its name.
     public static final String SORT_ALPHABETICAL  = 'ALPHABETICAL';
     public static final String SORT_LINE_SEQUENCE = 'LINE_SEQUENCE';
+
+    /**
+     * Sorts groups by the expansion bucket's own order. Required on a period
+     * table: sorted alphabetically, "Month 10" prints before "Month 2".
+     */
+    public static final String SORT_EXPANSION_ORDER = 'EXPANSION_ORDER';
 
     private static final String DEFAULT_SEPARATOR = ' / ';
     private static final Integer DEFAULT_MAX_GROUPS = 50;
@@ -127,6 +142,27 @@ public with sharing class QuoteDocumentTableDefinition {
     public String cachePolicy;
     public List<String> contributorDependencyPaths;
 
+    public static final String ALLOCATION_NONE = 'NONE';
+    public static final String ALLOCATION_EVEN = 'EVEN';
+
+    /**
+     * Expansion and allocation. Set together or not at all: an expansion that
+     * neither allocates nor suppresses amounts would print each line's full
+     * value in every bucket it occupies, and the grand total would be wrong by
+     * a factor of the bucket count.
+     */
+    public String expanderCode;
+    public String expanderVersion;
+    public Integer periodMonths;
+    public String periodOneTimePlacement;
+    public String allocationBasis;
+    public Integer allocationScale;
+    public Boolean suppressAmounts = false;
+
+    public Boolean hasExpander() {
+        return String.isNotBlank(expanderCode);
+    }
+
     public static final String CACHE_STANDARD = 'STANDARD';
     public static final String CACHE_DECLARED_DEPENDENCIES = 'DECLARED_DEPENDENCIES';
     public static final String CACHE_ALWAYS_REBUILD = 'ALWAYS_REBUILD';
@@ -173,6 +209,14 @@ public with sharing class QuoteDocumentTableDefinition {
         footerText = record.Footer_Text__c;
         cachePolicy = record.Cache_Policy__c;
         contributorDependencyPaths = splitPaths(record.Contributor_Dependency_Set__c);
+        expanderCode = record.Expander_Code__c;
+        expanderVersion = record.Expander_Version__c;
+        periodMonths = record.Period_Months__c == null ? null : Integer.valueOf(record.Period_Months__c);
+        periodOneTimePlacement = record.Period_One_Time_Placement__c;
+        allocationBasis = record.Allocation_Basis__c;
+        allocationScale = record.Allocation_Scale__c == null
+            ? null : Integer.valueOf(record.Allocation_Scale__c);
+        suppressAmounts = record.Suppress_Amounts__c == true;
         groupBy = levels;
     }
 
@@ -288,6 +332,90 @@ public with sharing class QuoteDocumentTableDefinition {
         }
     }
 
+    /**
+     * Everything an expanded table must declare, checked at CONFIG LOAD rather
+     * than mid-generation so a half-configured table fails on the first quote
+     * anyone generates instead of the one quote that happens to exercise it.
+     */
+    @TestVisible
+    private void validateExpansionConfig() {
+        if (!hasExpander()) {
+            if (String.isNotBlank(allocationBasis) && !ALLOCATION_NONE.equals(allocationBasis)) {
+                throw new QuoteDocumentGenerator.QuoteDocumentException(
+                    'Table ' + tableCode + ' sets Allocation_Basis__c = ' + allocationBasis
+                    + ' but names no Expander_Code__c. There is nothing to allocate across: allocation '
+                    + 'divides a line among the buckets an expansion put it in.'
+                );
+            }
+            return;
+        }
+
+        if (String.isBlank(expanderVersion)) {
+            QuoteDocumentContributorError.fail(
+                QuoteDocumentContributorError.VERSION_UNDECLARED,
+                'Table ' + tableCode + ' sets Expander_Code__c "' + expanderCode + '" but leaves '
+                    + 'Expander_Version__c blank. The version is content identity, not documentation: '
+                    + 'without it, deploying changed expander Apex leaves the fingerprint identical and '
+                    + 'quotes reuse a snapshot the new code would not have produced.'
+            );
+        }
+
+        // The trap this exists to close: expansion multiplies rows, so without
+        // allocation every bucket carries the line's FULL amount and the grand
+        // total is wrong by a factor of the bucket count. verify() would catch
+        // it, but at generation time on somebody's quote rather than here.
+        Boolean allocates = String.isNotBlank(allocationBasis) && !ALLOCATION_NONE.equals(allocationBasis);
+        if (!allocates && !suppressAmounts) {
+            throw new QuoteDocumentGenerator.QuoteDocumentException(
+                'Table ' + tableCode + ' expands its lines with ' + expanderCode + ' but sets no '
+                + 'Allocation_Basis__c. Each line would then print its whole amount in every bucket it '
+                + 'occupies, and the total would be wrong by a factor of the bucket count. Set '
+                + 'Allocation_Basis__c = EVEN, or tick Suppress_Amounts__c if this table carries no money.'
+            );
+        }
+
+        if (allocates && !ALLOCATION_EVEN.equals(allocationBasis)) {
+            throw new QuoteDocumentGenerator.QuoteDocumentException(
+                'Table ' + tableCode + ' sets Allocation_Basis__c = ' + allocationBasis
+                + ', which is not a basis this framework implements. EVEN is the one that ships; '
+                + 'anything else needs its own weighting source and its own step.'
+            );
+        }
+
+        // Section totals cut the same lines a SECOND way, by charge type,
+        // across every bucket at once. On an expanded table that second cut has
+        // no agreed meaning - a repeated quantity summed across periods is the
+        // 1,200-licences defect again, and there is no "peak" to take across
+        // charge types either. Refused rather than guessed at.
+        if (showSectionTotals == true) {
+            throw new QuoteDocumentGenerator.QuoteDocumentException(
+                'Table ' + tableCode + ' both expands its lines and shows section totals. A section total '
+                + 'cuts across every bucket at once, which has no defined meaning on an expanded table. '
+                + 'Turn off Show_Section_Totals__c, or drop the expansion.'
+            );
+        }
+
+        if (QuoteDocumentPeriodExpander.CODE.equals(expanderCode)) {
+            if (periodMonths == null || periodMonths < 1) {
+                throw new QuoteDocumentGenerator.QuoteDocumentException(
+                    'Table ' + tableCode + ' uses the PERIOD expander but sets no positive '
+                    + 'Period_Months__c. 1 is monthly, 12 is annual - there is no default, because a '
+                    + 'schedule at the wrong granularity looks plausible and is wrong throughout.'
+                );
+            }
+            Boolean known = String.isBlank(periodOneTimePlacement)
+                || QuoteDocumentPeriodExpander.PLACE_FIRST.equals(periodOneTimePlacement)
+                || QuoteDocumentPeriodExpander.PLACE_EFFECTIVE.equals(periodOneTimePlacement)
+                || QuoteDocumentPeriodExpander.PLACE_SPREAD.equals(periodOneTimePlacement);
+            if (!known) {
+                throw new QuoteDocumentGenerator.QuoteDocumentException(
+                    'Table ' + tableCode + ' sets Period_One_Time_Placement__c = '
+                    + periodOneTimePlacement + '. Use FIRST_PERIOD, EFFECTIVE_DATE or SPREAD.'
+                );
+            }
+        }
+    }
+
     public Boolean usesChangeMeasures() {
         return MEASURES_CHANGE.equals(measureSet);
     }
@@ -350,6 +478,39 @@ public with sharing class QuoteDocumentTableDefinition {
             byDefinition.get(grouping.Table_Definition__c).add(grouping);
         }
 
+        cached = fromRecords([
+            SELECT Id, Table_Code__c, Table_Name__c, Amount_Basis__c, Line_Filter__c,
+                   Measure_Set__c, Show_Details__c, Show_Section_Totals__c, Display_Order__c,
+                   Composite_Separator__c, Max_Groups__c, Sort_Groups_By__c, Row_Customizer_Code__c,
+                   Row_Customizer_Version__c, Row_Customizer_Flow__c, Row_Customizer_Flow_Version__c,
+                   Cache_Policy__c, Contributor_Dependency_Set__c,
+                   Display_Title__c, Display_Subtitle__c, Intro_Text__c, Footer_Text__c,
+                   Expander_Code__c, Expander_Version__c, Period_Months__c,
+                   Period_One_Time_Placement__c, Allocation_Basis__c, Allocation_Scale__c,
+                   Suppress_Amounts__c
+            FROM Quote_Document_Table_Def__mdt
+            WHERE Is_Active__c = true
+            ORDER BY Display_Order__c
+        ], byDefinition);
+        return cached;
+    }
+
+    /**
+     * The record-to-definition pass, split out of getAll so the load-time
+     * rejections it owns - duplicate codes, a definition with no groupings,
+     * and everything the two validate* methods check - can be reached from a
+     * test without activating a broken metadata record in the org, which would
+     * fail every generation for every quote until it was deactivated again.
+     *
+     * Takes the records already ordered by Display_Order__c and the groupings
+     * already keyed and ordered by Level then Sequence; it does no querying and
+     * no caching of its own, so getAll keeps sole ownership of both.
+     */
+    @TestVisible
+    private static List<QuoteDocumentTableDefinition> fromRecords(
+        List<Quote_Document_Table_Def__mdt> records,
+        Map<Id, List<Quote_Document_Grouping__mdt>> groupingsByDefinition
+    ) {
         List<QuoteDocumentTableDefinition> definitions = new List<QuoteDocumentTableDefinition>();
 
         // Table_Code__c has no declarative uniqueness constraint of its own -
@@ -363,17 +524,7 @@ public with sharing class QuoteDocumentTableDefinition {
         // dimensions" check below, so every config problem fails the same way.
         Set<String> seenTableCodes = new Set<String>();
 
-        for (Quote_Document_Table_Def__mdt record : [
-            SELECT Id, Table_Code__c, Table_Name__c, Amount_Basis__c, Line_Filter__c,
-                   Measure_Set__c, Show_Details__c, Show_Section_Totals__c, Display_Order__c,
-                   Composite_Separator__c, Max_Groups__c, Sort_Groups_By__c, Row_Customizer_Code__c,
-                   Row_Customizer_Version__c, Row_Customizer_Flow__c, Row_Customizer_Flow_Version__c,
-                   Cache_Policy__c, Contributor_Dependency_Set__c,
-                   Display_Title__c, Display_Subtitle__c, Intro_Text__c, Footer_Text__c
-            FROM Quote_Document_Table_Def__mdt
-            WHERE Is_Active__c = true
-            ORDER BY Display_Order__c
-        ]) {
+        for (Quote_Document_Table_Def__mdt record : records) {
             if (!seenTableCodes.add(record.Table_Code__c)) {
                 throw new QuoteDocumentGenerator.QuoteDocumentException(
                     'Two active Quote_Document_Table_Def__mdt records both use Table_Code__c "'
@@ -383,15 +534,28 @@ public with sharing class QuoteDocumentTableDefinition {
                 );
             }
 
-            List<Quote_Document_Grouping__mdt> groupings = byDefinition.containsKey(record.Id)
-                ? byDefinition.get(record.Id)
+            List<Quote_Document_Grouping__mdt> groupings = groupingsByDefinition.containsKey(record.Id)
+                ? groupingsByDefinition.get(record.Id)
                 : new List<Quote_Document_Grouping__mdt>();
 
-            if (groupings.isEmpty()) {
+            Boolean hasContributor = String.isNotBlank(record.Row_Customizer_Code__c)
+                || String.isNotBlank(record.Row_Customizer_Flow__c);
+
+            if (groupings.isEmpty() && !hasContributor) {
                 // A table with no grouping emits only a grand total, which is
                 // almost certainly half-finished config rather than intent.
+                //
+                // Unless a contributor builds the rows itself. Then there is
+                // genuinely nothing to group by, and demanding a grouping would
+                // force config that describes rows the builder is about to
+                // discard - MONTHLY_SUBSCRIPTION_SUMMARY sections a quote by the
+                // months each line runs in, and no field on the line names a
+                // month for a Dimension__c or Field_Path__c to point at.
                 throw new QuoteDocumentGenerator.QuoteDocumentException(
-                    'Table definition ' + record.Table_Code__c + ' has no grouping dimensions.'
+                    'Table definition ' + record.Table_Code__c + ' has no grouping dimensions, and no '
+                    + 'row customizer to build its rows instead. Add a Quote_Document_Grouping__mdt '
+                    + 'record for it, or set Row_Customizer_Code__c / Row_Customizer_Flow__c if the '
+                    + 'rows are meant to come from a contributor.'
                 );
             }
 
@@ -399,11 +563,11 @@ public with sharing class QuoteDocumentTableDefinition {
                 new QuoteDocumentTableDefinition(record, toLevels(record.Table_Code__c, groupings));
             definition.validatePresentationConfig();
             definition.validateContributorConfig();
+            definition.validateExpansionConfig();
             definitions.add(definition);
         }
 
-        cached = definitions;
-        return cached;
+        return definitions;
     }
 
     /** Collapses the flat grouping records into levels, preserving order. */

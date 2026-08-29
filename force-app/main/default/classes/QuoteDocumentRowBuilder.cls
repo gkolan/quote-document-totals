@@ -102,6 +102,24 @@ public with sharing class QuoteDocumentRowBuilder {
         this.labels = labels;
     }
 
+    /**
+     * Measures that repeat across groups rather than dividing among them, so
+     * the grand total must be the largest group rather than the sum of them.
+     *
+     * The case: an expanded period table repeats a licence count in every
+     * period the line runs in. Summed, a twelve-month table reports 1,200
+     * licences for a customer who has 100. The subtotals stay sums - two
+     * products active in the same month really are 150 licences that month -
+     * so only the grand total changes, which is exactly what
+     * QuoteDocumentVerification independently checks.
+     */
+    private Set<String> nonAdditiveMeasures = new Set<String>();
+
+    public QuoteDocumentRowBuilder withNonAdditiveMeasures(Set<String> measures) {
+        this.nonAdditiveMeasures = measures == null ? new Set<String>() : measures;
+        return this;
+    }
+
     /** Guards against a composite quietly producing an unreadable document. */
     private Integer groupCount = 0;
 
@@ -147,6 +165,11 @@ public with sharing class QuoteDocumentRowBuilder {
 
         Map<String, List<QuoteDocumentLine>> linesByValue = new Map<String, List<QuoteDocumentLine>>();
         Map<String, Integer> minSequenceByValue = new Map<String, Integer>();
+        // The expansion bucket's own order, so "Month 10" cannot sort before
+        // "Month 2". Kept beside the line-sequence map rather than replacing
+        // it: a table can be grouped by an expansion at one level and by an
+        // ordinary dimension at another, and each level sorts on its own terms.
+        Map<String, Integer> minExpansionOrderByValue = new Map<String, Integer>();
         for (QuoteDocumentLine line : lines) {
             String value = line.getGroupingValue(level, definition.compositeSeparator);
             if (!linesByValue.containsKey(value)) {
@@ -156,6 +179,11 @@ public with sharing class QuoteDocumentRowBuilder {
             linesByValue.get(value).add(line);
             if (line.sequence < minSequenceByValue.get(value)) {
                 minSequenceByValue.put(value, line.sequence);
+            }
+            if (line.expansionOrder != null
+                && (!minExpansionOrderByValue.containsKey(value)
+                    || line.expansionOrder < minExpansionOrderByValue.get(value))) {
+                minExpansionOrderByValue.put(value, line.expansionOrder);
             }
         }
 
@@ -174,6 +202,12 @@ public with sharing class QuoteDocumentRowBuilder {
         List<String> sortedValues = new List<String>(linesByValue.keySet());
         if (QuoteDocumentTableDefinition.SORT_LINE_SEQUENCE.equals(definition.sortGroupsBy)) {
             sortedValues = sortByMinSequence(sortedValues, minSequenceByValue);
+        } else if (QuoteDocumentTableDefinition.SORT_EXPANSION_ORDER.equals(definition.sortGroupsBy)
+                   && minExpansionOrderByValue.size() == sortedValues.size()) {
+            // Only where every group at this level actually carries an order.
+            // A non-expansion level under EXPANSION_ORDER falls through to
+            // alphabetical rather than sorting on a map full of nulls.
+            sortedValues = sortByMinSequence(sortedValues, minExpansionOrderByValue);
         } else {
             sortedValues.sort();
         }
@@ -333,6 +367,34 @@ public with sharing class QuoteDocumentRowBuilder {
         );
         row.Label_Key__c = QuoteDocumentLabels.KEY_GRAND_TOTAL;
         total.writeTo(row, definition.measureSet);
+
+        // A repeated measure is not a sum across groups. Taken from the level-1
+        // subtotals already emitted rather than recomputed from the lines: the
+        // subtotals are what a reader adds up, so the total has to agree with
+        // the rows above it and not with a second calculation.
+        for (String measure : nonAdditiveMeasures) {
+            row.put(measure, peakAcrossTopLevelGroups(measure));
+        }
+    }
+
+    /**
+     * The largest level-1 subtotal for one measure - the peak period, not the
+     * sum of every period. Null-safe rather than clever: a table with no
+     * subtotals at all (no grouping) answers zero, and verification checks the
+     * same thing independently.
+     */
+    private Decimal peakAcrossTopLevelGroups(String measure) {
+        Decimal peak;
+        for (Quote_Document_Row__c candidate : rows) {
+            if (candidate.Row_Type__c != 'Subtotal' || candidate.Group_Level__c != 1) {
+                continue;
+            }
+            Decimal value = (Decimal) candidate.get(measure);
+            if (value != null && (peak == null || value > peak)) {
+                peak = value;
+            }
+        }
+        return peak == null ? 0 : peak;
     }
 
     // -----------------------------------------------------------------------

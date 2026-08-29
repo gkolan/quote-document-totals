@@ -143,13 +143,42 @@ public with sharing class QuoteDocumentFingerprint {
             // whether reuse is legal at all - regenerates rather than being
             // invisible until the next unrelated edit.
             parts.add(encodeString(definition.cachePolicy));
+
+            // Expansion changes how many rows exist and how the money is split
+            // between them, all without touching a single quote field. Without
+            // these tokens, adding an expander to a definition leaves the
+            // fingerprint identical and every quote reuses a snapshot built the
+            // old way. expanderVersion covers changed Apex behind an unchanged
+            // code, exactly as rowCustomizerVersion does.
+            parts.add(encodeString(definition.expanderCode));
+            parts.add(encodeString(definition.expanderVersion));
+            parts.add(encodeDecimal(definition.periodMonths));
+            parts.add(encodeString(definition.periodOneTimePlacement));
+            parts.add(encodeString(definition.allocationBasis));
+            parts.add(encodeDecimal(definition.allocationScale));
+            parts.add(encodeBoolean(definition.suppressAmounts));
             for (String path : definition.contributorDependencyPaths) {
                 parts.add(encodeString(path));
             }
 
             // Ordered grouping definitions - already ordered by Level then
             // Sequence inside groupBy/parts.
+            //
+            // The STRUCTURE is hashed, not only the parts. Without the level
+            // count and the per-level part count, "PRODUCT_FAMILY then
+            // CHARGE_TYPE" (two nested levels) and "PRODUCT_FAMILY +
+            // CHARGE_TYPE" (one composite level) flatten to an identical
+            // fragment - yet QuoteDocumentRowBuilder treats them as completely
+            // different documents, one nesting and one combining into single
+            // buckets. Metadata edits fire no staleness trigger, so a Ready
+            // quote under STANDARD caching would see an unchanged fingerprint
+            // and reuse the old hierarchy, with payload integrity passing
+            // because the stored output was never edited.
+            parts.add('LEVELS:' + definition.groupBy.size());
+            Integer levelIndex = 0;
             for (QuoteDocumentTableDefinition.Level level : definition.groupBy) {
+                levelIndex++;
+                parts.add('LEVEL:' + levelIndex + ':PARTS:' + level.parts.size());
                 for (QuoteDocumentTableDefinition.Part part : level.parts) {
                     parts.add(encodeString(part.dimension));
                     parts.add(encodeString(part.fieldPath));
@@ -193,6 +222,14 @@ public with sharing class QuoteDocumentFingerprint {
         // Quote-level values.
         parts.add(encodeDecimal(quote.SBQQ__NetAmount__c));
         parts.add(encodeString(quote.AccountIndustry__c));
+
+        // The quote term defines the month grid MONTHLY_SUBSCRIPTION_SUMMARY
+        // allocates into. Moving the start date or shortening the term
+        // repositions every row of that table without moving a single amount,
+        // so without these two an edited term reuses a snapshot built against
+        // the old one.
+        parts.add(encodeString(String.valueOf(quote.SBQQ__StartDate__c)));
+        parts.add(encodeDecimal(quote.SBQQ__SubscriptionTerm__c));
         if (UserInfo.isMultiCurrencyOrganization()) {
             parts.add(encodeString((String) quote.get('CurrencyIsoCode')));
         }
@@ -245,6 +282,15 @@ public with sharing class QuoteDocumentFingerprint {
         // Typed field values per line, in the same order.
         for (Id lineId : orderedIds) {
             QuoteDocumentLine line = lineById.get(lineId);
+            // Sequence, because it decides PRINTED ORDER: detail rows are
+            // emitted in it, and LINE_SEQUENCE group ordering reads it. Swapping
+            // two SBQQ__Number__c values changes the document without changing
+            // any amount. The line trigger does mark the quote Stale eventually,
+            // but that write is deferred to a future method - a generate-or-reuse
+            // landing inside that window would otherwise reuse the old order,
+            // which is exactly the gap the fingerprint exists to close
+            // independently of eventual staleness.
+            parts.add(encodeDecimal(line.sequence));
             parts.add(encodeString(line.productName));
             parts.add(encodeString(line.productCode));
             parts.add(encodeString(line.productFamily));
@@ -263,6 +309,12 @@ public with sharing class QuoteDocumentFingerprint {
             parts.add(encodeDecimal(line.amountNet));
             parts.add(encodeDecimal(line.amountCustomer));
             parts.add(encodeDecimal(line.quantity));
+
+            // A line's own window decides which months it appears in. Nothing
+            // else in the canonical form moves when only a date moves.
+            parts.add(encodeString(String.valueOf(line.subscriptionStartDate)));
+            parts.add(encodeString(String.valueOf(line.subscriptionEndDate)));
+
             parts.add(encodeString(line.transactionType));
             parts.add(encodeDecimal(line.amountNetNew));
             parts.add(encodeDecimal(line.amountCancellation));
@@ -302,6 +354,16 @@ public with sharing class QuoteDocumentFingerprint {
      * written with different precision - normalize to the same token instead
      * of producing different digests for no real change.
      */
+    @TestVisible
+    private static String encodeDecimalForTest(Decimal value) {
+        return encodeDecimal(value);
+    }
+
+    @TestVisible
+    private static String encodeStringForTest(String value) {
+        return encodeString(value);
+    }
+
     @TestVisible
     private static String encodeDecimal(Decimal value) {
         return value == null ? 'NULL' : 'DECIMAL:' + value.setScale(2).toPlainString();

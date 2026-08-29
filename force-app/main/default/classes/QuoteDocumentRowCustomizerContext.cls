@@ -53,6 +53,27 @@ public class QuoteDocumentRowCustomizerContext {
     public List<Quote_Document_Row__c> rows;
 
     /**
+     * Measures this table's rows carry that must NOT be summed into the grand
+     * total - declared by the contributor, because only the contributor knows
+     * what its rows mean.
+     *
+     * The case this exists for: a monthly breakdown repeats the same licence
+     * count in every month it is active, so the licences are not twelve
+     * separate quantities to be added. Summing them prints "1,200 licences"
+     * for a customer who has 100. Left additive, QuoteDocumentVerification
+     * would also reject the correct answer, since a peak of 100 does not equal
+     * the 1,200 its leaf rows sum to.
+     *
+     * A measure named here is verified under the sum-within-group,
+     * max-across-groups rule instead of the additive one - it is checked
+     * differently, never left unchecked. An unverified measure is exactly
+     * where a wrong number ships quietly.
+     *
+     * See specs/row-generation-extensibility/steps/step-02-allocation-primitive.md section 3.3.
+     */
+    public Set<String> nonAdditiveMeasures = new Set<String>();
+
+    /**
      * Allocates a new row the same way QuoteDocumentRowBuilder does: detail
      * rows count toward subtotals and the grand total, every other row type
      * (Group Header, Subtotal, Section Total, Grand Total) does not, and
