@@ -196,6 +196,123 @@ Clear `Row_Customizer_Flow__c`.
 
 ---
 
+## Recipe 3 — expand one line into several rows
+
+Use when one quote line must become several document rows: a month, a year, a
+milestone, a delivery. Grouping cannot express this — grouping puts each line in
+exactly one bucket, expansion multiplies it.
+
+**Most period cases need no code at all.** Set these on the table definition:
+
+| Field | Value |
+|---|---|
+| `Expander_Code__c` | `PERIOD` |
+| `Expander_Version__c` | `1` (bump whenever the expander's behaviour changes) |
+| `Period_Months__c` | `1` monthly, `3` quarterly, `12` annual |
+| `Allocation_Basis__c` | `EVEN` |
+| `Period_One_Time_Placement__c` | `FIRST_PERIOD` (default), `EFFECTIVE_DATE`, or `SPREAD` |
+| `Sort_Groups_By__c` | `EXPANSION_ORDER` — without it "Month 10" prints before "Month 2" |
+
+Then add one `Quote_Document_Grouping__mdt` record with `Dimension__c = EXPANSION`.
+Put it at level 1 for period-then-product, or level 2 for product-then-period; both
+work, and that is the point of the design.
+
+For a different axis, implement `QuoteDocumentLineExpander` and register it:
+
+```apex
+public with sharing class MyDeliveryExpander implements QuoteDocumentLineExpander {
+
+    public List<QuoteDocumentExpansion.Bucket> buckets(QuoteDocumentExpansion.Request request) {
+        // Every bucket the table prints, in order, occupied or not.
+        // Throw QuoteDocumentContributorError rather than guessing an axis.
+    }
+
+    public List<QuoteDocumentExpansion.Placement> placements(
+        QuoteDocumentLine line, QuoteDocumentExpansion.Request request
+    ) {
+        // Which buckets this line occupies, and its RELATIVE weight in each.
+        // Weight 1 everywhere is an even split. Weight 0 is a genuinely free
+        // period - it receives exactly zero and never the rounding residual.
+        // Returning an empty list for a counted line is an error: its money
+        // would vanish from a table that still claimed to reconcile.
+    }
+
+    public Boolean dividesQuantity() {
+        // TRUE where each bucket is a different set of physical things
+        // (1,000 devices across three deliveries is 200/300/500).
+        // FALSE where it is the same things present in every bucket
+        // (100 licences in each of twelve months is 100, not 8.33).
+        return true;
+    }
+}
+```
+
+Register it in `QuoteDocumentExpanderRegistry.resolve`, then name the code on the
+definition. Allocation, reconciliation and ordering are handled for you.
+
+**Three things the framework does on your behalf, so do not reimplement them:**
+every allocated measure uses the same weights; each line's shares are checked
+against its own value at zero tolerance before insert; and a repeated measure is
+declared non-additive so its grand total is the peak bucket rather than the sum.
+
+## Recipe 4 — a measure that must not be summed
+
+A percentage, a blended rate, a peak or a running balance is wrong the moment it
+is added up. Declare the rule on the column definition:
+
+| `Aggregation_Rule__c` | Aggregate value |
+|---|---|
+| `SUM` | Default, and blank means this |
+| `RATIO` | `Aggregation_Numerator__c` / `Aggregation_Denominator__c`, recomputed at every level |
+| `MAX` | The largest contributing row |
+| `SUM_THEN_MAX` | Sum within each group, then the largest group — peak active licences |
+| `LAST` | The final row in display order — an ending balance |
+| `NONE` | Blank on aggregate rows |
+
+A 60% discount on \$1,000 beside a 10% discount on \$100,000 blends to 10.50%.
+Summed it reads 70%; averaged, 35%. Only `RATIO` gets it right, and only because
+it divides the aggregated numerator by the aggregated denominator rather than
+combining the children's percentages.
+
+Two ready-made fields exist for ratios — `Effective_Discount_Percent__c` and
+`Blended_Unit_Price__c`. For anything else, add your own numeric field to
+`Quote_Document_Row__c` and bind a column to it; that is additive and
+upgrade-safe.
+
+## Recipe 5 — a before-and-after table
+
+Set `Comparison_Source_Code__c = SOURCE_QUOTE`, `Comparison_Source_Version__c`,
+and `Measure_Set__c = CHANGE`. The baseline is the quote named by
+`SBQQ__Source__c`, which CPQ populates on a revision; point elsewhere with
+`Comparison_Source_Field__c`.
+
+Each position produces exactly one row carrying `Amount_Baseline__c` (before),
+`Amount_Final__c` (after) and `Amount_Net_Change__c` (the difference), with
+`Transaction_Type__c` saying which of the four outcomes it is: `Net New`,
+`Cancellation`, `Amended`, `Unchanged`. Unchanged positions are printed by
+default — a customer scanning for what moved is entitled to see what did not.
+
+For a different baseline, implement `QuoteDocumentComparisonSource`. Choose the
+match key carefully: product alone pairs two lines that are really two positions
+on different terms. Where the key is genuinely ambiguous the framework refuses
+rather than guessing, because the difference column is the number a customer
+trusts most.
+
+## Recipe 6 — separate tables per scenario or entity
+
+Set `Partition_Dimension__c` to any dimension a grouping accepts, and
+`Cross_Partition_Total__c` to `NONE` or `SUM`. There is no default, on purpose:
+
+- `NONE` for alternatives, scenarios and contingent amounts — things that are
+  mutually exclusive. Summing them states a number the customer is not being
+  asked to pay.
+- `SUM` for departments and purchasing entities — complementary parts of one
+  whole. Generation then checks that they actually add to the quote.
+
+Each partition becomes its own `Quote_Document_Table__c`, with its own grand
+total and its own three-segment `Table_Key__c`. At most nine partitions: table
+order is a whole number and definitions are spaced by ten.
+
 ## Error codes
 
 Every code below is a stable string. Grep for it; do not parse the message.
@@ -236,6 +353,27 @@ Every code below is a stable string. Grep for it; do not parse the message.
 | `LOCALE_UNSUPPORTED` | No dictionary for the requested locale. Never falls through to English |
 | `BLOCK_BODY_MARKUP` | A narrative block contains a tag or merge-field syntax |
 | `TABLE_TITLE_MISSING` / `TABLE_LOCALE_MISSING` | A table cannot be published incomplete |
+
+### Row production — expansion, allocation, aggregation, comparison, partitioning
+
+| Code | Means |
+|---|---|
+| `EXPANSION_AXIS_UNRESOLVED` | A period table has no term to divide. Neither the quote nor any line carries usable dates — an axis guessed from nothing puts every product in a period nobody chose |
+| `EXPANSION_WINDOW_INVALID` | A line ends before it starts. There is no set of periods to spread it over |
+| `EXPANSION_LINE_OUTSIDE_AXIS` | A line runs entirely outside the term. Including it would leave the printed periods short of the quote total, and dropping it silently would do the same |
+| `EXPANSION_TOO_MANY_BUCKETS` | More than 120 buckets. A data error, not a document |
+| `EXPANSION_BUCKET_UNKNOWN` | An expander placed a line in a bucket it never published — a row in a section nobody would see |
+| `ALLOCATION_WEIGHTS_INVALID` | Empty, all-zero, or negative weights. There is deliberately no "fall back to even": silently changing the basis is how a document becomes wrong without failing |
+| `ALLOCATION_SOURCE_UNRECONCILED` | One line's allocated shares do not sum back to its own value, **at zero tolerance**. The table total can still reconcile while every printed row is wrong |
+| `AGGREGATION_RULE_UNKNOWN` | An `Aggregation_Rule__c` that is not `SUM`, `RATIO`, `MAX`, `SUM_THEN_MAX`, `LAST` or `NONE`, or a `RATIO` missing an operand |
+| `AGGREGATION_RULE_CYCLIC` | A `RATIO` whose numerator or denominator is its own field |
+| `AGGREGATION_RESULT_UNVERIFIED` | An aggregate row disagrees with the rule that produced it. Non-additive measures are re-checked, never merely excused |
+| `SUM_THEN_MAX_REQUIRES_EXPANSION` | A peak declared on a table with no expansion to peak across. Across product families that is not a peak of anything |
+| `COMPARISON_MATCH_AMBIGUOUS` | Two lines on one side share a match key. Pairing one arbitrarily prints a confidently wrong difference |
+| `COMPARISON_MATCH_KEY_BLANK` | A position with no identity can only ever appear as both added and removed |
+| `COMPARISON_MEASURE_SET_UNSUPPORTED` | A comparison on the price waterfall. Every difference would be silently zero |
+| `ENRICHMENT_SOURCE_MISSING` | The baseline could not be read, or the source lookup is blank. An empty baseline prints "everything is new" — a confident statement built on a missing input |
+| `PARTITION_TOTAL_UNRECONCILED` | A `SUM` partition set does not add to the quote. A line reached no partition, or reached two |
 
 ### Retrieval
 

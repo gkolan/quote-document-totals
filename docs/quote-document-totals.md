@@ -318,6 +318,57 @@ Deactivation closes this completely for generated data. `classify()` still runs 
 
 ---
 
+## The row-production stage
+
+Everything above describes one line becoming one row. Since
+`specs/row-generation-extensibility` there is a stage before the row builder
+where that stops being true, and five things can happen to a line before it is
+grouped:
+
+```
+query lines
+   -> COMPARE     pair against a baseline set          (Comparison_Source_Code__c)
+   -> EXPAND      one line becomes N, one per bucket   (Expander_Code__c)
+   -> ALLOCATE    divide its measures among them       (Allocation_Basis__c)
+   -> group, subtotal, order                            [unchanged]
+   -> AGGREGATE   non-additive measures recomputed     (Aggregation_Rule__c)
+   -> verify, persist                                   [unchanged]
+
+and, around the whole of it:
+      PARTITION   one definition -> several tables     (Partition_Dimension__c)
+```
+
+The design rule that makes this cheap: **the stage hands the row builder an
+ordinary line list.** Grouping, subtotals, `Display_Order__c`, labels and
+`verify()` cannot tell an expanded or compared line from any other, so
+`EXPANSION` is a grouping dimension like `PRODUCT_FAMILY` and "year then family"
+and "family then year" are both a metadata change.
+
+Four consequences worth knowing before you touch any of it:
+
+- **A repeated measure is not additive.** A licence count that appears in every
+  month a line runs is the same licences, so its grand total is the peak month,
+  not the sum of twelve. The expander declares this through `dividesQuantity()`,
+  and verification checks it under the sum-within-group, max-across-groups rule
+  rather than excusing it.
+- **`verify()`'s cent of tolerance is not enough for an allocation.** It checks
+  a table total once; allocating line A's money into line B's buckets reconciles
+  perfectly while every printed row is wrong. Every allocation is therefore
+  re-checked against its own source line, at zero tolerance, before insert.
+- **A partitioned table cannot be reconciled against the quote.** It covers a
+  share of it. The claim moves to the set: `Cross_Partition_Total__c = SUM`
+  means the partitions must add to the quote, and generation checks that.
+- **Comparison, expansion and partitioning do not combine.** Each pair is
+  refused at config load with a message saying why. There may be defensible
+  answers; nobody has defined them, and a money table is not where to start.
+
+Extension points, all closed registries in the same style as
+`QuoteDocumentRowCustomizerRegistry`: `QuoteDocumentLineExpander`
+(+`QuoteDocumentExpanderRegistry`) and `QuoteDocumentComparisonSource`
+(+`QuoteDocumentComparisonRegistry`). Recipes 3-6 in
+[`quote-document-extension-recipes.md`](quote-document-extension-recipes.md)
+are the entry point; read those rather than the generator internals.
+
 ## 4. Architecture and control flow
 
 ### The pipeline

@@ -205,6 +205,67 @@ Set exactly one of `Dimension__c` or `Field_Path__c` on each record — never bo
 
 ---
 
+## 7a. Tables where one product becomes several rows
+
+Most tables in this framework put each quoted product on one line. Some
+documents need more than that, and this section is the plain-language version of
+how those work — it is configuration, not code.
+
+**Spreading a product over time.** A twelve-month subscription can print as
+twelve monthly sections, or a three-year deal as three annual ones. You set the
+length of a period on the table definition and the framework works out the
+sections from the quote's own start date and term. If the quote has neither a
+term nor dated lines, generation stops rather than inventing a schedule.
+
+**The one thing to get right: the money still has to add up.** When a product is
+spread across twelve months, each month carries a share, and those shares add
+back to exactly what the customer is paying — to the cent. The framework
+enforces this twice: once for each product, and once for the table as a whole.
+If a share is lost, generation fails and no document is produced. That is
+deliberate: a schedule that looks reasonable and is a penny out is worse than no
+schedule.
+
+**Quantities do not divide the way money does.** A customer with 100 licences
+has 100 licences in every month of the term — not 8.33. So money is divided
+across the periods and licence counts are repeated in each one, and the figure
+for the whole term is the busiest month rather than the twelve months added
+together. If you ever see a licence count that looks like the term total
+multiplied by the number of months, that is the bug this rule exists to prevent.
+
+**One-time charges land once.** Hardware, setup and implementation fees are
+incurred at a point in time, so by default they appear in the first period only.
+You can choose to spread one instead, but you have to say so explicitly —
+spreading a setup fee prints a recurring charge that does not exist.
+
+**Some numbers must never be added up.** A discount percentage is the clearest
+case: 60% off one product and 10% off another is not 70% off. The framework
+recalculates such figures at each level from the underlying amounts instead of
+summing them, and you tell it to by setting an aggregation rule on the column.
+The same applies to a blended unit price and to a peak licence count.
+
+**Comparing two quotes.** A table can show what changed between this quote and
+the one it was revised from: the previous amount, the new amount, and the
+difference, for every product — including products that were dropped, which
+appear with the amount that is going. Where two lines cannot be told apart, the
+framework stops rather than guessing which one changed.
+
+**Splitting a quote into several tables.** Alternatives (Basic / Recommended /
+Premium), consumption scenarios, or separate departments can each get their own
+table with its own total. You must say whether a total across those tables means
+anything: for alternatives it does not, and for departments it does. There is no
+default, because the wrong one prints a number the customer is not being asked
+to pay.
+
+Three sentences worth remembering, because each is a place this framework is
+easy to misread:
+
+- An installment table states the agreed schedule. It does not track payments,
+  and nothing in it changes when money arrives.
+- A consumption scenario is an estimate. Its assumptions are printed with it and
+  are part of the document, not a footnote that can be dropped.
+- A shortfall against a minimum commitment is a gap, not a charge. It is never
+  added to any total.
+
 ## 8. The safety checks — what "Complete" actually promises
 
 Before any table is allowed to finish generating, five checks run automatically. If any one of them fails, that specific table (and, because everything for one Quote happens together, every table for that Quote) is rolled back to whatever existed before — nothing half-finished is ever left behind.

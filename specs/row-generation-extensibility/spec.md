@@ -1,5 +1,7 @@
 # Row generation extensibility — spec
 
+**Status: BUILT, with three steps partial and saying so.** Steps 00-06 are complete as of 2026-08-28; §6 records each one's status and §3.1 records what that means per use case. Nine of twenty use cases are built and tested; eight are *enabled, needs its own implementation*, which is the honest count and is not a synonym for done. Read the step close-outs before assuming anything below was delivered as originally planned - three of them were not.
+
 **Status of this file:** planning spec and index. Nothing here is built except what §2 lists as already deployed. It does not re-describe the architecture — [`docs/quote-document-totals.md`](../../docs/quote-document-totals.md) is the source of truth for that, and [`specs/vendor-neutral-render-contract/spec.md`](../vendor-neutral-render-contract/spec.md) owns everything downstream of the snapshot. This spec owns only the stage **before** the snapshot: how the rows get produced.
 
 ---
@@ -148,5 +150,22 @@ Stated once here rather than repeated five times.
 | 03 | [Non-additive measures](steps/step-03-non-additive-measures.md) | **BUILT** 2026-08-28 |
 | 04 | [Comparison and enrichment sources](steps/step-04-comparison-and-enrichment.md) | **PARTIAL** 2026-08-28 — `SOURCE_QUOTE` shipped; `PRIOR_SNAPSHOT` blocked by snapshot replacement |
 | 05 | [Partitioning](steps/step-05-partitioning.md) | **PARTIAL** 2026-08-28 — partitioned tables built; separate documents and required assumptions not |
-| 06 | [Docs and close-out](steps/step-06-docs-and-closeout.md) | Planned |
-| — | [Worked examples](steps/worked-examples.md) — end-to-end config and expected rows for the four cases that are configuration, not code | Planned |
+| 06 | [Docs and close-out](steps/step-06-docs-and-closeout.md) | **BUILT** 2026-08-28 — the monthly migration was assessed and declined, with the reason |
+| — | [Worked examples](steps/worked-examples.md) — end-to-end config and expected rows for the four cases that are configuration, not code | **Reference** — examples 3 and 4 are buildable today; 1 and 2 need a subscriber expander |
+
+### What was actually delivered
+
+| | |
+|---|---|
+| New classes | `QuoteDocumentAllocation`, `QuoteDocumentExpansion`, `QuoteDocumentLineExpander`, `QuoteDocumentPeriodExpander`, `QuoteDocumentExpanderRegistry`, `QuoteDocumentAggregation`, `QuoteDocumentComparison`, `QuoteDocumentComparisonSource`, `QuoteDocumentSourceQuoteComparison`, `QuoteDocumentComparisonRegistry` |
+| New tests | 78 across six classes: allocation 16, expansion 18, aggregation 15, comparison 15, partition 14 (plus 4 added to the monthly customizer's own class) |
+| New fields | 12 on `Quote_Document_Table_Def__mdt`, 3 on `Quote_Document_Column_Def__mdt`, 3 on `Quote_Document_Row__c`, 4 on `Quote_Document_Table__c` |
+| Suite | 478 ran, 473 passed — the 5 failures are the pre-existing org-only ones, unchanged throughout |
+
+**One defect fixed on the way in:** `QuoteDocumentMonthlyRowCustomizer` divided `Quantity__c` like money, printing 8.33 licences a month for a customer with 100. Found in the step 00 audit, fixed with tests, and the reason [step 02](steps/step-02-allocation-primitive.md) §3.3 makes allocation behaviour per measure rather than per table.
+
+**Three planning assumptions that did not survive contact:**
+
+1. `PRIOR_SNAPSHOT` "depends on nothing new" — it depends on the previous snapshot, which generation deletes. `SOURCE_QUOTE` ships instead ([step 04](steps/step-04-comparison-and-enrichment.md)).
+2. Expansion and non-additive measures are independent steps — they are not. A repeated quantity needs a peak grand total or verification correctly rejects it, so `SUM_THEN_MAX` was built in [step 01](steps/step-01-expansion-contract.md).
+3. `verify()` "already does the right thing" per partition — it holds every waterfall table to the whole quote, which a partition cannot satisfy. The claim moved to the set rather than being dropped ([step 05](steps/step-05-partitioning.md)).

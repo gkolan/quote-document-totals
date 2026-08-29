@@ -1,6 +1,6 @@
 # Step 06 — Docs, migration, and close-out
 
-**Status: PLANNED**
+**Status: BUILT** — see close-out
 **Blocked by:** every step that was actually built
 **Blocks:** nothing
 
@@ -85,4 +85,37 @@ Pass: all three found.
 
 ## 7. Close-out
 
-*(To be filled: migration outcome, final status of every step and use case, coverage figures, and anything the series learned that contradicts its own §1 framing.)*
+- **Date:** 2026-08-28
+- **Status: BUILT** — documentation and series close-out done; the migration in §3.1 was assessed and **deliberately not performed**.
+
+### The monthly migration: assessed, declined, with the reason
+
+§3.1 set an exact bar — a byte-identical snapshot — and said not to force it otherwise. It cannot be met, for two concrete reasons found by inspection rather than guessed at:
+
+1. **Row and group keys differ.** `QuoteDocumentMonthlyRowCustomizer` builds `SUBTOTAL:MONTH:01`. Under the seam the builder derives group keys from the printed label like every other dimension, giving `SUBTOTAL:EXPANSION:MONTH_1`. `Row_Key__c` is the addressable identity a renderer binds to, so this changes the payload hash by definition — the bar fails on the first row.
+2. **The `Note` row has no declarative home.** It is emitted unconditionally after the grand total and is one string keyed to this table's meaning. Step 00 classified it `MONTHLY-ONLY` and that held: the migrated table would still need a small customizer for it, so the migration removes duplication rather than eliminating the class.
+
+**The generalization claim in [`spec.md`](../spec.md) §2 stands, narrowed:** the seam covers what the monthly customizer *does* — a period axis, even allocation, cent-exact residuals, repeated quantities — and `QuoteDocumentExpansionTest` proves it on an annual and a monthly axis. What it does not do is reproduce that table's existing row keys. Migrating would be a behaviour change shipped under the word "refactor", on a table that is deployed, tested 17/17, and correct.
+
+**Recommended, not done:** migrate when the monthly table next needs a change anyway, and treat the key change as the change it is.
+
+### Documentation
+
+| Document | What was added |
+|---|---|
+| [`docs/quote-document-totals.md`](../../../docs/quote-document-totals.md) | A "row-production stage" section with the pipeline, the design rule that keeps it cheap, and the four consequences a developer must know before touching it |
+| [`docs/quote-document-extension-recipes.md`](../../../docs/quote-document-extension-recipes.md) | Recipes 3-6 (expand, non-additive measure, comparison, partition) and 16 new error codes |
+| [`docs/quote-document-totals-architecture-guide.md`](../../../docs/quote-document-totals-architecture-guide.md) | §7a in plain language for an admin, including the three verbatim sentences §3.2 requires |
+| [`CLAUDE.md`](../../../CLAUDE.md) | This spec added to the reading list |
+
+**Not done:** a per-table guide meeting `docs/documentation-standards.md`. No table definition from this series is *active* — `ANNUAL_SCHEDULE` ships inactive, and every other table exercised here exists only in test fixtures. A guide for a table nobody can generate would document an intention rather than a deployment. The standard applies the moment one is activated.
+
+### What the series learned that contradicts its own framing
+
+- **[`spec.md`](../spec.md) §4's build order was right, but §1's five-capability split understated the coupling.** Expansion could not ship without part of step 03: a repeated measure needs a non-additive grand total, or verification correctly rejects it. `SUM_THEN_MAX` was therefore built in step 01 and generalized in step 03, rather than arriving in its own step.
+- **"Depends on nothing new" was wrong once, expensively.** Step 04 planned `PRIOR_SNAPSHOT` first on exactly that reasoning; generation deletes the previous snapshot before rebuilding, so it cannot work at all. Found in build, not in planning.
+- **Every step that touched totals found the same shape of problem:** a check that looked sufficient and was not. `verify()`'s cent of tolerance cannot see a misallocated line; excusing a non-additive column from reconciliation leaves it unchecked; a partitioned table cannot be held to the quote total. Each was fixed by adding a *stricter* check rather than relaxing one.
+
+### Final state
+
+Full suite **478 ran, 473 passed, 5 failed** — the five pre-existing org-only failures (`QuoteDocumentGeneratorGuardTest` x3 plus two classes absent from this repository), unchanged throughout the series. **78 tests** were added across six new test classes.
