@@ -167,10 +167,10 @@ Stated once here rather than repeated five times.
 
 | | |
 |---|---|
-| New classes | `QuoteDocumentAllocation`, `QuoteDocumentExpansion`, `QuoteDocumentLineExpander`, `QuoteDocumentPeriodExpander`, `QuoteDocumentExpanderRegistry`, `QuoteDocumentAggregation`, `QuoteDocumentComparison`, `QuoteDocumentComparisonSource`, `QuoteDocumentSourceQuoteComparison`, `QuoteDocumentComparisonRegistry` |
-| New tests | 78 across six classes: allocation 16, expansion 18, aggregation 15, comparison 15, partition 14 (plus 4 added to the monthly customizer's own class) |
+| New classes | `QuoteDocumentAllocation`, `QuoteDocumentExpansion`, `QuoteDocumentLineExpander`, `QuoteDocumentPeriodExpander`, `QuoteDocumentScheduleExpander`, `QuoteDocumentExpanderRegistry`, `QuoteDocumentAggregation`, `QuoteDocumentComparison`, `QuoteDocumentComparisonSource`, `QuoteDocumentSourceQuoteComparison`, `QuoteDocumentComparisonRegistry` |
+| New tests | 95 across seven classes: allocation 16, expansion 19, aggregation 15, comparison 15, partition 19, schedule 11 (plus 4 added to the monthly customizer's own class) |
 | New fields | 12 on `Quote_Document_Table_Def__mdt`, 3 on `Quote_Document_Column_Def__mdt`, 3 on `Quote_Document_Row__c`, 4 on `Quote_Document_Table__c` |
-| Suite | 478 ran, 473 passed — the 5 failures are the pre-existing org-only ones, unchanged throughout |
+| Suite | 495 ran, 490 passed — the 5 failures are the pre-existing org-only ones, unchanged throughout |
 
 **One defect fixed on the way in:** `QuoteDocumentMonthlyRowCustomizer` divided `Quantity__c` like money, printing 8.33 licences a month for a customer with 100. Found in the step 00 audit, fixed with tests, and the reason [step 02](steps/step-02-allocation-primitive.md) §3.3 makes allocation behaviour per measure rather than per table.
 

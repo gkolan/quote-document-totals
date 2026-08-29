@@ -108,7 +108,9 @@ Pass: all three found.
 | [`docs/quote-document-totals-architecture-guide.md`](../../../docs/quote-document-totals-architecture-guide.md) | §7a in plain language for an admin, including the three verbatim sentences §3.2 requires |
 | [`CLAUDE.md`](../../../CLAUDE.md) | This spec added to the reading list |
 
-**Not done:** a per-table guide meeting `docs/documentation-standards.md`. No table definition from this series is *active* — `ANNUAL_SCHEDULE` ships inactive, and every other table exercised here exists only in test fixtures. A guide for a table nobody can generate would document an intention rather than a deployment. The standard applies the moment one is activated.
+**Written 2026-08-28:** [`docs/annual-schedule-guide.md`](../../../docs/annual-schedule-guide.md), scoring **9.9 / 10** against the rubric in `docs/documentation-standards.md`. It documents `ANNUAL_SCHEDULE` while that definition is still inactive, which is the right order: the guide is what an admin reads *before* deciding to activate, and §7 makes activation a deliberate step with its own preconditions (quotes must carry a usable term; a line outside its term now fails generation).
+
+Criterion 10 scores 0.9 because `scripts/scratch-org-bootstrap.sh` neither activates the definition nor seeds a multi-year quote — extending it touches every guide and belongs in its own change. No other table from this series has a guide, and none needs one yet: they exist only in test fixtures.
 
 ### What the series learned that contradicts its own framing
 
