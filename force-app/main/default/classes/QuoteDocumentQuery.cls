@@ -23,6 +23,7 @@ public with sharing class QuoteDocumentQuery {
         'SBQQ__ListTotal__c', 'SBQQ__RegularTotal__c', 'SBQQ__TotalDiscountAmount__c',
         'SBQQ__NetTotal__c', 'SBQQ__CustomerTotal__c', 'SBQQ__NetPrice__c',
         'SBQQ__Existing__c', 'SBQQ__PriorQuantity__c',
+        'SBQQ__StartDate__c', 'SBQQ__EndDate__c',
         'SBQQ__UpgradedSubscription__c', 'SBQQ__RenewedSubscription__c'
     };
 
@@ -47,7 +48,23 @@ public with sharing class QuoteDocumentQuery {
      * transactions each locking a different subset of the same two Quotes in
      * opposite order.
      */
+    /**
+     * The same shape as quotesWithLines, WITHOUT the row lock.
+     *
+     * A comparison baseline is read, never written, and the quote it belongs
+     * to is not the one being generated - locking it would hold a row this
+     * transaction has no intention of changing, and would make two quotes
+     * generating against the same baseline block each other for no reason.
+     */
+    public static List<SBQQ__Quote__c> quotesWithLinesReadOnly(Set<Id> quoteIds) {
+        return query(quoteIds, false);
+    }
+
     public static List<SBQQ__Quote__c> quotesWithLines(Set<Id> quoteIds) {
+        return query(quoteIds, true);
+    }
+
+    private static List<SBQQ__Quote__c> query(Set<Id> quoteIds, Boolean lockRows) {
         Set<String> lineFields = new Set<String>(BASE_LINE_FIELDS);
 
         for (String path : QuoteDocumentTableDefinition.allFieldPaths()) {
@@ -90,11 +107,12 @@ public with sharing class QuoteDocumentQuery {
         String soql =
             'SELECT Id, Name, SBQQ__NetAmount__c, AccountIndustry__c, Document_Data_Status__c, '
             + 'Document_Data_Fingerprint__c, Document_Data_Request_Id__c, Document_Payload_Hash__c, '
-            + 'Document_Data_Started_At__c'
+            + 'Document_Data_Started_At__c, SBQQ__StartDate__c, SBQQ__SubscriptionTerm__c'
             + currencyField + dependencyFields + ', '
             + '(SELECT ' + String.join(new List<String>(lineFields), ', ')
             + ' FROM SBQQ__LineItems__r ORDER BY SBQQ__Number__c) '
-            + 'FROM SBQQ__Quote__c WHERE Id IN :quoteIds WITH USER_MODE FOR UPDATE';
+            + 'FROM SBQQ__Quote__c WHERE Id IN :quoteIds WITH USER_MODE'
+            + (lockRows ? ' FOR UPDATE' : '');
 
         return Database.query(soql);
     }
@@ -103,26 +121,6 @@ public with sharing class QuoteDocumentQuery {
      * Walks a dot path through the describe layer so a bad configuration is
      * caught at generation time, naming the segment that does not exist.
      */
-    /**
-     * Whether a configured locale path would actually reach the query. Lets a
-     * test assert the wiring in an org that has not configured one, rather
-     * than passing vacuously.
-     */
-    @TestVisible
-    private static Boolean localePathIsQueried() {
-        String path = QuoteDocumentLocale.configuredPath();
-        return String.isBlank(path) || quotesWithLinesSoql().contains(path);
-    }
-
-    /** The SELECT list as it would be built now, for the assertion above. */
-    @TestVisible
-    private static String quotesWithLinesSoql() {
-        String localePath = QuoteDocumentLocale.configuredPath();
-        return 'SELECT Id, Name'
-            + (String.isBlank(localePath) ? '' : ', ' + localePath)
-            + ' FROM SBQQ__Quote__c';
-    }
-
     @TestVisible
     private static void validateFieldPath(String path) {
         walkPath(path, SBQQ__QuoteLine__c.SObjectType, 'Grouping field path');

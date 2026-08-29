@@ -1,6 +1,6 @@
 # Step 04 — Comparison and enrichment sources
 
-**Status: PLANNED**
+**Status: PARTIAL** — see close-out
 **Blocked by:** [step 01](step-01-expansion-contract.md)
 **Blocks:** 05 (partially — scenario and rebate cases need enrichment)
 **Use cases:** 5, 6, 7, 14, 15, 16, 17, 18 ([`spec.md`](../spec.md) §3)
@@ -124,6 +124,39 @@ New test class `QuoteDocumentComparisonTest`: `priorSnapshotProducesBeforeAfterD
 
 ## 7. Close-out
 
-*(To be filled: whether the `CHANGE` measure-set fields carried the comparison shape or new fields were needed, the match-key defaults chosen per source, and the `CHANGE`-table agreement finding.)*
+- **Date:** 2026-08-28
+- **Status: PARTIAL.** The comparison engine and one source shipped. `PRIOR_SNAPSHOT` turned out to be **impossible as specified**, and `AMENDED_SUBSCRIPTION` is untestable in this org. Both are recorded below rather than half-built.
+
+### `PRIOR_SNAPSHOT` cannot work today — a planning error found in build
+
+§3.2 said to build `PRIOR_SNAPSHOT` first because it "depends on nothing new". That was wrong. [`QuoteDocumentGenerator`](../../../force-app/main/default/classes/QuoteDocumentGenerator.cls) deletes **every** `Quote_Document_Table__c` for the quote before rebuilding, so by the time a comparison could read the previous snapshot it no longer exists. Comparing snapshots requires generation versioning — planned in [`specs/quote-docusign-totals/phases/phase-5-generation-versioning.md`](../../quote-docusign-totals/phases/phase-5-generation-versioning.md) and not built.
+
+**`SOURCE_QUOTE` ships instead**, and answers the same use case (14) better: CPQ already records `SBQQ__Source__c` on a revision, so "what changed since the version we sent last week" needs no retention mechanism at all. It compares *quotes* rather than snapshots, which §4 had listed as out of scope on record-access grounds; the access answer is that the baseline is read `with sharing` and an unreadable source fails with `ENRICHMENT_SOURCE_MISSING` rather than printing an empty baseline. §4 is superseded on this point.
+
+### Built
+
+- `QuoteDocumentComparisonSource`, `QuoteDocumentComparison` (the engine), `QuoteDocumentSourceQuoteComparison`, `QuoteDocumentComparisonRegistry`, three CMDT fields, and the generator hook.
+- **Four outcomes, each with its own test:** changed carries before/after/difference; added has no baseline; removed appears once with no current amount and a negative change; unchanged still gets a row with a zero difference, because a customer scanning for what moved is entitled to see what did not.
+- **`Amount_Baseline__c` was needed.** §3.4 hoped the `CHANGE` set would carry the shape unchanged. It carries the difference (`Amount_Net_Change__c`) and the result (`Amount_Final__c`) but **not the starting point**, and recovering it as "after minus difference" is a subtraction no renderer may perform. One field, on the row and the table, added to the `CHANGE` measure set so subtotals come for free.
+- **Two picklist values** on `Transaction_Type__c`: `Amended` and `Unchanged`. These are comparison outcomes, not CPQ amendment semantics — whether a position moved between two quotes is a different question from how CPQ classified the line, and the help text now says so.
+- **Ambiguity fails**, as §3.3 requires: two lines sharing a match key on either side is `COMPARISON_MATCH_AMBIGUOUS`, naming both products. The default key is product + charge type + subscription window, because the same product on two terms is two positions.
+- **The baseline lookup rides the existing dependency-path mechanism** rather than a new one — which means the *value* of `SBQQ__Source__c` is hashed, so re-pointing a revision at a different source quote moves the fingerprint. Nothing else would have noticed.
+- **Comparison and expansion together are refused.** What one line's third period looked like on a baseline that may not contain that line has no agreed answer, and a money table is not the place to invent one.
+- **A read-only quote query** was added: a baseline is read, never written, so locking it `FOR UPDATE` would block two quotes generating against the same source for no reason.
+
+### Not built
+
+- `PRIOR_SNAPSHOT` — blocked, above.
+- `AMENDED_SUBSCRIPTION` — this org holds no amendment or renewal quotes, which [`QuoteDocumentLine.classify`](../../../force-app/main/default/classes/QuoteDocumentLine.cls) already flags as provisional for the same reason. Building an untestable source against unverified semantics would produce confident output nobody has checked.
+- §3.7's tier expansion and part-number mapping — both need an enrichment source no org here has.
+- The `CHANGE`-table agreement finding (§3.5): not established, because no quote in this org exercises both tables meaningfully.
+
+### Use-case status after this step
+
+Use case 14 (revision comparison) is **built and tested**. Use case 5 (amendment before/after) remains *enabled, needs its own implementation* — the engine is there and the matching is there; only the amendment-specific baseline is missing.
+
+- **Test evidence:** `QuoteDocumentComparisonTest` 15/15. Full suite 464 ran, 459 passed, 5 failed — the five pre-existing org-only failures, unchanged.
+
+- **Next step:** [`step-05-partitioning.md`](step-05-partitioning.md)
 
 - **Next step:** [`step-05-partitioning.md`](step-05-partitioning.md)

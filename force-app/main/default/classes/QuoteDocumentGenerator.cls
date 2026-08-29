@@ -356,6 +356,7 @@ public with sharing class QuoteDocumentGenerator {
                 // this point - grouping, subtotals, ordering, verification - is
                 // unchanged code that cannot tell an expanded line from an
                 // ordinary one.
+                lines = compare(quote, definition, lines);
                 lines = expand(quote, definition, lines, labels, nonAdditiveByCode);
 
                 List<Quote_Document_Row__c> rows =
@@ -690,6 +691,24 @@ public with sharing class QuoteDocumentGenerator {
             lines.add(new QuoteDocumentLine(line, quote));
         }
         return lines;
+    }
+
+    /**
+     * Pairs the quote against a baseline, if this table declares a comparison
+     * source. Returns the lines untouched when it does not.
+     */
+    private static List<QuoteDocumentLine> compare(
+        SBQQ__Quote__c quote,
+        QuoteDocumentTableDefinition definition,
+        List<QuoteDocumentLine> lines
+    ) {
+        if (!definition.hasComparison()) {
+            return lines;
+        }
+        return QuoteDocumentComparison.apply(
+            QuoteDocumentComparisonRegistry.resolve(definition.comparisonSourceCode),
+            quote, definition, lines
+        );
     }
 
     /**

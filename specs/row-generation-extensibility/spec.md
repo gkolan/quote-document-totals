@@ -81,7 +81,7 @@ A capability existing is not a use case working. Every use case carries one of f
 | 2 | Multi-year / phased rollout | Delivered by a planned step | 01 (`PERIOD`, `Period_Months__c = 12`) + 02 (`EVEN`) |
 | 3 | Payment installments and milestones | Delivered by a planned step | 02 §3.4 + [worked example](steps/worked-examples.md#1-payment-installments) |
 | 4 | Department / location cost allocation | Delivered by a planned step | 02 (`WEIGHTED_SOURCE`) + [worked example](steps/worked-examples.md#2-department-allocation) |
-| 5 | Amendment before/after | Delivered by a planned step | 04 (`AMENDED_SUBSCRIPTION`) |
+| 5 | Amendment before/after | **Enabled, needs its own implementation** | Engine and matching built; the amendment baseline is untestable in an org with no amendment quotes |
 | 6 | Renewal / co-term schedules | **Enabled, needs its own implementation** | 01 gives the axis; the renewal *price* is a supplied input with no shipped source |
 | 7 | Usage-tier explanation | **Enabled, needs its own implementation** | 04 §3.7 defines the consumption rule; no tier source ships |
 | 8 | Free periods / promotional pricing | Delivered by a planned step | 01 + 02 (`SCHEDULE`) + [worked example](steps/worked-examples.md#3-promotional-pricing) |
@@ -90,7 +90,7 @@ A capability existing is not a use case working. Every use case carries one of f
 | 11 | Project phase breakdown | **Enabled, needs its own implementation** | 02's `WEIGHTED_SOURCE` covers the split; phase source is the subscriber's |
 | 12 | Package composition | Delivered by a planned step | 02 §3.5 |
 | 13 | Alternative proposals | Delivered by a planned step | 05 (`SCENARIO`) |
-| 14 | Quote revision comparison | Delivered by a planned step | 04 (`PRIOR_SNAPSHOT`) |
+| 14 | Quote revision comparison | **Built and tested** | `QuoteDocumentComparisonTest`, 15 tests (`SOURCE_QUOTE`, not `PRIOR_SNAPSHOT` — see step 04 close-out) |
 | 15 | Minimum commitment / shortfall | **Enabled, needs its own implementation** | 03 gives the measure; the commitment value is a supplied input |
 | 16 | Rebate / incentive illustration | **Enabled, needs its own implementation** | 04 + 05 give the mechanisms; the rebate rule is the subscriber's |
 | 17 | Consumption scenarios | **Enabled, needs its own implementation** | 05 partitions and requires assumptions; the scenario inputs are supplied |
@@ -146,7 +146,7 @@ Stated once here rather than repeated five times.
 | 01 | [Expansion contract](steps/step-01-expansion-contract.md) | **BUILT** 2026-08-28 |
 | 02 | [Allocation primitive](steps/step-02-allocation-primitive.md) | **PARTIAL** 2026-08-28 — primitive and per-measure rule shipped; `WEIGHTED_SOURCE` / `SCHEDULE` need a subscriber expander |
 | 03 | [Non-additive measures](steps/step-03-non-additive-measures.md) | **BUILT** 2026-08-28 |
-| 04 | [Comparison and enrichment sources](steps/step-04-comparison-and-enrichment.md) | Planned |
+| 04 | [Comparison and enrichment sources](steps/step-04-comparison-and-enrichment.md) | **PARTIAL** 2026-08-28 — `SOURCE_QUOTE` shipped; `PRIOR_SNAPSHOT` blocked by snapshot replacement |
 | 05 | [Partitioning](steps/step-05-partitioning.md) | Planned |
 | 06 | [Docs and close-out](steps/step-06-docs-and-closeout.md) | Planned |
 | — | [Worked examples](steps/worked-examples.md) — end-to-end config and expected rows for the four cases that are configuration, not code | Planned |

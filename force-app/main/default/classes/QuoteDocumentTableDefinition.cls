@@ -139,6 +139,25 @@ public with sharing class QuoteDocumentTableDefinition {
     public String footerText;
 
     // What the contributor reads beyond the quote and its lines. See step 01A section 6a.
+    /**
+     * The baseline this table compares against, if it compares at all. Blank
+     * is every table that existed before comparison did.
+     */
+    public String comparisonSourceCode;
+    public String comparisonSourceVersion;
+    public String comparisonSourceField;
+
+    public Boolean hasComparison() {
+        return String.isNotBlank(comparisonSourceCode);
+    }
+
+    /** The configured baseline lookup, or CPQ's own revision link. */
+    public String comparisonSourceFieldOrDefault() {
+        return String.isBlank(comparisonSourceField)
+            ? QuoteDocumentSourceQuoteComparison.DEFAULT_SOURCE_FIELD
+            : comparisonSourceField;
+    }
+
     public String cachePolicy;
     public List<String> contributorDependencyPaths;
 
@@ -208,6 +227,9 @@ public with sharing class QuoteDocumentTableDefinition {
         introText = record.Intro_Text__c;
         footerText = record.Footer_Text__c;
         cachePolicy = record.Cache_Policy__c;
+        comparisonSourceCode = record.Comparison_Source_Code__c;
+        comparisonSourceVersion = record.Comparison_Source_Version__c;
+        comparisonSourceField = record.Comparison_Source_Field__c;
         contributorDependencyPaths = splitPaths(record.Contributor_Dependency_Set__c);
         expanderCode = record.Expander_Code__c;
         expanderVersion = record.Expander_Version__c;
@@ -416,6 +438,40 @@ public with sharing class QuoteDocumentTableDefinition {
         }
     }
 
+    /**
+     * A comparison must declare its content identity, and must not be combined
+     * with an expansion.
+     *
+     * Comparing and expanding at once would ask what one line's third month
+     * looked like on a baseline that may not contain that line at all. There
+     * is a defensible answer, but nobody has defined it, and inventing one
+     * inside a money table is not the place to start.
+     */
+    @TestVisible
+    private void validateComparisonConfig() {
+        if (!hasComparison()) {
+            return;
+        }
+
+        if (String.isBlank(comparisonSourceVersion)) {
+            QuoteDocumentContributorError.fail(
+                QuoteDocumentContributorError.VERSION_UNDECLARED,
+                'Table ' + tableCode + ' sets Comparison_Source_Code__c "' + comparisonSourceCode
+                    + '" but leaves Comparison_Source_Version__c blank. Changed matching logic under an '
+                    + 'unchanged code is invisible to the fingerprint, so quotes would reuse a comparison '
+                    + 'the new logic would never have produced.'
+            );
+        }
+
+        if (hasExpander()) {
+            throw new QuoteDocumentGenerator.QuoteDocumentException(
+                'Table ' + tableCode + ' both compares against a baseline and expands its lines. What one '
+                + 'line third period looked like on a baseline that may not contain that line has no '
+                + 'agreed answer. Choose one.'
+            );
+        }
+    }
+
     public Boolean usesChangeMeasures() {
         return MEASURES_CHANGE.equals(measureSet);
     }
@@ -432,7 +488,7 @@ public with sharing class QuoteDocumentTableDefinition {
             return new List<String>{
                 'Amount_Net_New__c', 'Amount_Cancellation__c', 'Amount_Replacement_Removed__c',
                 'Amount_Replacement_Added__c', 'Amount_Termination__c', 'Amount_Net_Change__c',
-                'Amount_Final__c'
+                'Amount_Baseline__c', 'Amount_Final__c'
             };
         }
         return new List<String>{
@@ -487,7 +543,8 @@ public with sharing class QuoteDocumentTableDefinition {
                    Display_Title__c, Display_Subtitle__c, Intro_Text__c, Footer_Text__c,
                    Expander_Code__c, Expander_Version__c, Period_Months__c,
                    Period_One_Time_Placement__c, Allocation_Basis__c, Allocation_Scale__c,
-                   Suppress_Amounts__c
+                   Suppress_Amounts__c,
+                   Comparison_Source_Code__c, Comparison_Source_Version__c, Comparison_Source_Field__c
             FROM Quote_Document_Table_Def__mdt
             WHERE Is_Active__c = true
             ORDER BY Display_Order__c
@@ -564,6 +621,7 @@ public with sharing class QuoteDocumentTableDefinition {
             definition.validatePresentationConfig();
             definition.validateContributorConfig();
             definition.validateExpansionConfig();
+            definition.validateComparisonConfig();
             definitions.add(definition);
         }
 
@@ -636,6 +694,14 @@ public with sharing class QuoteDocumentTableDefinition {
         for (QuoteDocumentTableDefinition definition : getAll()) {
             if (CACHE_DECLARED_DEPENDENCIES.equals(definition.cachePolicy)) {
                 paths.addAll(definition.contributorDependencyPaths);
+            }
+            // A comparison reads the lookup naming its baseline, so that field
+            // has to be SELECTed like any other dependency - and, by arriving
+            // here, its VALUE is hashed too. That is not incidental: pointing a
+            // revision at a different source quote is a different document, and
+            // nothing else in the fingerprint would notice.
+            if (definition.hasComparison()) {
+                paths.add(definition.comparisonSourceFieldOrDefault());
             }
         }
         List<String> sorted = new List<String>(paths);

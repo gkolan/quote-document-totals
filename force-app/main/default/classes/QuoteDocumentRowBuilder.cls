@@ -28,6 +28,7 @@ public with sharing class QuoteDocumentRowBuilder {
         public Decimal amountTermination = 0;
         public Decimal amountNetChange = 0;
         public Decimal amountFinal = 0;
+        public Decimal amountBaseline = 0;
 
         public void add(QuoteDocumentLine line) {
             amountList += line.amountList;
@@ -43,6 +44,7 @@ public with sharing class QuoteDocumentRowBuilder {
             amountTermination += line.amountTermination;
             amountNetChange += line.amountNetChange;
             amountFinal += line.amountFinal;
+            amountBaseline += line.amountBaseline;
         }
 
         /**
@@ -58,6 +60,7 @@ public with sharing class QuoteDocumentRowBuilder {
                 target.put('Amount_Replacement_Added__c', amountReplacementAdded);
                 target.put('Amount_Termination__c', amountTermination);
                 target.put('Amount_Net_Change__c', amountNetChange);
+                target.put('Amount_Baseline__c', amountBaseline);
                 target.put('Amount_Final__c', amountFinal);
             } else {
                 target.put('Amount_List__c', amountList);

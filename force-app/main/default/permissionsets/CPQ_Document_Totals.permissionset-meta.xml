@@ -69,6 +69,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Quote_Document_Table__c.Amount_Baseline__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Quote_Document_Table__c.Amount_Net_Change__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -165,6 +170,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Quote_Document_Row__c.Amount_Net__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Quote_Document_Row__c.Amount_Baseline__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

@@ -157,6 +157,12 @@ public with sharing class QuoteDocumentFingerprint {
             parts.add(encodeString(definition.allocationBasis));
             parts.add(encodeDecimal(definition.allocationScale));
             parts.add(encodeBoolean(definition.suppressAmounts));
+
+            // A comparison against a different baseline is a different
+            // document, and none of that is visible in the quote's own fields.
+            parts.add(encodeString(definition.comparisonSourceCode));
+            parts.add(encodeString(definition.comparisonSourceVersion));
+            parts.add(encodeString(definition.comparisonSourceField));
             for (String path : definition.contributorDependencyPaths) {
                 parts.add(encodeString(path));
             }

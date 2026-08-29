@@ -67,6 +67,9 @@ public with sharing class QuoteDocumentLine {
     public Decimal amountNetChange = 0;
     public Decimal amountFinal = 0;
 
+    /** The BEFORE amount on a comparison row. Zero everywhere else. */
+    public Decimal amountBaseline = 0;
+
     /**
      * The record this line was built from, kept so a configured field path can
      * be resolved without adding a property for every groupable field.
@@ -361,6 +364,16 @@ public with sharing class QuoteDocumentLine {
         amountTermination = source.amountTermination;
         amountNetChange = source.amountNetChange;
         amountFinal = source.amountFinal;
+        amountBaseline = source.amountBaseline;
+    }
+
+    /**
+     * A copy for a comparison row to overwrite. Same shape as the expansion
+     * copy and for the same reason: two tables built from one line list must
+     * not see each other's arithmetic.
+     */
+    public QuoteDocumentLine copyForComparison() {
+        return new QuoteDocumentLine(this);
     }
 
     /**
@@ -383,6 +396,7 @@ public with sharing class QuoteDocumentLine {
             when 'Amount_Replacement_Added__c'   { return amountReplacementAdded; }
             when 'Amount_Termination__c'         { return amountTermination; }
             when 'Amount_Net_Change__c'          { return amountNetChange; }
+            when 'Amount_Baseline__c'            { return amountBaseline; }
             when 'Amount_Final__c'               { return amountFinal; }
             when else                            { return 0; }
         }
@@ -404,6 +418,7 @@ public with sharing class QuoteDocumentLine {
             when 'Amount_Replacement_Added__c'   { amountReplacementAdded = amount; }
             when 'Amount_Termination__c'         { amountTermination = amount; }
             when 'Amount_Net_Change__c'          { amountNetChange = amount; }
+            when 'Amount_Baseline__c'            { amountBaseline = amount; }
             when 'Amount_Final__c'               { amountFinal = amount; }
             when else {
                 throw new QuoteDocumentGenerator.QuoteDocumentException(
