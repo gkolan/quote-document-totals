@@ -34,6 +34,15 @@ public with sharing class QuoteDocumentColumnDefinition {
     public String valueField;
     public String dataType;
 
+    /**
+     * How this column value is computed on aggregate rows. Blank means SUM,
+     * which is what every column did before non-additive measures existed and
+     * is still right for every amount. See QuoteDocumentAggregation.
+     */
+    public String aggregationRule;
+    public String aggregationNumerator;
+    public String aggregationDenominator;
+
     /** The label column: no bound field, prints the row's own Display_Label__c. */
     public static final String CODE_LABEL = 'COL_LABEL';
 
@@ -242,6 +251,23 @@ public with sharing class QuoteDocumentColumnDefinition {
         return columns;
     }
 
+    /**
+     * Builds a definition straight from values, so the rejection branches in
+     * validate() can be driven without a deployed Quote_Document_Column_Def__mdt
+     * record - custom metadata cannot be inserted in a test.
+     */
+    @TestVisible
+    private static QuoteDocumentColumnDefinition forTest(
+        String columnCode, String valueField, String dataType, Integer displayOrder
+    ) {
+        QuoteDocumentColumnDefinition definition = new QuoteDocumentColumnDefinition();
+        definition.columnCode = columnCode;
+        definition.valueField = valueField;
+        definition.dataType = dataType;
+        definition.displayOrder = displayOrder;
+        return definition;
+    }
+
     /** Amount_Net__c -> COL_NET, Quantity__c -> COL_QUANTITY. Mechanical, so a new measure needs no table here. */
     @TestVisible
     private static String codeFor(String fieldName) {
@@ -282,7 +308,8 @@ public with sharing class QuoteDocumentColumnDefinition {
             new Map<String, List<QuoteDocumentColumnDefinition>>();
 
         for (Quote_Document_Column_Def__mdt record : [
-            SELECT Table_Definition__c, Column_Code__c, Display_Order__c, Value_Field__c, Data_Type__c
+            SELECT Table_Definition__c, Column_Code__c, Display_Order__c, Value_Field__c, Data_Type__c,
+                   Aggregation_Rule__c, Aggregation_Numerator__c, Aggregation_Denominator__c
             FROM Quote_Document_Column_Def__mdt
             WHERE Is_Active__c = true
             ORDER BY Display_Order__c
@@ -298,6 +325,9 @@ public with sharing class QuoteDocumentColumnDefinition {
                 ? null : Integer.valueOf(record.Display_Order__c);
             column.valueField = record.Value_Field__c;
             column.dataType = record.Data_Type__c;
+            column.aggregationRule = record.Aggregation_Rule__c;
+            column.aggregationNumerator = record.Aggregation_Numerator__c;
+            column.aggregationDenominator = record.Aggregation_Denominator__c;
 
             if (!byCode.containsKey(tableCode)) {
                 byCode.put(tableCode, new List<QuoteDocumentColumnDefinition>());

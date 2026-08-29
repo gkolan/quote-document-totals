@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Effective_Discount_Percent__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Discount as a proportion of list, computed rather than summed. On an aggregate row this is that row own discount divided by its own list amount - never the sum or the average of the child percentages, which is how a 60% discount on $1,000 and a 10% discount on $100,000 would print as 70% or 35% instead of about 10.5%. Blank when the list amount is zero.</inlineHelpText>
+    <label>Effective Discount %</label>
+    <precision>8</precision>
+    <required>false</required>
+    <scale>4</scale>
+    <trackTrending>false</trackTrending>
+    <type>Percent</type>
+</CustomField>

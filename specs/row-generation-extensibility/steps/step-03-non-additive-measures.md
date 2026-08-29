@@ -1,6 +1,6 @@
 # Step 03 — Non-additive measures
 
-**Status: PLANNED**
+**Status: BUILT** — see close-out
 **Blocked by:** [step 00](step-00-audit-and-boundaries.md) only — independent of 01 and 02
 **Blocks:** nothing
 **Use cases:** 15, 19 ([`spec.md`](../spec.md) §3)
@@ -123,6 +123,17 @@ New test class `QuoteDocumentAggregationTest`: `existingColumnsStayAdditive`, `r
 
 ## 7. Close-out
 
-*(To be filled: the exact `verify()` change, and whether any deployed column turned out to be non-additive already — if one is found, that is a live defect and gets its own note.)*
+- **Date:** 2026-08-28
+- **Status: BUILT.**
+- **Delivered:** `QuoteDocumentAggregation` (rules, computation, and its own verification pass), three `Quote_Document_Column_Def__mdt` fields, two derived measures on `Quote_Document_Row__c` with permission-set entries, and the `verify()` integration.
+- **Six rules, not five.** `SUM_THEN_MAX` was added during [step 01](step-01-expansion-contract.md), where an expanded table could not ship without it, and this step made it configurable rather than inventing it. `MAX` and `SUM_THEN_MAX` are kept separate because they answer different questions: the largest single row, versus the largest *period*. Peak licences is the second, and `MAX` alone would have answered 100 where the truth is 150.
+- **Validated, never skipped.** `verifyRules()` re-computes every aggregate row under its declared rule and fails with `AGGREGATION_RESULT_UNVERIFIED`. The additive reconciliation excuses those fields — but they are the only numbers in the snapshot that a *second* pass then checks, rather than the only ones nothing checks.
+- **A ratio needs somewhere to live.** A percentage is not one of the framework's measures, so `RATIO` had to bind to a real field. Two shipped, named for what they mean rather than as generic slots: `Effective_Discount_Percent__c` and `Blended_Unit_Price__c`. A subscriber binds their own added field for anything else, which is the flexibility lever the render contract's column model already established.
+- **The blend is the test.** A 60% discount on \$1,000 beside a 10% discount on \$100,000: summed it reads 70%, averaged 35%, and the answer is 10.50%. Asserted to four decimal places at grand-total level, with the leaf rows still carrying their own 60%.
+- **A fixture lesson worth recording:** CPQ recalculates line totals on insert from list price and `SBQQ__Discount__c`, so a net price written directly by a test is overwritten and the line arrives at zero discount. Found by probing the org rather than assumed — the first version of this test asserted against numbers CPQ never produced.
+- **Nothing deployed turned out to be non-additive already.** Every existing column is `SUM`, a blank rule stays `SUM`, and `aBlankRuleChangesNothing` asserts the grand total is untouched.
+- **Test evidence:** `QuoteDocumentAggregationTest` 15/15. Full suite 449 ran, 444 passed, 5 failed — the five pre-existing org-only failures, unchanged.
+
+- **Next step:** [`step-04-comparison-and-enrichment.md`](step-04-comparison-and-enrichment.md)
 
 - **Next step:** [`step-04-comparison-and-enrichment.md`](step-04-comparison-and-enrichment.md)

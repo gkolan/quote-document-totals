@@ -211,6 +211,12 @@ public with sharing class QuoteDocumentFingerprint {
                 parts.add(encodeDecimal(column.displayOrder));
                 parts.add(encodeString(column.valueField));
                 parts.add(encodeString(column.dataType));
+                // A changed aggregation rule changes the printed numbers
+                // without changing a single amount, which is exactly the case
+                // canReuse would otherwise get wrong.
+                parts.add(encodeString(column.aggregationRule));
+                parts.add(encodeString(column.aggregationNumerator));
+                parts.add(encodeString(column.aggregationDenominator));
             }
         }
 

@@ -95,7 +95,7 @@ A capability existing is not a use case working. Every use case carries one of f
 | 16 | Rebate / incentive illustration | **Enabled, needs its own implementation** | 04 + 05 give the mechanisms; the rebate rule is the subscriber's |
 | 17 | Consumption scenarios | **Enabled, needs its own implementation** | 05 partitions and requires assumptions; the scenario inputs are supplied |
 | 18 | Customer part-number mapping | **Enabled, needs its own implementation** | Mapping data is the subscriber's |
-| 19 | Non-additive measures | Delivered by a planned step | 03 |
+| 19 | Non-additive measures | **Built and tested** | `QuoteDocumentAggregationTest`, 15 tests |
 | 20 | Separate purchasing entities | Delivered by a planned step, if 05 §3.4 is built | 05 §3.4 is explicitly optional — see its close-out |
 
 Eight of twenty are "enabled, needs its own implementation". That is the honest number and it must not drift upward in a close-out without a test to back the change.
@@ -145,7 +145,7 @@ Stated once here rather than repeated five times.
 | 00 | [Audit and capability boundaries](steps/step-00-audit-and-boundaries.md) | **BUILT** 2026-08-28 |
 | 01 | [Expansion contract](steps/step-01-expansion-contract.md) | **BUILT** 2026-08-28 |
 | 02 | [Allocation primitive](steps/step-02-allocation-primitive.md) | **PARTIAL** 2026-08-28 — primitive and per-measure rule shipped; `WEIGHTED_SOURCE` / `SCHEDULE` need a subscriber expander |
-| 03 | [Non-additive measures](steps/step-03-non-additive-measures.md) | Planned |
+| 03 | [Non-additive measures](steps/step-03-non-additive-measures.md) | **BUILT** 2026-08-28 |
 | 04 | [Comparison and enrichment sources](steps/step-04-comparison-and-enrichment.md) | Planned |
 | 05 | [Partitioning](steps/step-05-partitioning.md) | Planned |
 | 06 | [Docs and close-out](steps/step-06-docs-and-closeout.md) | Planned |

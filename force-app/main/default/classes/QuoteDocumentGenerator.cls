@@ -288,6 +288,12 @@ public with sharing class QuoteDocumentGenerator {
         // the contributor is the only thing that knows.
         Map<String, Set<String>> nonAdditiveByCode = new Map<String, Set<String>>();
 
+        // And the full rule set, which verification re-checks each aggregate
+        // row against - an excused measure that nothing then verifies is the
+        // one place a wrong number would ship in silence.
+        Map<String, Map<String, QuoteDocumentAggregation.Rule>> rulesByCode =
+            new Map<String, Map<String, QuoteDocumentAggregation.Rule>>();
+
         try {
             List<QuoteDocumentTableDefinition> definitions = QuoteDocumentTableDefinition.getAll();
 
@@ -356,6 +362,20 @@ public with sharing class QuoteDocumentGenerator {
                     new QuoteDocumentRowBuilder(definition, labels)
                         .withNonAdditiveMeasures(nonAdditiveByCode.get(definition.tableCode))
                         .build(lines);
+
+                // A measure that is a ratio, a peak or a running balance is
+                // wrong the moment it is summed, and summing is all the
+                // builder knows how to do. Applied here rather than inside the
+                // builder so the sums stay one readable pass and the
+                // exceptions to them stay another.
+                Map<String, QuoteDocumentAggregation.Rule> rules =
+                    QuoteDocumentAggregation.rulesFor(
+                        definition,
+                        QuoteDocumentColumnDefinition.forTable(definition),
+                        nonAdditiveByCode.get(definition.tableCode)
+                    );
+                QuoteDocumentAggregation.apply(rows, rules, definition);
+                rulesByCode.put(definition.tableCode, rules);
                 rows = applyRowCustomizer(quote, definition, lines, rows, labels, nonAdditiveByCode);
                 rowsByCode.put(definition.tableCode, rows);
             }
@@ -420,7 +440,9 @@ public with sharing class QuoteDocumentGenerator {
                 );
                 stampTable(table, definition, rows);
                 QuoteDocumentVerification.verify(
-                    quote, table, definition, rows, nonAdditiveByCode.get(definition.tableCode)
+                    quote, table, definition, rows,
+                    nonAdditiveByCode.get(definition.tableCode),
+                    rulesByCode.get(definition.tableCode)
                 );
                 stamped.add(table);
             }

@@ -40,7 +40,17 @@ public with sharing class QuoteDocumentVerification {
         QuoteDocumentTableDefinition definition,
         List<Quote_Document_Row__c> rows
     ) {
-        verify(quote, table, definition, rows, new Set<String>());
+        verify(quote, table, definition, rows, new Set<String>(), null);
+    }
+
+    public static void verify(
+        SBQQ__Quote__c quote,
+        Quote_Document_Table__c table,
+        QuoteDocumentTableDefinition definition,
+        List<Quote_Document_Row__c> rows,
+        Set<String> nonAdditiveMeasures
+    ) {
+        verify(quote, table, definition, rows, nonAdditiveMeasures, null);
     }
 
     /**
@@ -55,11 +65,36 @@ public with sharing class QuoteDocumentVerification {
         Quote_Document_Table__c table,
         QuoteDocumentTableDefinition definition,
         List<Quote_Document_Row__c> rows,
-        Set<String> nonAdditiveMeasures
+        Set<String> nonAdditiveMeasures,
+        Map<String, QuoteDocumentAggregation.Rule> aggregationRules
     ) {
         Quote_Document_Row__c grandTotal = findGrandTotal(rows);
         List<String> fields = QuoteDocumentTableDefinition.measureFields(definition.measureSet);
         Set<String> nonAdditive = nonAdditiveMeasures == null ? new Set<String>() : nonAdditiveMeasures;
+
+        // Every field a non-SUM rule governs is excused from the additive
+        // reconciliation below and re-checked under its own rule instead.
+        // Excusing without re-checking is what this whole mechanism exists to
+        // avoid.
+        Map<String, QuoteDocumentAggregation.Rule> rules = aggregationRules == null
+            ? new Map<String, QuoteDocumentAggregation.Rule>()
+            : aggregationRules;
+        Set<String> verifiedByRule = new Set<String>();
+        for (String field : rules.keySet()) {
+            String rule = rules.get(field).rule;
+            if (QuoteDocumentAggregation.SUM.equals(rule)) {
+                continue;
+            }
+            // SUM_THEN_MAX gets the structural check below as well, because it
+            // makes a claim about the SUBTOTALS that verifyRules does not:
+            // that each one is a true sum of its own rows.
+            if (QuoteDocumentAggregation.SUM_THEN_MAX.equals(rule)) {
+                nonAdditive.add(field);
+            } else {
+                verifiedByRule.add(field);
+            }
+        }
+        QuoteDocumentAggregation.verifyRules(rows, rules, table);
 
         // 0. Row_Key__c is only meaningful if it is actually unique within this
         //    table. The field itself cannot enforce that declaratively - the
@@ -81,6 +116,13 @@ public with sharing class QuoteDocumentVerification {
         for (String field : fields) {
             if (nonAdditive.contains(field)) {
                 assertSumWithinGroupsMaxAcross(rows, grandTotal, table, definition, field);
+                continue;
+            }
+            if (verifiedByRule.contains(field)) {
+                // A ratio, a last value or a deliberately blank measure. Its
+                // correctness was just established by verifyRules under its own
+                // definition; reconciling it additively would fail a correct
+                // number.
                 continue;
             }
 
