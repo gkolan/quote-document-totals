@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Partition_Dimension__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>The dimension this table was partitioned on. Diagnostic, like Group_Dimensions__c - it holds an API-facing name and is never printed.</inlineHelpText>
+    <label>Partition Dimension</label>
+    <length>40</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

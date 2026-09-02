@@ -53,4 +53,5 @@
         <field>Composite_Separator__c</field>
         <value xsi:nil="true"/>
     </values>
+    <values><field>Display_Title__c</field><value xsi:type="xsd:string">Family and Billing Summary</value></values>
 </CustomMetadata>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Column_Code__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Semantic key for this column - COL_LABEL, COL_LIST, COL_NET and so on. NEVER an English phrase: the printed heading is resolved from this code through the label dictionary, so the code must stay stable when the heading is reworded or translated. Must be unique within a table definition.</inlineHelpText>
+    <label>Column Code</label>
+    <length>40</length>
+    <required>true</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

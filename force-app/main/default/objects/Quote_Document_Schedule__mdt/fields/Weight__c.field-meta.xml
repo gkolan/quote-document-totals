@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Weight__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>This section RELATIVE share. 30/40/30 and 3/4/3 split identically - they are proportions, not percentages, so weights that sum to 90 still allocate the whole amount. A weight of zero is a genuinely free section: it receives exactly zero and never the rounding residual, which is what stops a promotional free month printing one cent.</inlineHelpText>
+    <label>Weight</label>
+    <precision>9</precision>
+    <required>false</required>
+    <scale>4</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

@@ -38,5 +38,6 @@
         <field>Display_Order__c</field>
         <value xsi:type="xsd:double">20</value>
     </values>
+    <values><field>Display_Title__c</field><value xsi:type="xsd:string">Summary by Charge Type</value></values>
 </CustomMetadata>
 

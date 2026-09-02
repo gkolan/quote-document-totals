@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Locale__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>The locale this text was resolved for. Always matches the tables in the same snapshot - one locale per snapshot, so a document cannot end up half translated.</inlineHelpText>
+    <label>Locale</label>
+    <length>10</length>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

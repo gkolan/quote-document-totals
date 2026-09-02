@@ -22,7 +22,7 @@ DocuSign (the e-signature tool this org uses to generate and send the Quote docu
 - "Should this optional product be included in the total, or not?"
 - "What's the subtotal for just the Hardware family?"
 
-If you tried to make DocuSign work these things out on the fly, you would eventually get a signed document with a wrong number on it — and a wrong number on a document a customer has signed is a serious problem, not a minor bug.
+If you tried to make the document generator work these things out on the fly, you would eventually get a signed document with a wrong number on it — and a wrong number on a document a customer has signed is a serious problem, not a minor bug.
 
 So instead, **all of that math happens in Salesforce first**, using Apex (Salesforce's programming language — think of it as "the code that runs behind buttons, automation, and calculations that a Flow or a formula field can't handle by itself"). The math produces plain Salesforce records that already contain the right numbers. DocuSign's only job is to print those records in the order it's told to.
 
@@ -120,9 +120,16 @@ The last four only ever appear if a developer has written and attached a small p
 6. If everything checks out, the Quote's status becomes "Ready."
         │
         ▼
-7. The DocuSign button is only usable when the Quote's status is "Ready."
-   DocuSign then simply prints the rows in order — no calculations of its own.
+7. The document button is only usable when the Quote's status is "Ready."
+   The generator then simply prints the rows in order — no calculations of its own.
 ```
+
+**DocuSign is one document generator, not "the" one.** Everything above is true whichever tool
+prints the document. This repo also ships two small example renderers — one producing JSON,
+one producing a plain web page — that read exactly the same records and produce the same
+document. If the business ever switches e-signature vendor, none of the calculation, wording, or
+checking described in this guide changes. That is the reason it was built this way, and it is
+now demonstrated rather than asserted.
 
 **Why step 5 matters so much:** this is the single most important design decision in the whole feature. It would be easy to build a version of this that just writes whatever numbers it calculates and hopes they're right. Instead, every single generation run is required to prove its own arithmetic is internally consistent before anything is allowed to count as done. If it can't prove that, the whole thing is thrown away and the Quote is marked `Failed` instead — a document that refuses to generate is a much smaller problem than a signed document with a wrong number on it.
 
@@ -197,6 +204,67 @@ Set exactly one of `Dimension__c` or `Field_Path__c` on each record — never bo
 - **A table can only produce so many groups before something has gone wrong.** There's a configurable ceiling (`Max_Groups__c`, defaulting to 50) — if a grouping choice would create far more groups than expected (a common mistake: combining two dimensions that multiply out to hundreds of buckets), generation stops with a clear explanation rather than quietly producing an enormous, unreadable table.
 
 ---
+
+## 7a. Tables where one product becomes several rows
+
+Most tables in this framework put each quoted product on one line. Some
+documents need more than that, and this section is the plain-language version of
+how those work — it is configuration, not code.
+
+**Spreading a product over time.** A twelve-month subscription can print as
+twelve monthly sections, or a three-year deal as three annual ones. You set the
+length of a period on the table definition and the framework works out the
+sections from the quote's own start date and term. If the quote has neither a
+term nor dated lines, generation stops rather than inventing a schedule.
+
+**The one thing to get right: the money still has to add up.** When a product is
+spread across twelve months, each month carries a share, and those shares add
+back to exactly what the customer is paying — to the cent. The framework
+enforces this twice: once for each product, and once for the table as a whole.
+If a share is lost, generation fails and no document is produced. That is
+deliberate: a schedule that looks reasonable and is a penny out is worse than no
+schedule.
+
+**Quantities do not divide the way money does.** A customer with 100 licences
+has 100 licences in every month of the term — not 8.33. So money is divided
+across the periods and licence counts are repeated in each one, and the figure
+for the whole term is the busiest month rather than the twelve months added
+together. If you ever see a licence count that looks like the term total
+multiplied by the number of months, that is the bug this rule exists to prevent.
+
+**One-time charges land once.** Hardware, setup and implementation fees are
+incurred at a point in time, so by default they appear in the first period only.
+You can choose to spread one instead, but you have to say so explicitly —
+spreading a setup fee prints a recurring charge that does not exist.
+
+**Some numbers must never be added up.** A discount percentage is the clearest
+case: 60% off one product and 10% off another is not 70% off. The framework
+recalculates such figures at each level from the underlying amounts instead of
+summing them, and you tell it to by setting an aggregation rule on the column.
+The same applies to a blended unit price and to a peak licence count.
+
+**Comparing two quotes.** A table can show what changed between this quote and
+the one it was revised from: the previous amount, the new amount, and the
+difference, for every product — including products that were dropped, which
+appear with the amount that is going. Where two lines cannot be told apart, the
+framework stops rather than guessing which one changed.
+
+**Splitting a quote into several tables.** Alternatives (Basic / Recommended /
+Premium), consumption scenarios, or separate departments can each get their own
+table with its own total. You must say whether a total across those tables means
+anything: for alternatives it does not, and for departments it does. There is no
+default, because the wrong one prints a number the customer is not being asked
+to pay.
+
+Three sentences worth remembering, because each is a place this framework is
+easy to misread:
+
+- An installment table states the agreed schedule. It does not track payments,
+  and nothing in it changes when money arrives.
+- A consumption scenario is an estimate. Its assumptions are printed with it and
+  are part of the document, not a footnote that can be dropped.
+- A shortfall against a minimum commitment is a gap, not a charge. It is never
+  added to any total.
 
 ## 8. The safety checks — what "Complete" actually promises
 
@@ -306,6 +374,38 @@ You will never need to write or edit any of this yourself, but knowing what each
 | Numbers on the document don't match what you expected from the Quote | Check whether the table you're looking at was built with `EXCLUDE_OPTIONAL` — an optional product deliberately does not count in a normal table, even though it's still shown | This is very likely correct behavior, not a bug — compare against the **Quote Document - Totals by Family** report, which reconciles to the Quote's own net amount |
 
 ---
+
+## Changing what the document says, without a developer
+
+Three of the most common requests no longer need code. Each is a Custom Metadata record an admin edits
+in Setup.
+
+| You want to change | Where | Record |
+|---|---|---|
+| A table's heading | Quote Document Table Def | `Display_Title__c` |
+| A column heading | Quote Document Key Value | category `LABELS_en_US`, key = the column code |
+| A row label like "Total" or "Hardware Subtotal" | Quote Document Key Value | category `LABELS_en_US`, keys `GRAND_TOTAL`, `SUBTOTAL`, `SECTION_TOTAL` |
+| Another language | Quote Document Key Value | a new category, e.g. `LABELS_fr`, with the same keys |
+| A notice, term, or signature instruction | Quote Document Content | `Block_Code__c` plus `Body__c` |
+| Which columns a table prints, and in what order | Quote Document Column Def | one record per column |
+
+**Two things to know before you edit.**
+
+First, a label containing `{0}` is a *template*, not a mistake. `{0} Subtotal` becomes "Hardware
+Subtotal". The `{0}` marks where the group name goes — and you can move it. French writes
+`Sous-total {0}`, putting the name after the word. That is exactly why these are templates rather than
+something the code glues together: word order is a translator's decision, and no amount of clever code
+can make that decision correctly for every language.
+
+Second, **editing metadata does not change documents that already exist.** Quotes already marked
+"Ready" keep their old wording until they are regenerated, because Salesforce does not notify anything
+when Custom Metadata changes. After changing wording, ask a developer to run the invalidation job,
+which marks affected quotes "Stale" so the next document rebuilds them. There is no setting that
+changes this — it is worth knowing in advance rather than discovering after a customer sees the old text.
+
+**What you cannot change here:** any number. Every amount comes from the Quote Lines and is checked
+against them before a document is allowed to print. If a number looks wrong, the fix is on the Quote,
+not in these records.
 
 ## 15. Glossary
 

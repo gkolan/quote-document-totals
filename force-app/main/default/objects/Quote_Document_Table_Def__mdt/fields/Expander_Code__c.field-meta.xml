@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Expander_Code__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Registry code for QuoteDocumentExpanderRegistry, e.g. PERIOD. Set this when one quote line must become several document rows - one per month, per year, per milestone. Blank means no expansion, which is how every ordinary table works. An expanded table must also set an Allocation Basis, or its money would be counted once per bucket.</inlineHelpText>
+    <label>Expander Code</label>
+    <length>40</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

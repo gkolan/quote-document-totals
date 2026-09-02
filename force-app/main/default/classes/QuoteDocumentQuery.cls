@@ -23,6 +23,7 @@ public with sharing class QuoteDocumentQuery {
         'SBQQ__ListTotal__c', 'SBQQ__RegularTotal__c', 'SBQQ__TotalDiscountAmount__c',
         'SBQQ__NetTotal__c', 'SBQQ__CustomerTotal__c', 'SBQQ__NetPrice__c',
         'SBQQ__Existing__c', 'SBQQ__PriorQuantity__c',
+        'SBQQ__StartDate__c', 'SBQQ__EndDate__c',
         'SBQQ__UpgradedSubscription__c', 'SBQQ__RenewedSubscription__c'
     };
 
@@ -47,13 +48,52 @@ public with sharing class QuoteDocumentQuery {
      * transactions each locking a different subset of the same two Quotes in
      * opposite order.
      */
+    /**
+     * The same shape as quotesWithLines, WITHOUT the row lock.
+     *
+     * A comparison baseline is read, never written, and the quote it belongs
+     * to is not the one being generated - locking it would hold a row this
+     * transaction has no intention of changing, and would make two quotes
+     * generating against the same baseline block each other for no reason.
+     */
+    public static List<SBQQ__Quote__c> quotesWithLinesReadOnly(Set<Id> quoteIds) {
+        return query(quoteIds, false);
+    }
+
     public static List<SBQQ__Quote__c> quotesWithLines(Set<Id> quoteIds) {
+        return query(quoteIds, true);
+    }
+
+    private static List<SBQQ__Quote__c> query(Set<Id> quoteIds, Boolean lockRows) {
         Set<String> lineFields = new Set<String>(BASE_LINE_FIELDS);
 
         for (String path : QuoteDocumentTableDefinition.allFieldPaths()) {
             validateFieldPath(path);
             lineFields.add(path);
         }
+
+        // Contributor dependency paths are QUOTE-relative, not line-relative,
+        // and are validated against the Quote so a renamed or deleted field
+        // fails at generation naming the path - rather than dropping out of
+        // the fingerprint silently, which would leave reuse deciding on a
+        // hash that no longer covers what the contributor actually reads.
+        Set<String> quoteFields = new Set<String>();
+        for (String path : QuoteDocumentTableDefinition.allDependencyPaths()) {
+            validateDependencyPath(path);
+            quoteFields.add(path);
+        }
+        // The configured locale path is a QUOTE field and has to be selected
+        // like any other, or readPath finds nothing and every quote falls back
+        // to the default - which looks exactly like "nobody configured one".
+        String localePath = QuoteDocumentLocale.configuredPath();
+        if (String.isNotBlank(localePath)) {
+            validateDependencyPath(localePath);
+            quoteFields.add(localePath);
+        }
+
+        String dependencyFields = quoteFields.isEmpty()
+            ? ''
+            : ', ' + String.join(new List<String>(quoteFields), ', ');
 
         // CurrencyIsoCode only exists as a field when multi-currency is on, and
         // a static reference to it will not compile in a single-currency org -
@@ -66,10 +106,13 @@ public with sharing class QuoteDocumentQuery {
         // unvalidated.
         String soql =
             'SELECT Id, Name, SBQQ__NetAmount__c, AccountIndustry__c, Document_Data_Status__c, '
-            + 'Document_Data_Fingerprint__c' + currencyField + ', '
+            + 'Document_Data_Fingerprint__c, Document_Data_Request_Id__c, Document_Payload_Hash__c, '
+            + 'Document_Data_Started_At__c, SBQQ__StartDate__c, SBQQ__SubscriptionTerm__c'
+            + currencyField + dependencyFields + ', '
             + '(SELECT ' + String.join(new List<String>(lineFields), ', ')
             + ' FROM SBQQ__LineItems__r ORDER BY SBQQ__Number__c) '
-            + 'FROM SBQQ__Quote__c WHERE Id IN :quoteIds WITH USER_MODE FOR UPDATE';
+            + 'FROM SBQQ__Quote__c WHERE Id IN :quoteIds WITH USER_MODE'
+            + (lockRows ? ' FOR UPDATE' : '');
 
         return Database.query(soql);
     }
@@ -80,7 +123,31 @@ public with sharing class QuoteDocumentQuery {
      */
     @TestVisible
     private static void validateFieldPath(String path) {
-        SObjectType current = SBQQ__QuoteLine__c.SObjectType;
+        walkPath(path, SBQQ__QuoteLine__c.SObjectType, 'Grouping field path');
+    }
+
+    /**
+     * The same walk rooted at the Quote, for Contributor_Dependency_Set__c.
+     * Separate entry point rather than a defaulted argument so the error
+     * message can name the field an admin has to go and fix, which is a
+     * different record in each case.
+     */
+    @TestVisible
+    private static void validateDependencyPath(String path) {
+        try {
+            walkPath(path, SBQQ__Quote__c.SObjectType, 'Contributor dependency path');
+        } catch (QuoteDocumentGenerator.QuoteDocumentException e) {
+            throw QuoteDocumentContributorError.build(
+                QuoteDocumentContributorError.DEPENDENCY_UNREADABLE,
+                e.getMessage() + ' A declared dependency that cannot be read must fail before the reuse '
+                    + 'decision - canonicalizing it as null would silently narrow the fingerprint to '
+                    + 'less than the contributor actually reads.'
+            );
+        }
+    }
+
+    private static void walkPath(String path, SObjectType root, String label) {
+        SObjectType current = root;
         List<String> segments = path.split('\\.');
 
         for (Integer i = 0; i < segments.size(); i++) {
@@ -99,9 +166,8 @@ public with sharing class QuoteDocumentQuery {
 
             if (field == null) {
                 throw new QuoteDocumentGenerator.QuoteDocumentException(
-                    'Grouping field path "' + path + '" is not valid: no field "' + segment
-                    + '" on ' + current.getDescribe().getName()
-                    + '. Fix the Field Path on the Quote Document Grouping record.'
+                    label + ' "' + path + '" is not valid: no field "' + segment
+                    + '" on ' + current.getDescribe().getName() + '.'
                 );
             }
 
@@ -109,7 +175,7 @@ public with sharing class QuoteDocumentQuery {
                 List<SObjectType> references = field.getDescribe().getReferenceTo();
                 if (references.isEmpty()) {
                     throw new QuoteDocumentGenerator.QuoteDocumentException(
-                        'Grouping field path "' + path + '": "' + segment
+                        label + ' "' + path + '": "' + segment
                         + '" is not a relationship, so nothing can follow it.'
                     );
                 }

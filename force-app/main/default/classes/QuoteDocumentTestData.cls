@@ -168,6 +168,41 @@ public class QuoteDocumentTestData {
         return new QuoteDocumentLine(storedLines(new List<Id>{ lineId }).get(lineId), quote);
     }
 
+    /**
+     * Additional quotes with priced lines, for tests that must prove behaviour
+     * across DISTINCT quotes rather than the same quote several times.
+     *
+     * That distinction is not pedantry: the render service caches integrity
+     * verification per quote, so a "three quotes" test that passes one quote
+     * three times measures the cache and not the work. One did, and it hid a
+     * real per-quote query cost.
+     */
+    public static List<SBQQ__Quote__c> extraQuotes(Integer howMany) {
+        SBQQ__Quote__c template = [
+            SELECT SBQQ__Account__c, SBQQ__Opportunity2__c FROM SBQQ__Quote__c LIMIT 1
+        ];
+        Product2 product = [SELECT Id FROM Product2 WHERE ProductCode = :CODE_PLAN LIMIT 1];
+
+        List<SBQQ__Quote__c> quotes = new List<SBQQ__Quote__c>();
+        for (Integer i = 0; i < howMany; i++) {
+            quotes.add(new SBQQ__Quote__c(
+                SBQQ__Account__c = template.SBQQ__Account__c,
+                SBQQ__Opportunity2__c = template.SBQQ__Opportunity2__c,
+                SBQQ__Primary__c = false,
+                SBQQ__Type__c = 'Quote'
+            ));
+        }
+        insert quotes;
+
+        List<SBQQ__QuoteLine__c> lines = new List<SBQQ__QuoteLine__c>();
+        for (SBQQ__Quote__c quote : quotes) {
+            lines.add(line(quote.Id, product.Id, 1, 5, 100, 80));
+        }
+        insert lines;
+
+        return quotes;
+    }
+
     public static Id quoteId() {
         return [SELECT Id FROM SBQQ__Quote__c LIMIT 1].Id;
     }

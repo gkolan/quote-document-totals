@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Locale__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>The locale this table's printable text was generated for, e.g. en_US. Added here so the schema settles once; populated in step 03. Part of the fingerprint, so regenerating in a different locale produces a different snapshot rather than silently reusing the previous language.</inlineHelpText>
+    <label>Locale</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <length>10</length>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

@@ -145,7 +145,43 @@ Uses report type **Quote Document Tables and Rows**:
 
 ---
 
-## 9. DocuSign CLM (SpringCM) template — click-by-click
+## 9. Adapter: DocuSign CLM (SpringCM) — click-by-click
+
+> **This section documents ONE adapter, not the system's rendering model.** The same snapshot drives
+> the JSON and HTML adapters in this repo, and would drive any other. Nothing below is a requirement of
+> the framework; it is how this particular renderer is wired to it.
+
+### 9.0 The launch sequence — required, not optional
+
+A conforming renderer is launched **from Salesforce**, by an action that:
+
+1. calls generate-or-reuse for the quote, which recomputes the fingerprint;
+2. takes the request Id and fingerprint that call returns;
+3. hands the document product exactly those, and binds the snapshot they identify.
+
+**A CLM Data Source pointed straight at `Quote_Document_Table__c` is not a conforming renderer.** It
+never calls generate-or-reuse and never passes an expected fingerprint, so it can render a snapshot that
+moved underneath it and nothing would detect that. If the tenant cannot support launching this way, the
+honest outcome is that CLM stops being the renderer — not that the contract acquires an exception.
+
+Why it has to be step 1 every time: invalidation for external dependencies is **best-effort** (a trigger
+may not exist, a sweep may lag, reverse-mapping a custom object to affected quotes may have no answer),
+whereas fresh fingerprint computation is not. It is the last guard when something was missed.
+
+### 9.0.1 What the template no longer types
+
+| Was typed into Word | Now bound from |
+|---|---|
+| Table heading | `Display_Title__c` |
+| Column headings | `Quote_Document_Column__c` — repeat over it |
+| Disclaimers and notices | `Intro_Text__c`, `Footer_Text__c`, or `Quote_Document_Block__c` |
+| Row labels | `Display_Label__c`, already localized |
+| "which rows print" conditionals | `Is_Displayed` |
+
+The Data Source must expose `Quote_Document_Column__c` as a repeating node under
+`Quote_Document_Table__c`, plus the table's `Display_Title__c`, `Display_Subtitle__c`, `Intro_Text__c`,
+`Footer_Text__c`, `Is_Displayed__c` and `Locale__c`, and the row's `Is_Displayed__c` and `Label_Key__c`.
+
 
 Same product confirmed as the rest of this repo's guides: DocuSign CLM, native `<# <Tag .../> #>` syntax.
 
@@ -171,7 +207,10 @@ Same product confirmed as the rest of this repo's guides: DocuSign CLM, native `
 <# </Repeating> #>
 ```
 
-No filtering conditional needed — every row in this table is already Subtotal or Grand Total (`Show_Details__c = false`). Bold the Grand Total row with a further `Conditional Test="Row_Type='Grand Total'"` wrapped in Word bold formatting, same pattern as every other guide in this set.
+No filtering conditional needed — every row in this table is already Subtotal or Grand Total (`Show_Details__c = false`), and `Is_Displayed` decides the rest during generation. Bold the Grand Total row with a further `Conditional Test="Row_Type='Grand Total'"` wrapped in Word bold formatting.
+
+> **This conditional is STYLING, not filtering.** It decides how a row looks, never whether it prints. What prints is `Is_Displayed`, decided during generation and carried in the data — see [the render contract](quote-document-totals.md#the-render-contract).
+
 
 ### 9.4 Publish and connect
 

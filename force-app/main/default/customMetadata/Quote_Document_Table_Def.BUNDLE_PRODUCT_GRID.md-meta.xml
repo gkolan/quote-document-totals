@@ -11,4 +11,5 @@
     <values><field>Show_Section_Totals__c</field><value xsi:type="xsd:boolean">false</value></values>
     <values><field>Is_Active__c</field><value xsi:type="xsd:boolean">false</value></values>
     <values><field>Display_Order__c</field><value xsi:type="xsd:double">35</value></values>
+    <values><field>Display_Title__c</field><value xsi:type="xsd:string">Products by Bundle</value></values>
 </CustomMetadata>

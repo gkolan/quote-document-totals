@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <label>CTS - Label</label>
+    <protected>false</protected>
+    <values><field>Table_Definition__c</field><value xsi:type="xsd:string">CHARGE_TYPE_SUMMARY</value></values>
+    <values><field>Column_Code__c</field><value xsi:type="xsd:string">COL_LABEL</value></values>
+    <values><field>Display_Order__c</field><value xsi:type="xsd:double">10</value></values>
+    <values><field>Data_Type__c</field><value xsi:type="xsd:string">Text</value></values>
+
+    <values><field>Is_Active__c</field><value xsi:type="xsd:boolean">true</value></values>
+</CustomMetadata>

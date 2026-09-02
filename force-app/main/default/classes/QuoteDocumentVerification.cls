@@ -40,8 +40,61 @@ public with sharing class QuoteDocumentVerification {
         QuoteDocumentTableDefinition definition,
         List<Quote_Document_Row__c> rows
     ) {
+        verify(quote, table, definition, rows, new Set<String>(), null);
+    }
+
+    public static void verify(
+        SBQQ__Quote__c quote,
+        Quote_Document_Table__c table,
+        QuoteDocumentTableDefinition definition,
+        List<Quote_Document_Row__c> rows,
+        Set<String> nonAdditiveMeasures
+    ) {
+        verify(quote, table, definition, rows, nonAdditiveMeasures, null);
+    }
+
+    /**
+     * As above, with the measures a contributor declared non-additive - see
+     * QuoteDocumentRowCustomizerContext.nonAdditiveMeasures. Those are held to
+     * the sum-within-group, max-across-groups rule below instead of the
+     * additive one. They are never simply skipped: a measure nothing checks is
+     * a measure nothing catches.
+     */
+    public static void verify(
+        SBQQ__Quote__c quote,
+        Quote_Document_Table__c table,
+        QuoteDocumentTableDefinition definition,
+        List<Quote_Document_Row__c> rows,
+        Set<String> nonAdditiveMeasures,
+        Map<String, QuoteDocumentAggregation.Rule> aggregationRules
+    ) {
         Quote_Document_Row__c grandTotal = findGrandTotal(rows);
         List<String> fields = QuoteDocumentTableDefinition.measureFields(definition.measureSet);
+        Set<String> nonAdditive = nonAdditiveMeasures == null ? new Set<String>() : nonAdditiveMeasures;
+
+        // Every field a non-SUM rule governs is excused from the additive
+        // reconciliation below and re-checked under its own rule instead.
+        // Excusing without re-checking is what this whole mechanism exists to
+        // avoid.
+        Map<String, QuoteDocumentAggregation.Rule> rules = aggregationRules == null
+            ? new Map<String, QuoteDocumentAggregation.Rule>()
+            : aggregationRules;
+        Set<String> verifiedByRule = new Set<String>();
+        for (String field : rules.keySet()) {
+            String rule = rules.get(field).rule;
+            if (QuoteDocumentAggregation.SUM.equals(rule)) {
+                continue;
+            }
+            // SUM_THEN_MAX gets the structural check below as well, because it
+            // makes a claim about the SUBTOTALS that verifyRules does not:
+            // that each one is a true sum of its own rows.
+            if (QuoteDocumentAggregation.SUM_THEN_MAX.equals(rule)) {
+                nonAdditive.add(field);
+            } else {
+                verifiedByRule.add(field);
+            }
+        }
+        QuoteDocumentAggregation.verifyRules(rows, rules, table);
 
         // 0. Row_Key__c is only meaningful if it is actually unique within this
         //    table. The field itself cannot enforce that declaratively - the
@@ -55,11 +108,24 @@ public with sharing class QuoteDocumentVerification {
         //    consuming template can no longer address unambiguously.
         assertUniqueRowKeys(rows, table);
 
+
         // 1. The grand total equals the sum of the included detail rows.
         // 2. It also equals the sum of the outermost subtotals. Two independent
         //    paths to the same number; if they disagree, the grouping dropped
         //    or duplicated a line.
         for (String field : fields) {
+            if (nonAdditive.contains(field)) {
+                assertSumWithinGroupsMaxAcross(rows, grandTotal, table, definition, field);
+                continue;
+            }
+            if (verifiedByRule.contains(field)) {
+                // A ratio, a last value or a deliberately blank measure. Its
+                // correctness was just established by verifyRules under its own
+                // definition; reconciling it additively would fail a correct
+                // number.
+                continue;
+            }
+
             Decimal fromDetails = 0;
             Decimal fromSubtotals = 0;
 
@@ -104,9 +170,18 @@ public with sharing class QuoteDocumentVerification {
         // 4. The check that matters commercially: a price-waterfall table built
         //    from everything except optional products has to land on the same
         //    Net Amount that CPQ itself rolled up onto the Quote.
+        //    A PARTITION covers a share of the quote and can never equal the
+        //    whole of it, so this check would fail every partitioned table by
+        //    construction. The claim does not disappear - it moves up a level:
+        //    QuoteDocumentGenerator.assertCrossPartitionTotals holds the SET to
+        //    the quote where the definition says the partitions add up, and
+        //    holds it to nothing where it says they do not. Dropping the check
+        //    here without that would have been the one place this framework
+        //    stopped reconciling to CPQ.
         Boolean reconcilesToQuote =
             QuoteDocumentTableDefinition.MEASURES_PRICE_WATERFALL.equals(definition.measureSet)
-            && QuoteDocumentTableDefinition.FILTER_EXCLUDE_OPTIONAL.equals(definition.lineFilter);
+            && QuoteDocumentTableDefinition.FILTER_EXCLUDE_OPTIONAL.equals(definition.lineFilter)
+            && !definition.isPartitioned();
 
         if (reconcilesToQuote) {
             // CPQ's own SBQQ__NetAmount__c has no idea a Discount, Rounding,
@@ -122,6 +197,116 @@ public with sharing class QuoteDocumentVerification {
                 assertClose(quote.SBQQ__NetAmount__c, (Decimal) grandTotal.get('Amount_Net__c'),
                             table, 'grand total vs Quote Net Amount');
             }
+        }
+
+        // 5. Presentation completeness - step 06 condition 2.
+        //
+        //    Deliberately LAST. A table whose money does not add up and whose
+        //    title is missing has two problems, and the money is the one worth
+        //    reporting first: it is the more serious failure and the one a
+        //    reader will act on. Running this earlier made a reconciliation
+        //    test report a missing title instead, which is exactly the
+        //    inversion to avoid.
+        //
+        //    It belongs in verify() at all for the same reason the money
+        //    assertions do: the whole value of the contract is that a renderer
+        //    can be dumb, and that only holds while the payload is guaranteed
+        //    complete. The moment a title can be blank, the first adapter adds
+        //    "if blank, use the table code" and the logic starts leaking back
+        //    out one fallback at a time.
+        assertPresentationComplete(table);
+    }
+
+    /**
+     * The rule for a measure that repeats rather than divides: within one
+     * group it is a sum, across groups it is a maximum.
+     *
+     * Licences make it concrete. Two products active in the same month, 100
+     * and 50, are 150 licences that month - so the month's subtotal is a sum.
+     * The same 150 licences in the next month are not another 150, so the
+     * grand total is the largest month, not the sum of them. Taking a maximum
+     * over the detail rows instead would answer 100 and understate the peak,
+     * which is the wrong direction to be wrong in a document a customer signs.
+     */
+    private static void assertSumWithinGroupsMaxAcross(
+        List<Quote_Document_Row__c> rows,
+        Quote_Document_Row__c grandTotal,
+        Quote_Document_Table__c table,
+        QuoteDocumentTableDefinition definition,
+        String field
+    ) {
+        Map<String, Decimal> leavesByGroup = new Map<String, Decimal>();
+        Map<String, Decimal> subtotalByGroup = new Map<String, Decimal>();
+
+        for (Quote_Document_Row__c row : rows) {
+            Decimal value = (Decimal) row.get(field);
+            if (value == null) { continue; }
+
+            String key = row.Group_Key__c == null ? '' : row.Group_Key__c;
+
+            if (!AGGREGATE_ROW_TYPES.contains(row.Row_Type__c) && row.Include_In_Grand_Total__c) {
+                Decimal running = leavesByGroup.containsKey(key) ? leavesByGroup.get(key) : 0;
+                leavesByGroup.put(key, running + value);
+            } else if (row.Row_Type__c == 'Subtotal' && row.Group_Level__c == 1) {
+                subtotalByGroup.put(key, value);
+            }
+        }
+
+        Decimal peak;
+        for (String key : subtotalByGroup.keySet()) {
+            Decimal stated = subtotalByGroup.get(key);
+
+            // Only meaningful where the details are actually printed; a
+            // summary table has nothing for the subtotal to be a sum OF.
+            if (definition.showDetails) {
+                Decimal leaves = leavesByGroup.containsKey(key) ? leavesByGroup.get(key) : 0;
+                assertClose(stated, leaves, table, field + ' subtotal vs its own rows in group ' + key);
+            }
+            if (peak == null || stated > peak) { peak = stated; }
+        }
+
+        // No level-1 subtotals at all: the leaf groups are the only grouping
+        // there is, so they are what the maximum is taken over.
+        if (subtotalByGroup.isEmpty()) {
+            for (Decimal leaves : leavesByGroup.values()) {
+                if (peak == null || leaves > peak) { peak = leaves; }
+            }
+        }
+
+        Decimal stated = (Decimal) grandTotal.get(field);
+        assertClose(stated == null ? 0 : stated, peak == null ? 0 : peak,
+                    table, field + ' grand total vs the largest group (non-additive measure)');
+    }
+
+    /**
+     * A published table must carry everything a renderer needs to print it
+     * without asking anything else: a heading, and the locale that heading was
+     * resolved for.
+     *
+     * Columns are deliberately NOT checked here. They are inserted after the
+     * table row is stamped but before publication, and re-querying them per
+     * table inside verification would add a SOQL call per table to prove
+     * something the generator already guarantees structurally - it builds
+     * columns for every definition it builds a table for, from the same list.
+     * The retrieval-side check in step 07 is where a missing column set is
+     * caught, because that is where it would actually do harm.
+     */
+    private static void assertPresentationComplete(Quote_Document_Table__c table) {
+        if (String.isBlank(table.Display_Title__c)) {
+            throw QuoteDocumentContributorError.build(
+                'TABLE_TITLE_MISSING',
+                'Table ' + table.Table_Code__c + ' has no Display_Title__c and cannot be published. A '
+                    + 'renderer prints this heading verbatim; there is deliberately no fallback to '
+                    + 'Table_Name__c, which is an internal label nobody reviewed for a customer.'
+            );
+        }
+        if (String.isBlank(table.Locale__c)) {
+            throw QuoteDocumentContributorError.build(
+                'TABLE_LOCALE_MISSING',
+                'Table ' + table.Table_Code__c + ' has no Locale__c. Without it nothing can tell which '
+                    + 'language this snapshot was resolved in, so a re-render in another locale could not '
+                    + 'know it had to regenerate.'
+            );
         }
     }
 

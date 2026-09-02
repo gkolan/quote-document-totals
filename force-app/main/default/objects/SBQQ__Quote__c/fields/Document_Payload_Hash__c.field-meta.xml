@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Document_Payload_Hash__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Hash of the exact persisted document OUTPUT, computed after verification and written with Ready. Different job from Document Data Fingerprint, which hashes the INPUTS and decides rebuild vs reuse. The fingerprint cannot see tampering: editing an amount, a label, a display order or a column binding on a saved record leaves it identical, and the document would render modified with every expectation matching. Retrieval recomputes this from what it queried and refuses to render on a mismatch.</inlineHelpText>
+    <label>Document Payload Hash</label>
+    <length>64</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

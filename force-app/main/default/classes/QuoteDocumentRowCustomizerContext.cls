@@ -16,6 +16,31 @@ public class QuoteDocumentRowCustomizerContext {
     public List<QuoteDocumentLine> lines;
 
     /**
+     * The locale this table is being generated for, passed through to a Flow
+     * contributor so it can pick the right wording without reading the running
+     * user's locale - which would make the snapshot depend on who clicked
+     * generate, and it must not.
+     *
+     * Null until step 03 resolves locale per quote. Contributors must treat
+     * null as "not yet configured" and fall back to the org default, never
+     * blank the text.
+     */
+    public String locale;
+
+    /** The quote's currency, or null in a single-currency org. Contributors format with it; they must not re-derive it. */
+    public String currencyIsoCode;
+
+    /**
+     * The label dictionary for this snapshot's locale.
+     *
+     * Contributors are held to the same rule as core: no printable string is
+     * built by concatenation. Without this the seam would quietly reintroduce
+     * the hardcoded English step 03 exists to remove - and a shipped
+     * customizer did exactly that until this was added.
+     */
+    public QuoteDocumentLabels labels;
+
+    /**
      * The rows QuoteDocumentRowBuilder produced for this table, in render
      * order (group headers, subtotals, details, then the grand total last).
      * Modify in place - add, remove, or edit rows and their measure fields -
@@ -26,6 +51,27 @@ public class QuoteDocumentRowCustomizerContext {
      * builder itself uses.
      */
     public List<Quote_Document_Row__c> rows;
+
+    /**
+     * Measures this table's rows carry that must NOT be summed into the grand
+     * total - declared by the contributor, because only the contributor knows
+     * what its rows mean.
+     *
+     * The case this exists for: a monthly breakdown repeats the same licence
+     * count in every month it is active, so the licences are not twelve
+     * separate quantities to be added. Summing them prints "1,200 licences"
+     * for a customer who has 100. Left additive, QuoteDocumentVerification
+     * would also reject the correct answer, since a peak of 100 does not equal
+     * the 1,200 its leaf rows sum to.
+     *
+     * A measure named here is verified under the sum-within-group,
+     * max-across-groups rule instead of the additive one - it is checked
+     * differently, never left unchecked. An unverified measure is exactly
+     * where a wrong number ships quietly.
+     *
+     * See specs/row-generation-extensibility/steps/step-02-allocation-primitive.md section 3.3.
+     */
+    public Set<String> nonAdditiveMeasures = new Set<String>();
 
     /**
      * Allocates a new row the same way QuoteDocumentRowBuilder does: detail

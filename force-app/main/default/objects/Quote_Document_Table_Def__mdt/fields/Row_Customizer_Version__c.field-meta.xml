@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Row_Customizer_Version__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>CONTENT IDENTITY, NOT DOCUMENTATION. Required when Row Customizer Code is set. Any value (1, 2, 2026-08-27) - only whether it CHANGED matters. It is hashed into the quote fingerprint, so bumping it is what makes quotes regenerate after you deploy changed customizer Apex. Nothing can see an Apex body change, so if you deploy new logic and leave this alone the fingerprint is identical, quotes stay Ready, and generation reuses a snapshot your new code would never have produced. Bump it with the code.</inlineHelpText>
+    <label>Row Customizer Version</label>
+    <length>40</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

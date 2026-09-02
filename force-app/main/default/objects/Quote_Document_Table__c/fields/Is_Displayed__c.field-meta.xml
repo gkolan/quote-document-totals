@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Displayed__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>FALSE means this table generated correctly but must not print. It replaces the renderer-side count() conditional that hid an empty section, so the decision lives in the data where every renderer honours it identically instead of each template re-deriving it. The table is still created, with its Grand Total and counts intact, because those are the evidence generation actually ran - absence of a record cannot be distinguished from a generation that never happened.</inlineHelpText>
+    <label>Is Displayed</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <defaultValue>true</defaultValue>
+    <type>Checkbox</type>
+</CustomField>

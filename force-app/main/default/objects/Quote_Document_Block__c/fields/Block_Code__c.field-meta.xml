@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Block_Code__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Semantic key for this block, e.g. TERMS_STANDARD. Unique within a quote. A renderer keys styling and placement off the code, never off the wording, so the code stays stable when the text is reworded or translated.</inlineHelpText>
+    <label>Block Code</label>
+    <length>40</length>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

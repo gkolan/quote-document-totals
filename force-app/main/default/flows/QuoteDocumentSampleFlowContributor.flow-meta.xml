@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <description>WORKED EXAMPLE - copy this shape for a real contributor. Renames the Grand Total row and appends a Note row carrying no amount, using no Apex at all. Referenced by the inactive Quote_Document_Table_Def__mdt record FLOW_CONTRIBUTOR_EXAMPLE. THE ONE THING TO COPY CAREFULLY: the loop variable is a COPY, so every row is collected into outRows and outRows is assigned back to rows at the end. Editing the loop variable in place changes nothing and fails silently.</description>
+    <environments>Default</environments>
+    <interviewLabel>Quote Document Sample Flow Contributor {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Quote Document Sample Flow Contributor</label>
+    <processType>AutoLaunchedFlow</processType>
+    <status>Active</status>
+
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>For_Each_Row</targetReference>
+        </connector>
+    </start>
+
+    <loops>
+        <name>For_Each_Row</name>
+        <label>For Each Row</label>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <collectionReference>rows</collectionReference>
+        <iterationOrder>Asc</iterationOrder>
+        <nextValueConnector>
+            <targetReference>Is_Grand_Total</targetReference>
+        </nextValueConnector>
+        <noMoreValuesConnector>
+            <targetReference>Build_Note_Row</targetReference>
+        </noMoreValuesConnector>
+    </loops>
+
+    <decisions>
+        <name>Is_Grand_Total</name>
+        <label>Is Grand Total</label>
+        <locationX>440</locationX>
+        <locationY>158</locationY>
+        <defaultConnector>
+            <targetReference>Keep_Row</targetReference>
+        </defaultConnector>
+        <defaultConnectorLabel>No</defaultConnectorLabel>
+        <rules>
+            <name>Yes_Grand_Total</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>For_Each_Row.Row_Type__c</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <stringValue>Grand Total</stringValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Rename_Grand_Total</targetReference>
+            </connector>
+            <label>Yes</label>
+        </rules>
+    </decisions>
+
+    <assignments>
+        <name>Rename_Grand_Total</name>
+        <label>Rename Grand Total</label>
+        <locationX>704</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>For_Each_Row.Display_Label__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Total Due</stringValue>
+            </value>
+        </assignmentItems>
+        <connector>
+            <targetReference>Keep_Row</targetReference>
+        </connector>
+    </assignments>
+
+    <assignments>
+        <name>Keep_Row</name>
+        <label>Keep Row</label>
+        <locationX>440</locationX>
+        <locationY>278</locationY>
+        <assignmentItems>
+            <assignToReference>outRows</assignToReference>
+            <operator>Add</operator>
+            <value>
+                <elementReference>For_Each_Row</elementReference>
+            </value>
+        </assignmentItems>
+        <connector>
+            <targetReference>For_Each_Row</targetReference>
+        </connector>
+    </assignments>
+
+    <assignments>
+        <name>Build_Note_Row</name>
+        <label>Build Note Row</label>
+        <locationX>176</locationX>
+        <locationY>278</locationY>
+        <assignmentItems>
+            <assignToReference>noteRow.Row_Type__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Note</stringValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>noteRow.Row_Key__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>FLOW_SAMPLE_NOTE</stringValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>noteRow.Display_Label__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Prices exclude applicable taxes.</stringValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>noteRow.Group_Level__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <numberValue>0.0</numberValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>noteRow.Display_Order__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <numberValue>99000.0</numberValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>noteRow.Is_Displayed__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <booleanValue>true</booleanValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>noteRow.Include_In_Subtotal__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <booleanValue>false</booleanValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>noteRow.Include_In_Grand_Total__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <booleanValue>false</booleanValue>
+            </value>
+        </assignmentItems>
+        <connector>
+            <targetReference>Append_Note_Row</targetReference>
+        </connector>
+    </assignments>
+
+    <assignments>
+        <name>Append_Note_Row</name>
+        <label>Append Note Row</label>
+        <locationX>176</locationX>
+        <locationY>398</locationY>
+        <assignmentItems>
+            <assignToReference>outRows</assignToReference>
+            <operator>Add</operator>
+            <value>
+                <elementReference>noteRow</elementReference>
+            </value>
+        </assignmentItems>
+        <connector>
+            <targetReference>Return_Rows</targetReference>
+        </connector>
+    </assignments>
+
+    <assignments>
+        <name>Return_Rows</name>
+        <label>Return Rows</label>
+        <locationX>176</locationX>
+        <locationY>518</locationY>
+        <assignmentItems>
+            <assignToReference>rows</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>outRows</elementReference>
+            </value>
+        </assignmentItems>
+    </assignments>
+
+    <variables>
+        <name>rows</name>
+        <dataType>SObject</dataType>
+        <isCollection>true</isCollection>
+        <isInput>true</isInput>
+        <isOutput>true</isOutput>
+        <objectType>Quote_Document_Row__c</objectType>
+    </variables>
+    <variables>
+        <name>outRows</name>
+        <dataType>SObject</dataType>
+        <isCollection>true</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+        <objectType>Quote_Document_Row__c</objectType>
+    </variables>
+    <variables>
+        <name>noteRow</name>
+        <dataType>SObject</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+        <objectType>Quote_Document_Row__c</objectType>
+    </variables>
+    <variables>
+        <name>quoteId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>tableCode</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>locale</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>currencyIsoCode</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

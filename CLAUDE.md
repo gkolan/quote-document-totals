@@ -4,8 +4,28 @@ This file orients an agent (or a new developer) working in `cpqRules`. It doesn'
 
 1. [`docs/quote-document-totals.md`](docs/quote-document-totals.md) — the single source of truth for the CPQ Quote Document framework (object model, generation pipeline, staleness, retention, config).
 2. [`docs/quote-document-totals-architecture-guide.md`](docs/quote-document-totals-architecture-guide.md) — the same framework explained for a Salesforce admin with no coding background: plain-language walkthrough of every object, custom metadata type, Apex class, and how to configure or extend it. Point a junior admin here first; point a developer at #1 first.
-3. [`docs/documentation-standards.md`](docs/documentation-standards.md) — the required standard for any new `Quote_Document_Table_Def__mdt` guide. Apply it automatically; don't ask.
-4. [`specs/quote-docusign-totals/spec.md`](specs/quote-docusign-totals/spec.md) — the hardening roadmap, phased and atomic under [`specs/quote-docusign-totals/phases/`](specs/quote-docusign-totals/phases/). Check phase status before assuming something is done vs. planned.
+3. [`docs/annual-schedule-guide.md`](docs/annual-schedule-guide.md) — the worked example of a table that expands one line into several rows, and the first guide written for a definition that is deliberately still inactive.
+4. [`docs/documentation-standards.md`](docs/documentation-standards.md) — the required standard for any new `Quote_Document_Table_Def__mdt` guide. Apply it automatically; don't ask.
+5. [`specs/vendor-neutral-render-contract/spec.md`](specs/vendor-neutral-render-contract/spec.md) — the render contract that makes the document product replaceable. Read this before touching anything that produces printable text: titles, column headings, row labels, narrative blocks, or locale. Its steps are under [`specs/vendor-neutral-render-contract/steps/`](specs/vendor-neutral-render-contract/steps/), each with a close-out recording what was built and what was deliberately deferred.
+6. [`docs/quote-document-extension-recipes.md`](docs/quote-document-extension-recipes.md) — copyable recipes for an Apex or Flow row customizer, plus the full error-code catalogue. Start here rather than reading generator internals.
+7. [`specs/row-generation-extensibility/spec.md`](specs/row-generation-extensibility/spec.md) — how one quote line becomes several document rows: expansion, allocation, non-additive measures, comparison and partitioning. Read this before adding a table that multiplies, divides, compares or splits — most of those are configuration now, and the recipes in #6 are the entry point.
+8. [`specs/quote-docusign-totals/spec.md`](specs/quote-docusign-totals/spec.md) — the hardening roadmap, phased and atomic under [`specs/quote-docusign-totals/phases/`](specs/quote-docusign-totals/phases/). Check phase status before assuming something is done vs. planned.
+
+
+## The render contract changes how you add printable text
+
+Since `specs/vendor-neutral-render-contract`, **no printable string is constructed in Apex or typed into
+a template.** Titles come from the table definition, column headings and row labels resolve from a
+locale dictionary through `QuoteDocumentLabels`, and narrative comes from `Quote_Document_Content__mdt`.
+
+Two consequences worth knowing before you write code:
+
+- `QuoteDocumentRowBuilder.defaultRow()` **fails** on a blank label rather than substituting
+  `'(unnamed)'`. Resolve `GROUP_UNNAMED` from the dictionary at the call site.
+- A renderer never queries the snapshot objects. It calls
+  `QuoteDocumentRenderService.getPayload(quoteId, expectedRequestId, expectedFingerprint)`, with both
+  expectations from a preceding `generate()`. There is no overload that omits them, and a test asserts
+  none is ever added.
 
 ## Environment note: `sf` and Java are on PATH, but not always in a fresh shell
 
@@ -15,6 +35,25 @@ This machine has the Salesforce CLI (`C:\Program Files\sf\bin`) and a JDK (`C:\P
 $env:Path += ";C:\Program Files\sf\bin;C:\Program Files\Eclipse Adoptium\jdk-25.0.4.7-hotspot\bin"
 sf org list
 ```
+
+## The scratch org is `quotedoctotals` - never destroy it
+
+The permutation work in `specs/quote-document-test-data` runs against one
+long-lived scratch org, aliased **`quotedoctotals`** (also `qdtdScratch`),
+created from the `sfdo-gk-dev-ed` Dev Hub and expiring 2026-09-26. Rebuilding it
+costs a CPQ package install plus a full deploy, and the Dev Hub allows only
+3 active scratch orgs, so a rebuild can require deleting someone else's org.
+
+**Never run `cci org remove` against it.** For a scratch org that command deletes
+the org itself, not just CumulusCI's keychain entry - one was destroyed that way
+on 2026-08-27, taking CPQ, the deploy and all generated data with it. The same
+applies to `sf org delete scratch` and to deleting `ActiveScratchOrg` rows on the
+Dev Hub.
+
+Data loading does not go through CumulusCI at all. Snowfakery generates JSON
+locally, `scripts/qdtd/build-load-apex.py` turns it into anonymous Apex, and
+`sf apex run` loads it - no access token is ever handed to a second tool, which
+is what prompted the destructive `cci org remove` in the first place.
 
 ## sf-skills
 

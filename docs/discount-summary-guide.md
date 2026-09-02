@@ -164,7 +164,43 @@ This can't be combined with the Product Family Summary report even though both g
 
 ---
 
-## 9. DocuSign CLM (SpringCM) template — click-by-click
+## 9. Adapter: DocuSign CLM (SpringCM) — click-by-click
+
+> **This section documents ONE adapter, not the system's rendering model.** The same snapshot drives
+> the JSON and HTML adapters in this repo, and would drive any other. Nothing below is a requirement of
+> the framework; it is how this particular renderer is wired to it.
+
+### 9.0 The launch sequence — required, not optional
+
+A conforming renderer is launched **from Salesforce**, by an action that:
+
+1. calls generate-or-reuse for the quote, which recomputes the fingerprint;
+2. takes the request Id and fingerprint that call returns;
+3. hands the document product exactly those, and binds the snapshot they identify.
+
+**A CLM Data Source pointed straight at `Quote_Document_Table__c` is not a conforming renderer.** It
+never calls generate-or-reuse and never passes an expected fingerprint, so it can render a snapshot that
+moved underneath it and nothing would detect that. If the tenant cannot support launching this way, the
+honest outcome is that CLM stops being the renderer — not that the contract acquires an exception.
+
+Why it has to be step 1 every time: invalidation for external dependencies is **best-effort** (a trigger
+may not exist, a sweep may lag, reverse-mapping a custom object to affected quotes may have no answer),
+whereas fresh fingerprint computation is not. It is the last guard when something was missed.
+
+### 9.0.1 What the template no longer types
+
+| Was typed into Word | Now bound from |
+|---|---|
+| Table heading | `Display_Title__c` |
+| Column headings | `Quote_Document_Column__c` — repeat over it |
+| Disclaimers and notices | `Intro_Text__c`, `Footer_Text__c`, or `Quote_Document_Block__c` |
+| Row labels | `Display_Label__c`, already localized |
+| "which rows print" conditionals | `Is_Displayed` |
+
+The Data Source must expose `Quote_Document_Column__c` as a repeating node under
+`Quote_Document_Table__c`, plus the table's `Display_Title__c`, `Display_Subtitle__c`, `Intro_Text__c`,
+`Footer_Text__c`, `Is_Displayed__c` and `Locale__c`, and the row's `Is_Displayed__c` and `Label_Key__c`.
+
 
 **Confirming the product:** this repo's org uses DocuSign CLM (formerly SpringCM), identified by its native `<# <Tag .../> #>` Smart Template syntax (confirmed against a real tag sample earlier in this project's history — see `docs/quote-line-type-bundle-reporting-guide.md` §13's opening note). Everything below uses that syntax. If your org is instead on plain DocuSign Gen (anchor-tag `«TableStart:X»` syntax), that guide's §13 also documents the fallback.
 
@@ -205,14 +241,14 @@ If a Data Source for quote documents already exists in your org (built for any o
 
 ### 9.3 The tag block
 
-Unlike Product Family Summary, this table's tag has to render **both** the Detail rows and the Subtotal/Grand Total rows, indented differently — that's the one real difference in template work this table requires.
+This table prints Detail rows alongside Subtotal and Grand Total rows. The template no longer needs to know that: every row carries its own `Display_Label`, and `Row_Type` is available for indentation and styling. Indent by `Group_Level`, style by `Row_Type`.
+
+> **Filtering moved into the data.** A renderer prints every row it is given, in `Display_Order` order, and asks no questions about which rows belong. `Is_Displayed` is decided during generation, so every renderer reaches the same answer instead of each template re-deriving it — see [the render contract](quote-document-totals.md#the-render-contract).
+
 
 ```
 <# <Repeating NodeSet="//Quote_Document_Table[Table_Code='DISCOUNT_SUMMARY']/Quote_Document_Row"> #>
-<# <Conditional Test="Row_Type='Detail'"> #>
-    <# <Value Select="Product_Name"/> #>     <# <Value Select="Amount_List"/> #>     <# <Value Select="Amount_Discount"/> #>     <# <Value Select="Amount_Net"/> #>
-<# </Conditional> #>
-<# <Conditional Test="Row_Type='Subtotal' or Row_Type='Grand Total'"> #>
+<# <Conditional Test="Is_Displayed='true'"> #>
 <# <Value Select="Display_Label"/> #>     <# <Value Select="Amount_List"/> #>     <# <Value Select="Amount_Discount"/> #>     <# <Value Select="Amount_Net"/> #>
 <# </Conditional> #>
 <# </Repeating> #>

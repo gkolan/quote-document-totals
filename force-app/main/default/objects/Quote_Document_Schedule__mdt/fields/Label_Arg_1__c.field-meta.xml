@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Label_Arg_1__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Fills the {0} placeholder in Label Key, so one parameterised dictionary entry serves a whole schedule - twelve promotional months share MONTH_LABEL and supply 1..12 here rather than needing twelve entries. Leave blank for a key with no placeholder, such as a named milestone.</inlineHelpText>
+    <label>Label Argument 1</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

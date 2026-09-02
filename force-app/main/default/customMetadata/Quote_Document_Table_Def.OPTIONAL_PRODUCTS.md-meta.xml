@@ -38,5 +38,7 @@
         <field>Display_Order__c</field>
         <value xsi:type="xsd:double">50</value>
     </values>
+    <values><field>Display_Title__c</field><value xsi:type="xsd:string">Optional Products</value></values>
+    <values><field>Intro_Text__c</field><value xsi:type="xsd:string">These products are optional and are NOT included in the quote's committed total. The amounts below are provided for information only; nothing in this table has been ordered or priced into the agreement.</value></values>
 </CustomMetadata>
 

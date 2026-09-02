@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Contributor_Dependency_Set__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>REQUIRED when Cache Policy is DECLARED_DEPENDENCIES, and must be empty otherwise. Comma-separated field paths the contributor reads beyond the quote and its lines, relative to the Quote - e.g. SBQQ__Account__r.Customer_Tier__c. Each is schema-validated at config load, so a renamed field fails loudly instead of dropping out of the hash. HASHING IS NOT INVALIDATION: nothing marks a quote Stale when an Account field changes; every launch must call generate-or-reuse.</inlineHelpText>
+    <label>Contributor Dependency Set</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

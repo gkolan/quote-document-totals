@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Schedule_Divides_Quantity__c</fullName>
+    <defaultValue>false</defaultValue>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Whether quantities divide across the sections of this schedule. Tick it for a department or delivery split, where each section gets its own share of genuinely different units. Leave it clear for a payment schedule, where the same products are covered by every instalment - dividing there would print a third of a licence per payment.</inlineHelpText>
+    <label>Schedule Divides Quantity</label>
+    <type>Checkbox</type>
+</CustomField>

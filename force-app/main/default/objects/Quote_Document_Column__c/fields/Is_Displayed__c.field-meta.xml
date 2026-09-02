@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Displayed__c</fullName>
+    <externalId>false</externalId>
+    <defaultValue>true</defaultValue>
+    <inlineHelpText>FALSE means this column was generated but must not print. Kept rather than omitted so a renderer never has to ask why a column code it knows about is missing.</inlineHelpText>
+    <label>Is Displayed</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

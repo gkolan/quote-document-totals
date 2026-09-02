@@ -38,5 +38,6 @@
         <field>Display_Order__c</field>
         <value xsi:type="xsd:double">40</value>
     </values>
+    <values><field>Display_Title__c</field><value xsi:type="xsd:string">Detail by Group and Family</value></values>
 </CustomMetadata>
 

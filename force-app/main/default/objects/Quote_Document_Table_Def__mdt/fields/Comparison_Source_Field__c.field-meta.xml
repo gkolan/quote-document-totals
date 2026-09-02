@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Comparison_Source_Field__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>For SOURCE_QUOTE: the lookup on SBQQ__Quote__c naming the quote to compare against. Defaults to SBQQ__Source__c, which CPQ populates on a revision. A blank value on the quote itself fails generation rather than reporting every line as newly added.</inlineHelpText>
+    <label>Comparison Source Field</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
