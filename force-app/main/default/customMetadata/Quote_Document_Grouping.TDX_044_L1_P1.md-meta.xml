@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomMetadata
+  xmlns="http://soap.sforce.com/2006/04/metadata"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+>
+    <label>TDX_044 L1 P1</label>
+    <protected>false</protected>
+    <values>
+        <field>Table_Definition__c</field>
+        <value xsi:type="xsd:string">TDX_044</value>
+    </values>
+    <values>
+        <field>Dimension__c</field>
+        <value xsi:type="xsd:string">PRODUCT_FAMILY</value>
+    </values>
+    <values>
+        <field>Level__c</field>
+        <value xsi:type="xsd:double">1</value>
+    </values>
+    <values>
+        <field>Sequence__c</field>
+        <value xsi:type="xsd:double">10</value>
+    </values>
+</CustomMetadata>

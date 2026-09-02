@@ -4,7 +4,7 @@
  * dynamic lookup - metadata holds a code, Apex owns the mapping, so a rename
  * shows up as a compile error here instead of a runtime "class not found".
  *
- * See specs/quote-docusign-launch/spec.md Increment 4.
+ * See docs/use-case/43-registered-apex-row-adjustment.md.
  */
 public with sharing class QuoteDocumentRowCustomizerRegistry {
     public static QuoteDocumentRowCustomizer resolve(String customizerCode) {

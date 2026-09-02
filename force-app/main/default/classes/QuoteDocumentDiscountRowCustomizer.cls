@@ -1,7 +1,7 @@
 /**
  * Reference implementation of QuoteDocumentRowCustomizer for the Discount row
- * type. Walked through in full in docs/quote-document-row-customizer-guide.md
- * - read that before using this class as a template for a real one.
+ * type. See docs/quote-document-extension-recipes.md before using this class
+ * as a template for a real implementation.
  *
  * Applies a flat loyalty discount to whichever Detail row on the table has
  * the highest Amount_Net__c, and emits it as a Discount row tied to that

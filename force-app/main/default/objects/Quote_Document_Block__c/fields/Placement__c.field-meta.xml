@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Placement__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Where this Block belongs relative to its document, Table, or Row. The output service follows this value and does not decide placement from the Block code.</inlineHelpText>
+    <label>Placement</label>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>Document Level</fullName><default>true</default><label>Document Level</label></value>
+            <value><fullName>Before Section</fullName><default>false</default><label>Before Section</label></value>
+            <value><fullName>After Section</fullName><default>false</default><label>After Section</label></value>
+            <value><fullName>Before Row</fullName><default>false</default><label>Before Row</label></value>
+            <value><fullName>After Row</fullName><default>false</default><label>After Row</label></value>
+            <value><fullName>Full Width After Row</fullName><default>false</default><label>Full Width After Row</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

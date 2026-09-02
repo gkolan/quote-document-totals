@@ -4,7 +4,7 @@ List<SBQQ__Quote__c> seeded = [
     ORDER BY CreatedDate DESC LIMIT 1
 ];
 SBQQ__Quote__c quote = !seeded.isEmpty() ? seeded[0] : [
-    SELECT Id, Name FROM SBQQ__Quote__c WHERE Name = 'Q-00053' LIMIT 1
+    SELECT Id, Name FROM SBQQ__Quote__c ORDER BY CreatedDate DESC LIMIT 1
 ];
 
 QuoteDocumentGenerator.generate(new Set<Id>{ quote.Id });

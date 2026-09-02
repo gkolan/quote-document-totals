@@ -7,7 +7,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net__c</field>
     </columns>
-    <description>One flat bucket per Family/Charge-Type combination (e.g. "Hardware / Recurring") - a composite, not a nested table - docs/family-billing-composite-guide.md.</description>
+    <description>One row for each Product Family and Charge Type combination, such as Hardware / Recurring. See docs/use-case/06-family-billing-frequency-summary.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

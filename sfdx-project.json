@@ -5,7 +5,7 @@
       "default": true
     }
   ],
-  "name": "cpqRules",
+  "name": "quote-document-totals",
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",
   "sourceApiVersion": "67.0"

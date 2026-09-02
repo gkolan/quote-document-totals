@@ -7,7 +7,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net__c</field>
     </columns>
-    <description>One-Time vs. Recurring totals, plus the grand total - docs/charge-type-summary-guide.md.</description>
+    <description>One-Time and Recurring totals, plus the grand total. See docs/use-case/02-charge-type-summary.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

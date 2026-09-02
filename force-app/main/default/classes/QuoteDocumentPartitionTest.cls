@@ -371,6 +371,30 @@ private class QuoteDocumentPartitionTest {
         }
     }
 
+    /**
+     * The third pair, and the one that was missing.
+     *
+     * Comparison was refused against both of the others; expansion beside
+     * partitioning was not, so the generator quietly partitioned the unexpanded
+     * lines and expanded inside each partition - a shape nobody chose, in the
+     * exact combination the spec says it refuses to guess about.
+     */
+    @IsTest
+    static void partitioningAndExpandingAtOnceIsRefused() {
+        QuoteDocumentTableDefinition definition =
+            partitioned(QuoteDocumentTableDefinition.CROSS_PARTITION_NONE);
+        definition.expanderCode = QuoteDocumentPeriodExpander.CODE;
+        definition.expanderVersion = '1';
+        definition.periodMonths = 12;
+
+        try {
+            definition.validatePartitionConfig();
+            Assert.fail('A repeated measure has no agreed meaning across partitions.');
+        } catch (QuoteDocumentGenerator.QuoteDocumentException e) {
+            Assert.isTrue(e.getMessage().contains('partitions and expands'), e.getMessage());
+        }
+    }
+
     // -----------------------------------------------------------------------
     // One document per partition
     // -----------------------------------------------------------------------

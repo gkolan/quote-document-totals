@@ -1,37 +1,50 @@
-name: CI
+name: Project checks
 
-# The contributor version gate existed as an npm script that nothing ran.
-# A gate nobody invokes is documentation, so this workflow is the point at
-# which it becomes enforcement.
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
-  contributor-version-gate:
-    name: Contributor version gate
+  project-checks:
+    name: Documentation and project checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          # The gate resolves a merge base and reads the PREVIOUS version
-          # tokens with `git show <base>:<path>`. A shallow clone has no
-          # merge base, and the gate exits 2 rather than guessing - so the
-          # full history is not optional here.
+          # The contributor check compares the change with the earlier version.
+          # It needs the full history to make that comparison correctly.
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
+          cache: npm
 
-      # The gate's own suite first. A gate with failing tests must not be
-      # trusted to judge anything else, so this runs before the gate itself.
-      - name: Gate self-tests
+      - name: Install project tools
+        run: npm ci
+
+      - name: Run JavaScript tests
+        run: npm test
+
+      - name: Check JavaScript
+        run: npm run lint
+
+      - name: Check documentation formatting
+        run: npm run prettier:verify
+
+      - name: Check documentation links, language, structure, and source facts
+        run: npm run test:docs
+
+      - name: Test the contributor version check
         run: npm run test:ci-gate
 
-      - name: Contributor version gate
+      - name: Check contributor versions
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
         run: |
-          BASE="origin/${{ github.base_ref || 'master' }}"
-          git fetch --no-tags origin "${{ github.base_ref || 'master' }}" || true
-          node scripts/ci/check-contributor-versions.js --base "$BASE"
+          if [ -n "$GITHUB_BASE_REF" ]; then
+            git fetch --no-tags origin "$GITHUB_BASE_REF" || true
+          fi
+          node scripts/ci/check-contributor-versions.js

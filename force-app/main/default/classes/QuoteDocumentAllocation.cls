@@ -40,7 +40,7 @@
  *   SIGNS        A negative total allocates negative shares and still sums
  *                back exactly. An amendment credit is a real input.
  *
- * See specs/row-generation-extensibility/steps/step-02-allocation-primitive.md.
+ * See docs/quote-document-extension-recipes.md.
  */
 public with sharing class QuoteDocumentAllocation {
 

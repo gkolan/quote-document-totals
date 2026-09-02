@@ -1,9 +1,7 @@
 /**
  * Covers QuoteDocumentRowCustomizerRegistry.resolve() directly, and proves the
- * migration in specs/quote-docusign-launch/spec.md Increment 4 is behavior
- * preserving: the four real Quote_Document_Table_Def__mdt records generate
- * through QuoteDocumentGenerator exactly as before, but via the registry
- * rather than the retired Type.forName lookup.
+ * current registry behavior: the shipped Quote_Document_Table_Def__mdt
+ * records generate through QuoteDocumentGenerator via registered codes.
  */
 @IsTest
 private class QuoteDocumentRowCustomizerRegistryTest {

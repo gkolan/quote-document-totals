@@ -7,7 +7,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net_Change__c</field>
     </columns>
-    <description>Delta per bundle, including the Uncategorized bucket for lines not in any bundle - docs/quote-line-type-bundle-reporting-guide.md View C.</description>
+    <description>Change amount by bundle, including Uncategorized lines that are not in a bundle. See docs/use-case/22-bundle-change-summary.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

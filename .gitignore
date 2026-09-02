@@ -5,6 +5,7 @@
 # Salesforce cache
 .sf/
 .sfdx/
+.cci/
 .localdevserver/
 deploy-options.json
 
@@ -31,6 +32,27 @@ node_modules/
 code-analyzer-results-*.json
 code-analyzer-results-*.log
 
+# Local test and review output
+review-artifacts/
+**/testresults/
+scripts/qdtd/run-slice.generated.apex
+robot/**/results/
+datasets/qdtd/out-*.json
+
+# Local planning and implementation notes (not required by a clone/install)
+/specs/
+
+# Personal editor and AI-assistant setup
+/.vscode/
+/.idea/
+*.code-workspace
+/.claude/
+/.agents/
+/.codex/
+/CLAUDE.md
+/AGENTS.md
+/skills-lock.json
+
 # Eslint cache
 .eslintcache
 
@@ -45,17 +67,17 @@ $RECYCLE.BIN/
 
 # Local environment variables
 .env
+.env.*
+!.env.example
+
+# Local authentication keys
+*.key
+*.pem
 
 # Python Salesforce Functions
 **/__pycache__/
 **/.venv/
 **/venv/
 
-# Vendored sf-skills. Third-party, pinned by skills-lock.json, and rebuilt
-# idempotently with `npx skills add forcedotcom/sf-skills` - see CLAUDE.md.
-# Committing them would put ~8,200 regenerable files in every clone.
-.claude/skills/
-.agents/skills/
-
-# Per-developer Claude Code settings
-.claude/settings.local.json
+# Shared source, tests, CI, scripts, documentation, and test-org definitions
+# remain versioned so another contributor can reproduce and validate changes.

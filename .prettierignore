@@ -9,3 +9,17 @@
 .vscode
 
 coverage/
+
+# Local planning, editor, and AI-assistant files
+specs/
+.idea/
+*.code-workspace
+.claude/
+.agents/
+.codex/
+CLAUDE.md
+AGENTS.md
+skills-lock.json
+.cci/
+review-artifacts/
+datasets/qdtd/out-*.json

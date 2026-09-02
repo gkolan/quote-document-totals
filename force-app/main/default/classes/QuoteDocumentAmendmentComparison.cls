@@ -30,7 +30,7 @@
  * Before a customer-facing document depends on this, run it against a genuine
  * amendment and confirm the matching picks the positions a human would.
  *
- * See specs/row-generation-extensibility/steps/step-04-comparison-and-enrichment.md.
+ * See docs/quote-document-extension-recipes.md.
  */
 public with sharing class QuoteDocumentAmendmentComparison
     implements QuoteDocumentComparisonSource {

@@ -69,7 +69,7 @@ public class QuoteDocumentRowCustomizerContext {
      * differently, never left unchecked. An unverified measure is exactly
      * where a wrong number ships quietly.
      *
-     * See specs/row-generation-extensibility/steps/step-02-allocation-primitive.md section 3.3.
+     * See docs/quote-document-extension-recipes.md.
      */
     public Set<String> nonAdditiveMeasures = new Set<String>();
 

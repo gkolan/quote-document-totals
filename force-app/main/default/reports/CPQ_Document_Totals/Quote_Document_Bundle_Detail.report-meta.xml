@@ -21,7 +21,7 @@
     <columns>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Include_In_Grand_Total__c</field>
     </columns>
-    <description>Product-level detail nested under its bundle (or Standalone Products), with the counted-vs-shown flag visible - docs/bundle-detail-guide.md.</description>
+    <description>Product detail under each bundle or Standalone Products, including whether each row counts in totals. See docs/use-case/04-bundle-detail.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

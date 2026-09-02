@@ -3,7 +3,7 @@
     <fullName>Row_Customizer_Code__c</fullName>
     <externalId>false</externalId>
     <fieldManageability>DeveloperControlled</fieldManageability>
-    <inlineHelpText>LEAVE BLANK unless this table needs logic the config below cannot express. If set, must be one of the codes QuoteDocumentRowCustomizerRegistry.resolve() knows about (e.g. DISCOUNT_EXAMPLE, INDUSTRY_ALLEGIANCE, ROUNDING_EXAMPLE, ESTIMATED_TAX) - see specs/quote-docusign-launch/spec.md Increment 4. A code the registry does not recognize fails generation with a readable error rather than skipping the table.</inlineHelpText>
+    <inlineHelpText>Leave blank unless this table needs an approved Apex row adjustment. If set, enter a code registered in QuoteDocumentRowCustomizerRegistry, such as DISCOUNT_EXAMPLE, INDUSTRY_ALLEGIANCE, ROUNDING_EXAMPLE, or ESTIMATED_TAX. An unknown code stops generation and records a readable error.</inlineHelpText>
     <label>Row Customizer Code</label>
     <length>40</length>
     <required>false</required>

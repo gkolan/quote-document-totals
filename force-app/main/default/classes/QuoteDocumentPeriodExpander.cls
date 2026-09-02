@@ -53,7 +53,7 @@
  * dividesQuantity() is false: a customer with 100 licences has 100 in every
  * month of the term, not 8.33. See QuoteDocumentExpansion.
  *
- * See specs/row-generation-extensibility/steps/step-01-expansion-contract.md.
+ * See docs/quote-document-extension-recipes.md.
  */
 public with sharing class QuoteDocumentPeriodExpander implements QuoteDocumentLineExpander {
 

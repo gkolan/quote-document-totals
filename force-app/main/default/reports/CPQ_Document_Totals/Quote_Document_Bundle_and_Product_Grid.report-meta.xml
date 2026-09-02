@@ -26,7 +26,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Termination__c</field>
     </columns>
-    <description>Product/bundle grid, one row per product with a column per transaction type, subtotal per bundle - docs/quote-line-type-bundle-reporting-guide.md View B.</description>
+    <description>One row per product, columns for transaction types, and a subtotal for each bundle. See docs/use-case/23-bundle-product-change-detail.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

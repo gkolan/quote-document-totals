@@ -1,6 +1,7 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>Read and write access to the generated Quote document tables and rows, plus the readiness fields on the Quote. Assign to anyone who reviews generated document data or runs the generator.</description>
+    <description
+  >Read and write access to the generated Quote document tables and rows, plus the readiness fields on the Quote. Assign to anyone who reviews generated document data or runs the generator.</description>
     <flowAccesses>
         <enabled>true</enabled>
         <flow>Generate_Quote_Document_Tables</flow>
@@ -377,6 +378,129 @@
         <field>SBQQ__Quote__c.AccountIndustry__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Quote_Document_Table__c.Source_Identity__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Quote_Document_Table__c.Source_Version__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>SBQQ__Quote__c.Document_Type__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>SBQQ__Quote__c.Document_Revision__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>SBQQ__Quote__c.Prior_Document_Reference__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Quote_Document_Block__c.Approval_Identity__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Quote_Document_Block__c.Related_Table__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Quote_Document_Block__c.Related_Row__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Quote_Document_Block__c.Source_Identity__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Block__c.Related_Table_Key__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Block__c.Related_Row_Key__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Column__c.Table_Key__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Column__c.Format_Role__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Column__c.Total_Rule__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Table_Key__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Total_Role__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Product_Description__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Unit_Price__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Start_Date__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.End_Date__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Duration__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Customer_Part_Number__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Delivery_Location__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Tax_Amount__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Charge_Amount__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Row__c.Allowance_Amount__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Fact__c.Display_Label__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Fact__c.Text_Value__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Fact__c.Number_Value__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Fact__c.Currency_Value__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Fact__c.Currency_Code__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Fact__c.Date_Value__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Fact__c.Datetime_Value__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Fact__c.Boolean_Value__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Quote_Document_Fact__c.Source_Identity__c</field><readable
+    >true</readable></fieldPermissions>
     <objectPermissions>
         <allowCreate>false</allowCreate>
         <allowDelete>false</allowDelete>
@@ -422,6 +546,15 @@
         <object>Quote_Document_Block__c</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Quote_Document_Fact__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
     <tabSettings>
         <tab>Quote_Document_Table__c</tab>
         <visibility>Visible</visibility>
@@ -431,4 +564,3 @@
         <visibility>Visible</visibility>
     </tabSettings>
 </PermissionSet>
-

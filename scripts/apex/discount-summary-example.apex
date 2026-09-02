@@ -1,5 +1,5 @@
 /**
- * Hand-built example for docs/discount-summary-guide.md.
+ * Hand-built example for docs/use-case/03-discount-summary.md.
  *
  * Reuses the canonical family numbers from product-family-summary-example.apex
  * (Hardware 91,800 / Miscellaneous 3,500 / Service 410 / Software 7,200 net),
@@ -14,10 +14,8 @@
  * Safe to re-run: deletes only the DISCOUNT_SUMMARY table for the target quote
  * first.
  *
- *   sf apex run --target-org gkCPQDev --file scripts/apex/discount-summary-example.apex
+ *   sf apex run --target-org your-org-alias --file scripts/apex/discount-summary-example.apex
  */
-
-final String QUOTE_NAME = 'Q-00053';
 
 List<SBQQ__Quote__c> seeded = [
     SELECT Id, Name FROM SBQQ__Quote__c
@@ -25,8 +23,20 @@ List<SBQQ__Quote__c> seeded = [
     ORDER BY CreatedDate DESC LIMIT 1
 ];
 SBQQ__Quote__c quote = !seeded.isEmpty() ? seeded[0] : [
-    SELECT Id, Name FROM SBQQ__Quote__c WHERE Name = :QUOTE_NAME LIMIT 1
+    SELECT Id, Name FROM SBQQ__Quote__c ORDER BY CreatedDate DESC LIMIT 1
 ];
+
+// CurrencyIsoCode cannot be named in the static SOQL above: the field only
+// exists when multi-currency is on, so a single-currency org would fail to
+// compile it. This script stamps the table with the quote's currency, so
+// re-read the quote through dynamic SOQL that adds the field only when the
+// org actually has it - the same guard QuoteDocumentQuery uses.
+Id qdtdQuoteId = quote.Id;
+quote = (SBQQ__Quote__c) Database.query(
+    'SELECT Id, Name'
+    + (UserInfo.isMultiCurrencyOrganization() ? ', CurrencyIsoCode' : '')
+    + ' FROM SBQQ__Quote__c WHERE Id = :qdtdQuoteId LIMIT 1'
+);
 
 delete [
     SELECT Id FROM Quote_Document_Table__c

@@ -1,5 +1,5 @@
 /**
- * Worked example for docs/quote-document-row-customizer-guide.md §12.
+ * Worked example for docs/quote-document-extension-recipes.md.
  *
  * Like row-customizer-example.apex, this calls the real
  * QuoteDocumentGenerator.generate() rather than hand-building rows, so it
@@ -16,7 +16,7 @@
  * industry" and "zero-total reassignment" paths are proven with controlled
  * synthetic data instead, by QuoteDocumentIndustryAllegianceRowCustomizerTest.
  *
- *   sf apex run --target-org gkCPQDev --file scripts/apex/industry-allegiance-example.apex
+ *   sf apex run --target-org your-org-alias --file scripts/apex/industry-allegiance-example.apex
  */
 
 List<SBQQ__Quote__c> seeded = [
@@ -25,7 +25,7 @@ List<SBQQ__Quote__c> seeded = [
     ORDER BY CreatedDate DESC LIMIT 1
 ];
 SBQQ__Quote__c quote = !seeded.isEmpty() ? seeded[0] : [
-    SELECT Id, Name FROM SBQQ__Quote__c WHERE Name = 'Q-00053' LIMIT 1
+    SELECT Id, Name FROM SBQQ__Quote__c ORDER BY CreatedDate DESC LIMIT 1
 ];
 
 QuoteDocumentGenerator.generate(new Set<Id>{ quote.Id });

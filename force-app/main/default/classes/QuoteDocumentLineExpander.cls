@@ -32,7 +32,7 @@
  * Implementations register in QuoteDocumentExpanderRegistry under a code, and
  * a table definition names that code in Expander_Code__c.
  *
- * See specs/row-generation-extensibility/steps/step-01-expansion-contract.md.
+ * See docs/quote-document-extension-recipes.md.
  */
 public interface QuoteDocumentLineExpander {
 

@@ -19,7 +19,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net__c</field>
     </columns>
-    <description>List vs. regular vs. discount vs. net, one row per product family with representative detail lines - docs/discount-summary-guide.md.</description>
+    <description>List, regular, discount, and net amounts by product family, with representative detail lines. See docs/use-case/03-discount-summary.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

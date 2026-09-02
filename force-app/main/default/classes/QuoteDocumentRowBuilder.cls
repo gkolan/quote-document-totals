@@ -7,495 +7,595 @@
  * bottom. Asking a Word template to walk a hierarchy is how documents break.
  */
 public with sharing class QuoteDocumentRowBuilder {
+  /**
+   * A running total across the thirteen measures.
+   *
+   * This is the one place the measure list is enumerated. Adding a measure
+   * means touching add() and writeTo() and nothing else.
+   */
+  public class Measures {
+    public Decimal amountList = 0;
+    public Decimal amountRegular = 0;
+    public Decimal amountDiscount = 0;
+    public Decimal amountNet = 0;
+    public Decimal amountCustomer = 0;
+    public Decimal quantity = 0;
+    public Decimal amountNetNew = 0;
+    public Decimal amountCancellation = 0;
+    public Decimal amountReplacementRemoved = 0;
+    public Decimal amountReplacementAdded = 0;
+    public Decimal amountTermination = 0;
+    public Decimal amountNetChange = 0;
+    public Decimal amountFinal = 0;
+    public Decimal amountBaseline = 0;
 
-    /**
-     * A running total across the thirteen measures.
-     *
-     * This is the one place the measure list is enumerated. Adding a measure
-     * means touching add() and writeTo() and nothing else.
-     */
-    public class Measures {
-        public Decimal amountList = 0;
-        public Decimal amountRegular = 0;
-        public Decimal amountDiscount = 0;
-        public Decimal amountNet = 0;
-        public Decimal amountCustomer = 0;
-        public Decimal quantity = 0;
-        public Decimal amountNetNew = 0;
-        public Decimal amountCancellation = 0;
-        public Decimal amountReplacementRemoved = 0;
-        public Decimal amountReplacementAdded = 0;
-        public Decimal amountTermination = 0;
-        public Decimal amountNetChange = 0;
-        public Decimal amountFinal = 0;
-        public Decimal amountBaseline = 0;
-
-        public void add(QuoteDocumentLine line) {
-            amountList += line.amountList;
-            amountRegular += line.amountRegular;
-            amountDiscount += line.amountDiscount;
-            amountNet += line.amountNet;
-            amountCustomer += line.amountCustomer;
-            quantity += line.quantity;
-            amountNetNew += line.amountNetNew;
-            amountCancellation += line.amountCancellation;
-            amountReplacementRemoved += line.amountReplacementRemoved;
-            amountReplacementAdded += line.amountReplacementAdded;
-            amountTermination += line.amountTermination;
-            amountNetChange += line.amountNetChange;
-            amountFinal += line.amountFinal;
-            amountBaseline += line.amountBaseline;
-        }
-
-        /**
-         * Writes onto a row or onto the table itself - the API names are the
-         * same on both objects, which is why the measures were named that way.
-         * Only the declared family is written; the other stays null.
-         */
-        public void writeTo(SObject target, String measureSet) {
-            if (QuoteDocumentTableDefinition.MEASURES_CHANGE.equals(measureSet)) {
-                target.put('Amount_Net_New__c', amountNetNew);
-                target.put('Amount_Cancellation__c', amountCancellation);
-                target.put('Amount_Replacement_Removed__c', amountReplacementRemoved);
-                target.put('Amount_Replacement_Added__c', amountReplacementAdded);
-                target.put('Amount_Termination__c', amountTermination);
-                target.put('Amount_Net_Change__c', amountNetChange);
-                target.put('Amount_Baseline__c', amountBaseline);
-                target.put('Amount_Final__c', amountFinal);
-            } else {
-                target.put('Amount_List__c', amountList);
-                target.put('Amount_Regular__c', amountRegular);
-                target.put('Amount_Discount__c', amountDiscount);
-                target.put('Amount_Net__c', amountNet);
-                target.put('Amount_Customer__c', amountCustomer);
-                target.put('Quantity__c', quantity);
-            }
-        }
-    }
-
-    /** A node in the grouping tree. Exists only during generation. */
-    public class GroupNode {
-        public String dimension;
-        public String value;
-        public String groupKey;
-        public Integer level;
-        /** Only a bundle grouping indents its details by CPQ's option level. */
-        public Boolean isBundleLevel = false;
-        public List<GroupNode> children = new List<GroupNode>();
-        public List<QuoteDocumentLine> lines = new List<QuoteDocumentLine>();
-    }
-
-    private final QuoteDocumentTableDefinition definition;
-    private final List<Quote_Document_Row__c> rows = new List<Quote_Document_Row__c>();
-    private Integer nextOrder = 10;
-
-    /**
-     * The locale dictionary this table's labels resolve from. Held rather
-     * than looked up per row so one table's labels can never come from two
-     * different locales, and so the dictionary loads once per transaction.
-     */
-    private final QuoteDocumentLabels labels;
-
-    public QuoteDocumentRowBuilder(QuoteDocumentTableDefinition definition) {
-        this(definition, QuoteDocumentLabels.forLocale(QuoteDocumentLocale.resolve(new SBQQ__Quote__c())));
-    }
-
-    public QuoteDocumentRowBuilder(QuoteDocumentTableDefinition definition, QuoteDocumentLabels labels) {
-        this.definition = definition;
-        this.labels = labels;
+    public void add(QuoteDocumentLine line) {
+      amountList += line.amountList;
+      amountRegular += line.amountRegular;
+      amountDiscount += line.amountDiscount;
+      amountNet += line.amountNet;
+      amountCustomer += line.amountCustomer;
+      quantity += line.quantity;
+      amountNetNew += line.amountNetNew;
+      amountCancellation += line.amountCancellation;
+      amountReplacementRemoved += line.amountReplacementRemoved;
+      amountReplacementAdded += line.amountReplacementAdded;
+      amountTermination += line.amountTermination;
+      amountNetChange += line.amountNetChange;
+      amountFinal += line.amountFinal;
+      amountBaseline += line.amountBaseline;
     }
 
     /**
-     * Measures that repeat across groups rather than dividing among them, so
-     * the grand total must be the largest group rather than the sum of them.
-     *
-     * The case: an expanded period table repeats a licence count in every
-     * period the line runs in. Summed, a twelve-month table reports 1,200
-     * licences for a customer who has 100. The subtotals stay sums - two
-     * products active in the same month really are 150 licences that month -
-     * so only the grand total changes, which is exactly what
-     * QuoteDocumentVerification independently checks.
+     * Writes onto a row or onto the table itself - the API names are the
+     * same on both objects, which is why the measures were named that way.
+     * Only the declared family is written; the other stays null.
      */
-    private Set<String> nonAdditiveMeasures = new Set<String>();
+    public void writeTo(SObject target, String measureSet) {
+      if (QuoteDocumentTableDefinition.MEASURES_CHANGE.equals(measureSet)) {
+        target.put('Amount_Net_New__c', amountNetNew);
+        target.put('Amount_Cancellation__c', amountCancellation);
+        target.put('Amount_Replacement_Removed__c', amountReplacementRemoved);
+        target.put('Amount_Replacement_Added__c', amountReplacementAdded);
+        target.put('Amount_Termination__c', amountTermination);
+        target.put('Amount_Net_Change__c', amountNetChange);
+        target.put('Amount_Baseline__c', amountBaseline);
+        target.put('Amount_Final__c', amountFinal);
+      } else {
+        target.put('Amount_List__c', amountList);
+        target.put('Amount_Regular__c', amountRegular);
+        target.put('Amount_Discount__c', amountDiscount);
+        target.put('Amount_Net__c', amountNet);
+        target.put('Amount_Customer__c', amountCustomer);
+        target.put('Quantity__c', quantity);
+      }
+    }
+  }
 
-    public QuoteDocumentRowBuilder withNonAdditiveMeasures(Set<String> measures) {
-        this.nonAdditiveMeasures = measures == null ? new Set<String>() : measures;
-        return this;
+  /** A node in the grouping tree. Exists only during generation. */
+  public class GroupNode {
+    public String dimension;
+    public String value;
+    public String groupKey;
+    public Integer level;
+    /** Only a bundle grouping indents its details by CPQ's option level. */
+    public Boolean isBundleLevel = false;
+    public List<GroupNode> children = new List<GroupNode>();
+    public List<QuoteDocumentLine> lines = new List<QuoteDocumentLine>();
+  }
+
+  private final QuoteDocumentTableDefinition definition;
+  private final List<Quote_Document_Row__c> rows = new List<Quote_Document_Row__c>();
+  private Integer nextOrder = 10;
+
+  /**
+   * The locale dictionary this table's labels resolve from. Held rather
+   * than looked up per row so one table's labels can never come from two
+   * different locales, and so the dictionary loads once per transaction.
+   */
+  private final QuoteDocumentLabels labels;
+
+  public QuoteDocumentRowBuilder(QuoteDocumentTableDefinition definition) {
+    this(
+      definition,
+      QuoteDocumentLabels.forLocale(
+        QuoteDocumentLocale.resolve(new SBQQ__Quote__c())
+      )
+    );
+  }
+
+  public QuoteDocumentRowBuilder(
+    QuoteDocumentTableDefinition definition,
+    QuoteDocumentLabels labels
+  ) {
+    this.definition = definition;
+    this.labels = labels;
+  }
+
+  /**
+   * Measures that repeat across groups rather than dividing among them, so
+   * the grand total must be the largest group rather than the sum of them.
+   *
+   * The case: an expanded period table repeats a licence count in every
+   * period the line runs in. Summed, a twelve-month table reports 1,200
+   * licences for a customer who has 100. The subtotals stay sums - two
+   * products active in the same month really are 150 licences that month -
+   * so only the grand total changes, which is exactly what
+   * QuoteDocumentVerification independently checks.
+   */
+  private Set<String> nonAdditiveMeasures = new Set<String>();
+
+  public QuoteDocumentRowBuilder withNonAdditiveMeasures(Set<String> measures) {
+    this.nonAdditiveMeasures = measures == null ? new Set<String>() : measures;
+    return this;
+  }
+
+  /** Guards against a composite quietly producing an unreadable document. */
+  private Integer groupCount = 0;
+
+  /** The rows for one table, in the order a document must render them. */
+  public List<Quote_Document_Row__c> build(List<QuoteDocumentLine> lines) {
+    List<GroupNode> groups = groupLines(lines, definition.groupBy, 0, null);
+
+    for (GroupNode g : groups) {
+      emitGroup(g);
     }
 
-    /** Guards against a composite quietly producing an unreadable document. */
-    private Integer groupCount = 0;
-
-    /** The rows for one table, in the order a document must render them. */
-    public List<Quote_Document_Row__c> build(List<QuoteDocumentLine> lines) {
-        List<GroupNode> groups = groupLines(lines, definition.groupBy, 0, null);
-
-        for (GroupNode g : groups) {
-            emitGroup(g);
-        }
-
-        if (definition.showSectionTotals) {
-            emitSectionTotals(lines);
-        }
-
-        emitGrandTotal(lines);
-        return rows;
+    if (definition.showSectionTotals) {
+      emitSectionTotals(lines);
     }
 
-    // -----------------------------------------------------------------------
-    // Grouping
-    // -----------------------------------------------------------------------
+    emitGrandTotal(lines);
+    return rows;
+  }
 
-    /**
-     * Groups lines by levels[levelIndex], then recurses into the next level.
-     * Reordering the levels reorders the nesting; putting two dimensions on the
-     * same level makes one composite bucket instead of two nested ones. That is
-     * the entire mechanism behind every table shape.
-     */
-    private List<GroupNode> groupLines(
-        List<QuoteDocumentLine> lines,
-        List<QuoteDocumentTableDefinition.Level> levels,
-        Integer levelIndex,
-        String parentKey
+  // -----------------------------------------------------------------------
+  // Grouping
+  // -----------------------------------------------------------------------
+
+  /**
+   * Groups lines by levels[levelIndex], then recurses into the next level.
+   * Reordering the levels reorders the nesting; putting two dimensions on the
+   * same level makes one composite bucket instead of two nested ones. That is
+   * the entire mechanism behind every table shape.
+   */
+  private List<GroupNode> groupLines(
+    List<QuoteDocumentLine> lines,
+    List<QuoteDocumentTableDefinition.Level> levels,
+    Integer levelIndex,
+    String parentKey
+  ) {
+    List<GroupNode> groups = new List<GroupNode>();
+    if (levelIndex >= levels.size()) {
+      return groups;
+    }
+
+    QuoteDocumentTableDefinition.Level level = levels[levelIndex];
+    String dimensionLabel = level.describe();
+
+    Map<String, List<QuoteDocumentLine>> linesByValue = new Map<String, List<QuoteDocumentLine>>();
+    Map<String, Integer> minSequenceByValue = new Map<String, Integer>();
+    // The expansion bucket's own order, so "Month 10" cannot sort before
+    // "Month 2". Kept beside the line-sequence map rather than replacing
+    // it: a table can be grouped by an expansion at one level and by an
+    // ordinary dimension at another, and each level sorts on its own terms.
+    Map<String, Integer> minExpansionOrderByValue = new Map<String, Integer>();
+    for (QuoteDocumentLine line : lines) {
+      String value = line.getGroupingValue(
+        level,
+        definition.compositeSeparator
+      );
+      if (!linesByValue.containsKey(value)) {
+        linesByValue.put(value, new List<QuoteDocumentLine>());
+        minSequenceByValue.put(value, line.sequence);
+      }
+      linesByValue.get(value).add(line);
+      if (line.sequence < minSequenceByValue.get(value)) {
+        minSequenceByValue.put(value, line.sequence);
+      }
+      if (
+        line.expansionOrder != null &&
+        (!minExpansionOrderByValue.containsKey(value) ||
+        line.expansionOrder < minExpansionOrderByValue.get(value))
+      ) {
+        minExpansionOrderByValue.put(value, line.expansionOrder);
+      }
+    }
+
+    // Checked as the tree is built rather than at the end, so a runaway
+    // composite fails before it has allocated thousands of rows.
+    groupCount += linesByValue.size();
+    if (groupCount > definition.maxGroups) {
+      throw new QuoteDocumentGenerator.QuoteDocumentException(
+        definition.tableCode +
+          ': grouping by ' +
+          definition.groupDimensionsLabel() +
+          ' produced more than ' +
+          definition.maxGroups +
+          ' groups.' +
+          ' Raise Max Groups on the table definition, or group by fewer dimensions -' +
+          ' a composite multiplies the values of its parts.'
+      );
+    }
+
+    List<String> sortedValues = new List<String>(linesByValue.keySet());
+    if (
+      QuoteDocumentTableDefinition.SORT_LINE_SEQUENCE.equals(
+        definition.sortGroupsBy
+      )
     ) {
-        List<GroupNode> groups = new List<GroupNode>();
-        if (levelIndex >= levels.size()) {
-            return groups;
-        }
-
-        QuoteDocumentTableDefinition.Level level = levels[levelIndex];
-        String dimensionLabel = level.describe();
-
-        Map<String, List<QuoteDocumentLine>> linesByValue = new Map<String, List<QuoteDocumentLine>>();
-        Map<String, Integer> minSequenceByValue = new Map<String, Integer>();
-        // The expansion bucket's own order, so "Month 10" cannot sort before
-        // "Month 2". Kept beside the line-sequence map rather than replacing
-        // it: a table can be grouped by an expansion at one level and by an
-        // ordinary dimension at another, and each level sorts on its own terms.
-        Map<String, Integer> minExpansionOrderByValue = new Map<String, Integer>();
-        for (QuoteDocumentLine line : lines) {
-            String value = line.getGroupingValue(level, definition.compositeSeparator);
-            if (!linesByValue.containsKey(value)) {
-                linesByValue.put(value, new List<QuoteDocumentLine>());
-                minSequenceByValue.put(value, line.sequence);
-            }
-            linesByValue.get(value).add(line);
-            if (line.sequence < minSequenceByValue.get(value)) {
-                minSequenceByValue.put(value, line.sequence);
-            }
-            if (line.expansionOrder != null
-                && (!minExpansionOrderByValue.containsKey(value)
-                    || line.expansionOrder < minExpansionOrderByValue.get(value))) {
-                minExpansionOrderByValue.put(value, line.expansionOrder);
-            }
-        }
-
-        // Checked as the tree is built rather than at the end, so a runaway
-        // composite fails before it has allocated thousands of rows.
-        groupCount += linesByValue.size();
-        if (groupCount > definition.maxGroups) {
-            throw new QuoteDocumentGenerator.QuoteDocumentException(
-                definition.tableCode + ': grouping by ' + definition.groupDimensionsLabel()
-                + ' produced more than ' + definition.maxGroups + ' groups.'
-                + ' Raise Max Groups on the table definition, or group by fewer dimensions -'
-                + ' a composite multiplies the values of its parts.'
-            );
-        }
-
-        List<String> sortedValues = new List<String>(linesByValue.keySet());
-        if (QuoteDocumentTableDefinition.SORT_LINE_SEQUENCE.equals(definition.sortGroupsBy)) {
-            sortedValues = sortByMinSequence(sortedValues, minSequenceByValue);
-        } else if (QuoteDocumentTableDefinition.SORT_EXPANSION_ORDER.equals(definition.sortGroupsBy)
-                   && minExpansionOrderByValue.size() == sortedValues.size()) {
-            // Only where every group at this level actually carries an order.
-            // A non-expansion level under EXPANSION_ORDER falls through to
-            // alphabetical rather than sorting on a map full of nulls.
-            sortedValues = sortByMinSequence(sortedValues, minExpansionOrderByValue);
-        } else {
-            sortedValues.sort();
-        }
-
-        for (String value : sortedValues) {
-            GroupNode g = new GroupNode();
-            g.dimension = dimensionLabel;
-            g.value = value;
-            g.level = levelIndex + 1;
-            g.isBundleLevel = containsBundleDimension(level);
-            g.groupKey = buildGroupKey(parentKey, dimensionLabel, value);
-            g.lines = linesByValue.get(value);
-            g.children = groupLines(g.lines, levels, levelIndex + 1, g.groupKey);
-            groups.add(g);
-        }
-
-        return groups;
+      sortedValues = sortByMinSequence(sortedValues, minSequenceByValue);
+    } else if (
+      QuoteDocumentTableDefinition.SORT_EXPANSION_ORDER.equals(
+        definition.sortGroupsBy
+      ) && minExpansionOrderByValue.size() == sortedValues.size()
+    ) {
+      // Only where every group at this level actually carries an order.
+      // A non-expansion level under EXPANSION_ORDER falls through to
+      // alphabetical rather than sorting on a map full of nulls.
+      sortedValues = sortByMinSequence(sortedValues, minExpansionOrderByValue);
+    } else {
+      sortedValues.sort();
     }
 
-    private static Boolean containsBundleDimension(QuoteDocumentTableDefinition.Level level) {
-        for (QuoteDocumentTableDefinition.Part part : level.parts) {
-            if (QuoteDocumentTableDefinition.DIM_BUNDLE.equals(part.dimension)) {
-                return true;
-            }
-        }
-        return false;
+    for (String value : sortedValues) {
+      GroupNode g = new GroupNode();
+      g.dimension = dimensionLabel;
+      g.value = value;
+      g.level = levelIndex + 1;
+      g.isBundleLevel = containsBundleDimension(level);
+      g.groupKey = buildGroupKey(parentKey, dimensionLabel, value);
+      g.lines = linesByValue.get(value);
+      g.children = groupLines(g.lines, levels, levelIndex + 1, g.groupKey);
+      groups.add(g);
     }
 
-    private static String buildGroupKey(String parentKey, String dimension, String value) {
-        String segment = dimension + ':' + value.toUpperCase().replaceAll('[^A-Z0-9]+', '_');
-        return String.isBlank(parentKey) ? segment : parentKey + '|' + segment;
+    return groups;
+  }
+
+  private static Boolean containsBundleDimension(
+    QuoteDocumentTableDefinition.Level level
+  ) {
+    for (QuoteDocumentTableDefinition.Part part : level.parts) {
+      if (QuoteDocumentTableDefinition.DIM_BUNDLE.equals(part.dimension)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static String buildGroupKey(
+    String parentKey,
+    String dimension,
+    String value
+  ) {
+    String segment =
+      dimension +
+      ':' +
+      value.toUpperCase().replaceAll('[^A-Z0-9]+', '_');
+    return String.isBlank(parentKey) ? segment : parentKey + '|' + segment;
+  }
+
+  // -----------------------------------------------------------------------
+  // Emitting rows
+  // -----------------------------------------------------------------------
+
+  private void emitGroup(GroupNode g) {
+    // A blank group value is the one place a row could reach persistence
+    // with no wording. It resolves from the dictionary like every other
+    // string rather than being patched with an English placeholder deep
+    // in defaultRow(), where no translator could ever reach it.
+    String headerLabel = String.isBlank(g.value)
+      ? labels.resolve(QuoteDocumentLabels.KEY_GROUP_UNNAMED)
+      : g.value;
+
+    Quote_Document_Row__c header = newRow(
+      'Group Header',
+      g.level,
+      'HEADER:' + g.groupKey,
+      headerLabel
+    );
+    header.Group_Dimension__c = g.dimension;
+    header.Group_Value__c = g.value;
+    header.Group_Key__c = g.groupKey;
+
+    if (g.children.isEmpty()) {
+      // Innermost group - this is where detail rows belong.
+      if (definition.showDetails) {
+        for (QuoteDocumentLine line : sortedBySequence(g.lines)) {
+          emitDetail(line, g);
+        }
+      }
+    } else {
+      for (GroupNode child : g.children) {
+        emitGroup(child);
+      }
     }
 
-    // -----------------------------------------------------------------------
-    // Emitting rows
-    // -----------------------------------------------------------------------
-
-    private void emitGroup(GroupNode g) {
-        // A blank group value is the one place a row could reach persistence
-        // with no wording. It resolves from the dictionary like every other
-        // string rather than being patched with an English placeholder deep
-        // in defaultRow(), where no translator could ever reach it.
-        String headerLabel = String.isBlank(g.value)
-            ? labels.resolve(QuoteDocumentLabels.KEY_GROUP_UNNAMED)
-            : g.value;
-
-        Quote_Document_Row__c header = newRow('Group Header', g.level, 'HEADER:' + g.groupKey, headerLabel);
-        header.Group_Dimension__c = g.dimension;
-        header.Group_Value__c = g.value;
-        header.Group_Key__c = g.groupKey;
-
-        if (g.children.isEmpty()) {
-            // Innermost group - this is where detail rows belong.
-            if (definition.showDetails) {
-                for (QuoteDocumentLine line : sortedBySequence(g.lines)) {
-                    emitDetail(line, g);
-                }
-            }
-        } else {
-            for (GroupNode child : g.children) {
-                emitGroup(child);
-            }
-        }
-
-        Measures subtotal = new Measures();
-        for (QuoteDocumentLine line : g.lines) {
-            if (line.countsIn(definition.lineFilter)) {
-                subtotal.add(line);
-            }
-        }
-
-        // '{0} Subtotal' is the dictionary's template, not Apex's
-        // concatenation. In French the qualifier follows the noun, which a
-        // concatenation here could never express - that difference is the
-        // whole point of routing this through the resolver.
-        Quote_Document_Row__c row = newRow(
-            'Subtotal', g.level, 'SUBTOTAL:' + g.groupKey,
-            labels.format(QuoteDocumentLabels.KEY_SUBTOTAL, new List<String>{ g.value })
-        );
-        row.Label_Key__c = QuoteDocumentLabels.KEY_SUBTOTAL;
-        row.Label_Arg_1__c = g.value;
-        row.Group_Dimension__c = g.dimension;
-        row.Group_Value__c = g.value;
-        row.Group_Key__c = g.groupKey;
-        subtotal.writeTo(row, definition.measureSet);
+    Measures subtotal = new Measures();
+    for (QuoteDocumentLine line : g.lines) {
+      if (line.countsIn(definition.lineFilter)) {
+        subtotal.add(line);
+      }
     }
 
-    private void emitDetail(QuoteDocumentLine line, GroupNode g) {
-        Integer level = line.indentUnder(g.level, g.isBundleLevel);
+    // '{0} Subtotal' is the dictionary's template, not Apex's
+    // concatenation. In French the qualifier follows the noun, which a
+    // concatenation here could never express - that difference is the
+    // whole point of routing this through the resolver.
+    Quote_Document_Row__c row = newRow(
+      'Subtotal',
+      g.level,
+      'SUBTOTAL:' + g.groupKey,
+      labels.format(
+        QuoteDocumentLabels.KEY_SUBTOTAL,
+        new List<String>{ g.value }
+      )
+    );
+    row.Label_Key__c = QuoteDocumentLabels.KEY_SUBTOTAL;
+    row.Label_Arg_1__c = g.value;
+    row.Group_Dimension__c = g.dimension;
+    row.Group_Value__c = g.value;
+    row.Group_Key__c = g.groupKey;
+    subtotal.writeTo(row, definition.measureSet);
+  }
 
-        // rowIdentity is the quote line Id for every ordinary line, so this key
-        // is unchanged; it differs only for a baseline line that has no quote
-        // line of its own.
-        Quote_Document_Row__c row = newRow('Detail', level, 'DETAIL:' + g.groupKey + ':' + line.rowIdentity,
-                                           line.productName);
-        row.Quote_Line__c = line.quoteLineId;
-        row.Group_Dimension__c = g.dimension;
-        row.Group_Value__c = g.value;
-        row.Group_Key__c = g.groupKey;
-        row.Product_Name__c = line.productName;
-        row.Product_Code__c = line.productCode;
-        row.Product_Family__c = line.productFamily;
-        row.Charge_Type__c = line.chargeType;
-        Boolean counted = line.countsIn(definition.lineFilter);
-        row.Is_Displayed__c = line.isDisplayed;
-        row.Include_In_Subtotal__c = counted;
-        row.Include_In_Grand_Total__c = counted;
+  private void emitDetail(QuoteDocumentLine line, GroupNode g) {
+    Integer level = line.indentUnder(g.level, g.isBundleLevel);
 
-        if (definition.usesChangeMeasures()) {
-            row.Transaction_Type__c = line.transactionType;
-        }
+    // rowIdentity is the quote line Id for every ordinary line, so this key
+    // is unchanged; it differs only for a baseline line that has no quote
+    // line of its own.
+    Quote_Document_Row__c row = newRow(
+      'Detail',
+      level,
+      'DETAIL:' + g.groupKey + ':' + line.rowIdentity,
+      line.productName
+    );
+    row.Quote_Line__c = line.quoteLineId;
+    row.Group_Dimension__c = g.dimension;
+    row.Group_Value__c = g.value;
+    row.Group_Key__c = g.groupKey;
+    row.Product_Name__c = line.productName;
+    row.Product_Code__c = line.productCode;
+    row.Product_Description__c = line.productDescription;
+    row.Product_Family__c = line.productFamily;
+    row.Unit_Price__c = line.unitPrice;
+    row.Start_Date__c = line.subscriptionStartDate;
+    row.End_Date__c = line.subscriptionEndDate;
+    row.Total_Role__c = 'Line Extension';
+    row.Charge_Type__c = line.chargeType;
+    Boolean counted = line.countsIn(definition.lineFilter);
+    row.Is_Displayed__c = line.isDisplayed;
+    row.Include_In_Subtotal__c = counted;
+    row.Include_In_Grand_Total__c = counted;
 
-        Measures m = new Measures();
-        m.add(line);
-        m.writeTo(row, definition.measureSet);
+    if (definition.usesChangeMeasures()) {
+      row.Transaction_Type__c = line.transactionType;
     }
 
-    /**
-     * Section totals cut the same lines a second way - by charge type - and sit
-     * alongside the group subtotals rather than beneath them. This is how a
-     * document shows "Total Recurring" next to a family breakdown.
-     */
-    private void emitSectionTotals(List<QuoteDocumentLine> lines) {
-        Map<String, Measures> byChargeType = new Map<String, Measures>();
-        for (QuoteDocumentLine line : lines) {
-            if (!line.countsIn(definition.lineFilter)) { continue; }
-            String section = line.getGroupingValue(QuoteDocumentTableDefinition.DIM_CHARGE_TYPE);
-            if (!byChargeType.containsKey(section)) {
-                byChargeType.put(section, new Measures());
-            }
-            byChargeType.get(section).add(line);
-        }
+    Measures m = new Measures();
+    m.add(line);
+    m.writeTo(row, definition.measureSet);
+  }
 
-        List<String> sections = new List<String>(byChargeType.keySet());
-        sections.sort();
-
-        for (String section : sections) {
-            Quote_Document_Row__c row = newRow(
-                'Section Total', 0, 'SECTION:CHARGE_TYPE:' + section,
-                labels.format(QuoteDocumentLabels.KEY_SECTION_TOTAL, new List<String>{ section })
-            );
-            row.Label_Key__c = QuoteDocumentLabels.KEY_SECTION_TOTAL;
-            row.Label_Arg_1__c = section;
-            row.Group_Dimension__c = QuoteDocumentTableDefinition.DIM_CHARGE_TYPE;
-            row.Group_Value__c = section;
-            byChargeType.get(section).writeTo(row, definition.measureSet);
-        }
+  /**
+   * Section totals cut the same lines a second way - by charge type - and sit
+   * alongside the group subtotals rather than beneath them. This is how a
+   * document shows "Total Recurring" next to a family breakdown.
+   */
+  private void emitSectionTotals(List<QuoteDocumentLine> lines) {
+    Map<String, Measures> byChargeType = new Map<String, Measures>();
+    for (QuoteDocumentLine line : lines) {
+      if (!line.countsIn(definition.lineFilter)) {
+        continue;
+      }
+      String section = line.getGroupingValue(
+        QuoteDocumentTableDefinition.DIM_CHARGE_TYPE
+      );
+      if (!byChargeType.containsKey(section)) {
+        byChargeType.put(section, new Measures());
+      }
+      byChargeType.get(section).add(line);
     }
 
-    private void emitGrandTotal(List<QuoteDocumentLine> lines) {
-        Measures total = new Measures();
-        for (QuoteDocumentLine line : lines) {
-            if (line.countsIn(definition.lineFilter)) {
-                total.add(line);
-            }
-        }
+    List<String> sections = new List<String>(byChargeType.keySet());
+    sections.sort();
 
-        Quote_Document_Row__c row = newRow(
-            'Grand Total', 0, 'GRAND_TOTAL', labels.resolve(QuoteDocumentLabels.KEY_GRAND_TOTAL)
-        );
-        row.Label_Key__c = QuoteDocumentLabels.KEY_GRAND_TOTAL;
-        total.writeTo(row, definition.measureSet);
+    for (String section : sections) {
+      Quote_Document_Row__c row = newRow(
+        'Section Total',
+        0,
+        'SECTION:CHARGE_TYPE:' + section,
+        labels.format(
+          QuoteDocumentLabels.KEY_SECTION_TOTAL,
+          new List<String>{ section }
+        )
+      );
+      row.Label_Key__c = QuoteDocumentLabels.KEY_SECTION_TOTAL;
+      row.Label_Arg_1__c = section;
+      row.Group_Dimension__c = QuoteDocumentTableDefinition.DIM_CHARGE_TYPE;
+      row.Group_Value__c = section;
+      byChargeType.get(section).writeTo(row, definition.measureSet);
+    }
+  }
 
-        // A repeated measure is not a sum across groups. Taken from the level-1
-        // subtotals already emitted rather than recomputed from the lines: the
-        // subtotals are what a reader adds up, so the total has to agree with
-        // the rows above it and not with a second calculation.
-        for (String measure : nonAdditiveMeasures) {
-            row.put(measure, peakAcrossTopLevelGroups(measure));
-        }
+  private void emitGrandTotal(List<QuoteDocumentLine> lines) {
+    Measures total = new Measures();
+    for (QuoteDocumentLine line : lines) {
+      if (line.countsIn(definition.lineFilter)) {
+        total.add(line);
+      }
     }
 
-    /**
-     * The largest level-1 subtotal for one measure - the peak period, not the
-     * sum of every period. Null-safe rather than clever: a table with no
-     * subtotals at all (no grouping) answers zero, and verification checks the
-     * same thing independently.
-     */
-    private Decimal peakAcrossTopLevelGroups(String measure) {
-        Decimal peak;
-        for (Quote_Document_Row__c candidate : rows) {
-            if (candidate.Row_Type__c != 'Subtotal' || candidate.Group_Level__c != 1) {
-                continue;
-            }
-            Decimal value = (Decimal) candidate.get(measure);
-            if (value != null && (peak == null || value > peak)) {
-                peak = value;
-            }
-        }
-        return peak == null ? 0 : peak;
+    Quote_Document_Row__c row = newRow(
+      'Grand Total',
+      0,
+      'GRAND_TOTAL',
+      labels.resolve(QuoteDocumentLabels.KEY_GRAND_TOTAL)
+    );
+    row.Label_Key__c = QuoteDocumentLabels.KEY_GRAND_TOTAL;
+    total.writeTo(row, definition.measureSet);
+
+    // A repeated measure is not a sum across groups. Taken from the level-1
+    // subtotals already emitted rather than recomputed from the lines: the
+    // subtotals are what a reader adds up, so the total has to agree with
+    // the rows above it and not with a second calculation.
+    for (String measure : nonAdditiveMeasures) {
+      row.put(measure, peakAcrossTopLevelGroups(measure));
     }
+  }
 
-    // -----------------------------------------------------------------------
-
-    private Quote_Document_Row__c newRow(String rowType, Integer level, String key, String label) {
-        Quote_Document_Row__c row = defaultRow(rowType, level, key, label, nextOrder);
-        nextOrder += 10;
-        rows.add(row);
-        return row;
+  /**
+   * The largest level-1 subtotal for one measure - the peak period, not the
+   * sum of every period. Null-safe rather than clever: a table with no
+   * subtotals at all (no grouping) answers zero, and verification checks the
+   * same thing independently.
+   */
+  private Decimal peakAcrossTopLevelGroups(String measure) {
+    Decimal peak;
+    for (Quote_Document_Row__c candidate : rows) {
+      if (
+        candidate.Row_Type__c != 'Subtotal' ||
+        candidate.Group_Level__c != 1
+      ) {
+        continue;
+      }
+      Decimal value = (Decimal) candidate.get(measure);
+      if (value != null && (peak == null || value > peak)) {
+        peak = value;
+      }
     }
+    return peak == null ? 0 : peak;
+  }
 
-    /**
-     * The field defaults every generated row starts from, shared with
-     * QuoteDocumentRowCustomizerContext.newRow() so a customizer's rows carry
-     * exactly the same defaults as the builder's own - one place to change
-     * what "a new row" means, instead of two copies drifting apart.
-     *
-     * Aggregate rows carry both inclusion flags false. They are the output of
-     * aggregation, never an input to it - counting one would double-count
-     * everything beneath it. A validation rule enforces the same thing.
-     */
-    /**
-     * Every row must arrive with wording already resolved.
-     *
-     * This used to substitute a hardcoded placeholder. That was an English
-     * string constructed outside the dictionary, in the one place a
-     * translator could never reach and no test would ever look - exactly the
-     * failure step 03 exists to remove. Callers resolve GROUP_UNNAMED from
-     * the dictionary instead; reaching here with a blank label now means a
-     * caller skipped that, which fails loudly rather than printing English
-     * into a French document.
-     */
-    private static String requireLabel(String label, String rowType, String key) {
-        if (String.isBlank(label)) {
-            throw QuoteDocumentContributorError.build(
-                'LABEL_KEY_MISSING',
-                'Row "' + key + '" (' + rowType + ') was created with no Display_Label__c. Every printable '
-                    + 'string is resolved from the label dictionary before the row is built - resolve '
-                    + 'GROUP_UNNAMED, or the key this row should carry, rather than leaving it blank.'
-            );
-        }
-        return label.abbreviate(255);
+  // -----------------------------------------------------------------------
+
+  private Quote_Document_Row__c newRow(
+    String rowType,
+    Integer level,
+    String key,
+    String label
+  ) {
+    Quote_Document_Row__c row = defaultRow(
+      rowType,
+      level,
+      key,
+      label,
+      nextOrder
+    );
+    nextOrder += 10;
+    rows.add(row);
+    return row;
+  }
+
+  /**
+   * The field defaults every generated row starts from, shared with
+   * QuoteDocumentRowCustomizerContext.newRow() so a customizer's rows carry
+   * exactly the same defaults as the builder's own - one place to change
+   * what "a new row" means, instead of two copies drifting apart.
+   *
+   * Aggregate rows carry both inclusion flags false. They are the output of
+   * aggregation, never an input to it - counting one would double-count
+   * everything beneath it. A validation rule enforces the same thing.
+   */
+  /**
+   * Every row must arrive with wording already resolved.
+   *
+   * This used to substitute a hardcoded placeholder. That was an English
+   * string constructed outside the dictionary, in the one place a
+   * translator could never reach and no test would ever look - exactly the
+   * failure step 03 exists to remove. Callers resolve GROUP_UNNAMED from
+   * the dictionary instead; reaching here with a blank label now means a
+   * caller skipped that, which fails loudly rather than printing English
+   * into a French document.
+   */
+  private static String requireLabel(String label, String rowType, String key) {
+    if (String.isBlank(label)) {
+      throw QuoteDocumentContributorError.build(
+        'LABEL_KEY_MISSING',
+        'Row "' +
+          key +
+          '" (' +
+          rowType +
+          ') was created with no Display_Label__c. Every printable ' +
+          'string is resolved from the label dictionary before the row is built - resolve ' +
+          'GROUP_UNNAMED, or the key this row should carry, rather than leaving it blank.'
+      );
     }
+    return label.abbreviate(255);
+  }
 
-    public static Quote_Document_Row__c defaultRow(String rowType, Integer level, String key, String label, Integer displayOrder) {
-        Boolean isAggregate = rowType != 'Detail';
+  public static Quote_Document_Row__c defaultRow(
+    String rowType,
+    Integer level,
+    String key,
+    String label,
+    Integer displayOrder
+  ) {
+    Boolean isAggregate = rowType != 'Detail';
+    String totalRole = 'Grand Total'.equals(rowType)
+      ? 'Payable'
+      : (new Set<String>{ 'Subtotal', 'Section Total' }.contains(rowType)
+          ? 'Subtotal'
+          : ('Detail'.equals(rowType) ? 'Line Extension' : 'Informational'));
 
-        return new Quote_Document_Row__c(
-            Row_Type__c = rowType,
-            Group_Level__c = level,
-            Row_Key__c = String.isBlank(key) ? null : key.abbreviate(255),
-            Display_Label__c = requireLabel(label, rowType, key),
-            Display_Order__c = displayOrder,
-            Is_Displayed__c = true,
-            Include_In_Subtotal__c = !isAggregate,
-            Include_In_Grand_Total__c = !isAggregate
-        );
+    return new Quote_Document_Row__c(
+      Row_Type__c = rowType,
+      Group_Level__c = level,
+      Row_Key__c = String.isBlank(key) ? null : key.abbreviate(255),
+      Display_Label__c = requireLabel(label, rowType, key),
+      Display_Order__c = displayOrder,
+      Is_Displayed__c = true,
+      Include_In_Subtotal__c = !isAggregate,
+      Include_In_Grand_Total__c = !isAggregate,
+      Total_Role__c = totalRole
+    );
+  }
+
+  /**
+   * Orders a level's group values by the lowest line sequence seen in each
+   * group, rather than alphabetically - so whichever bundle was added to the
+   * quote first prints first. Small lists, and Apex cannot sort a List of a
+   * non-Comparable type without boilerplate, so this mirrors the insertion
+   * sort already used by sortedBySequence rather than introducing a second
+   * sorting style in the same class.
+   */
+  private static List<String> sortByMinSequence(
+    List<String> values,
+    Map<String, Integer> minSequenceByValue
+  ) {
+    List<String> sorted = new List<String>(values);
+    for (Integer i = 1; i < sorted.size(); i++) {
+      String current = sorted[i];
+      Integer j = i - 1;
+      while (
+        j >= 0 &&
+        minSequenceByValue.get(sorted[j]) > minSequenceByValue.get(current)
+      ) {
+        sorted[j + 1] = sorted[j];
+        j--;
+      }
+      sorted[j + 1] = current;
     }
+    return sorted;
+  }
 
-    /**
-     * Orders a level's group values by the lowest line sequence seen in each
-     * group, rather than alphabetically - so whichever bundle was added to the
-     * quote first prints first. Small lists, and Apex cannot sort a List of a
-     * non-Comparable type without boilerplate, so this mirrors the insertion
-     * sort already used by sortedBySequence rather than introducing a second
-     * sorting style in the same class.
-     */
-    private static List<String> sortByMinSequence(List<String> values, Map<String, Integer> minSequenceByValue) {
-        List<String> sorted = new List<String>(values);
-        for (Integer i = 1; i < sorted.size(); i++) {
-            String current = sorted[i];
-            Integer j = i - 1;
-            while (j >= 0 && minSequenceByValue.get(sorted[j]) > minSequenceByValue.get(current)) {
-                sorted[j + 1] = sorted[j];
-                j--;
-            }
-            sorted[j + 1] = current;
-        }
-        return sorted;
+  private static List<QuoteDocumentLine> sortedBySequence(
+    List<QuoteDocumentLine> lines
+  ) {
+    // Small lists, and Apex cannot sort a List of a non-Comparable class
+    // without boilerplate. An insertion sort on quote-line order is enough.
+    List<QuoteDocumentLine> sorted = new List<QuoteDocumentLine>(lines);
+    for (Integer i = 1; i < sorted.size(); i++) {
+      QuoteDocumentLine current = sorted[i];
+      Integer j = i - 1;
+      while (j >= 0 && sorted[j].sequence > current.sequence) {
+        sorted[j + 1] = sorted[j];
+        j--;
+      }
+      sorted[j + 1] = current;
     }
-
-    private static List<QuoteDocumentLine> sortedBySequence(List<QuoteDocumentLine> lines) {
-        // Small lists, and Apex cannot sort a List of a non-Comparable class
-        // without boilerplate. An insertion sort on quote-line order is enough.
-        List<QuoteDocumentLine> sorted = new List<QuoteDocumentLine>(lines);
-        for (Integer i = 1; i < sorted.size(); i++) {
-            QuoteDocumentLine current = sorted[i];
-            Integer j = i - 1;
-            while (j >= 0 && sorted[j].sequence > current.sequence) {
-                sorted[j + 1] = sorted[j];
-                j--;
-            }
-            sorted[j + 1] = current;
-        }
-        return sorted;
-    }
+    return sorted;
+  }
 }
-

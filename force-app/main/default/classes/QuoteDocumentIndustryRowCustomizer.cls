@@ -1,8 +1,8 @@
 /**
  * Reference implementation of QuoteDocumentRowCustomizer, attached to the
  * INDUSTRY_ALLEGIANCE_EXAMPLE table definition. Walked through in full in
- * docs/quote-document-row-customizer-guide.md §12 - read that section before
- * using this class as a template for a real one.
+ * docs/quote-document-extension-recipes.md - read that guide before using
+ * this class as a template for a real implementation.
  *
  * Demonstrates a shape the declarative grouping config on
  * Quote_Document_Table_Def__mdt cannot produce on its own: grouping by a

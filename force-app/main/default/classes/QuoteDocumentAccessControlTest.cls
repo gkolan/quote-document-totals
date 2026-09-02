@@ -3,7 +3,7 @@
  *
  * "Direct access is unsupported" was an honour-system rule until this step.
  * These tests assert the parts of the lock-down that exist in metadata today;
- * the persona split needs permission sets and a render service that do not
+ * separate access levels need permission sets and a render service that do not
  * exist yet, and is listed in the step's close-out rather than faked here.
  */
 @IsTest

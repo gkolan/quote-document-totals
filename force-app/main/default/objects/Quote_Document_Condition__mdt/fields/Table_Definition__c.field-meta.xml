@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Table_Definition__c</fullName>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Table Definition</label>
+    <referenceTo>Quote_Document_Table_Def__mdt</referenceTo>
+    <relationshipLabel>Composition Conditions</relationshipLabel>
+    <relationshipName>Composition_Conditions</relationshipName>
+    <required>true</required>
+    <type>MetadataRelationship</type>
+</CustomField>

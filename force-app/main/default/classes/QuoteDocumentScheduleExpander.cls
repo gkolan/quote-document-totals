@@ -40,8 +40,7 @@
  * table work without any expansion source on the line itself - the case
  * step 02 section 3.4 describes.
  *
- * See specs/row-generation-extensibility/steps/step-01-expansion-contract.md
- * and steps/worked-examples.md.
+ * See docs/quote-document-extension-recipes.md.
  */
 public with sharing class QuoteDocumentScheduleExpander implements QuoteDocumentLineExpander {
 

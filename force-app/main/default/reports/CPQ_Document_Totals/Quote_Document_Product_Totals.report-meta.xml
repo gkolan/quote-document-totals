@@ -7,7 +7,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net_Change__c</field>
     </columns>
-    <description>Delta per distinct product name across the whole quote, regardless of which bundle (if any) it's in - docs/quote-line-type-bundle-reporting-guide.md View D.</description>
+    <description>Change amount for each product across the Quote, whether or not the product belongs to a bundle. See docs/use-case/21-product-change-summary.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

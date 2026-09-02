@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Table_Key__c</fullName>
+    <description>Stable key used to attach a contributed Column to its Table before records have Salesforce IDs.</description>
+    <label>Table Key</label>
+    <length>255</length>
+    <type>Text</type>
+</CustomField>

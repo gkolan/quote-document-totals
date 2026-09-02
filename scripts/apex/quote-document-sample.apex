@@ -1,15 +1,15 @@
 /**
- * Hand-built sample of Quote Document Tables and Rows for Q-00053.
+ * Hand-built sample of Quote Document Tables and Rows for the newest Quote.
  *
  * This is NOT generator output. It is written by hand so you can see the
- * intended shape before any generation code exists, and so it can show
+ * intended saved-record shape without running the generator, and it can show
  * scenarios the current org data cannot produce (there are no amendment
  * quotes, so no cancellations or terminations exist to classify).
  *
  * Safe to re-run: it deletes the quote's existing tables first, and the
  * master-detail cascade takes the rows with them.
  *
- *   sf apex run --target-org gkCPQDev --file scripts/apex/quote-document-sample.apex
+ *   sf apex run --target-org your-org-alias --file scripts/apex/quote-document-sample.apex
  */
 
 // ---------------------------------------------------------------------------
@@ -70,9 +70,21 @@ class RowSet {
 SBQQ__Quote__c quote = [
     SELECT Id, Name, SBQQ__NetAmount__c
     FROM SBQQ__Quote__c
-    WHERE Name = 'Q-00053'
+    ORDER BY CreatedDate DESC
     LIMIT 1
 ];
+
+// CurrencyIsoCode cannot be named in the static SOQL above: the field only
+// exists when multi-currency is on, so a single-currency org would fail to
+// compile it. This script stamps the table with the quote's currency, so
+// re-read the quote through dynamic SOQL that adds the field only when the
+// org actually has it - the same guard QuoteDocumentQuery uses.
+Id qdtdQuoteId = quote.Id;
+quote = (SBQQ__Quote__c) Database.query(
+    'SELECT Id, Name'
+    + (UserInfo.isMultiCurrencyOrganization() ? ', CurrencyIsoCode' : '')
+    + ' FROM SBQQ__Quote__c WHERE Id = :qdtdQuoteId LIMIT 1'
+);
 
 Map<String, Id> lineByCode = new Map<String, Id>();
 for (SBQQ__QuoteLine__c l : [

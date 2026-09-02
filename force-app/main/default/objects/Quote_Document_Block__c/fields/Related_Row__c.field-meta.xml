@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Related_Row__c</fullName>
+    <deleteConstraint>Cascade</deleteConstraint>
+    <externalId>false</externalId>
+    <inlineHelpText>The generated commercial Row this wording belongs with. A Row-related Block must also identify its Related Table.</inlineHelpText>
+    <label>Related Row</label>
+    <referenceTo>Quote_Document_Row__c</referenceTo>
+    <relationshipLabel>Related Document Blocks</relationshipLabel>
+    <relationshipName>Related_Document_Blocks</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

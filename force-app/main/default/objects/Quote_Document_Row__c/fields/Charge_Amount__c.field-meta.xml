@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Charge_Amount__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Freight, fee, or other positive charge supplied by the approved source for this Row.</inlineHelpText>
+    <label>Charge Amount</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Currency</type>
+</CustomField>

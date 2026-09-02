@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomMetadata
+  xmlns="http://soap.sforce.com/2006/04/metadata"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+>
+    <label>TDX_040 L3 P1</label>
+    <protected>false</protected>
+    <values>
+        <field>Table_Definition__c</field>
+        <value xsi:type="xsd:string">TDX_040</value>
+    </values>
+    <values>
+        <field>Dimension__c</field>
+        <value xsi:type="xsd:string">BUNDLE</value>
+    </values>
+    <values>
+        <field>Level__c</field>
+        <value xsi:type="xsd:double">3</value>
+    </values>
+    <values>
+        <field>Sequence__c</field>
+        <value xsi:type="xsd:double">10</value>
+    </values>
+</CustomMetadata>

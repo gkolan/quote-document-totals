@@ -16,7 +16,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net__c</field>
     </columns>
-    <description>Quote line group (phase) nested with product family inside it - two real nesting levels, distinguished by the Group_Level__c column - docs/group-family-detail-guide.md.</description>
+    <description>Product families grouped inside each Quote Line Group, with Group Level showing the two levels. See docs/use-case/05-quote-group-family-detail.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

@@ -10,7 +10,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net__c</field>
     </columns>
-    <description>Priced-but-not-committed optional products, grouped by family. Not part of the quote's committed total - docs/optional-products-guide.md.</description>
+    <description>Priced optional products grouped by family. These products are not part of the Quote's committed total. See docs/use-case/07-optional-products.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

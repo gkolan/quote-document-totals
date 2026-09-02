@@ -15,7 +15,7 @@
  * one - a difference column is the number a customer trusts most in a change
  * document, and a confidently wrong one is worse than a failure.
  *
- * See specs/row-generation-extensibility/steps/step-04-comparison-and-enrichment.md.
+ * See docs/quote-document-extension-recipes.md.
  */
 public interface QuoteDocumentComparisonSource {
 

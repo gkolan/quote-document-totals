@@ -1,0 +1,123 @@
+// QDTD permutation harness - one slice. GENERATED per slice by run-matrix.ps1.
+//
+// Runs generation for all 19 fixture quotes with only this slice's TDX
+// definitions active, then reads the result back through
+// QuoteDocumentRenderService.getPayload using the request id and fingerprint
+// returned by the SAME generate() call - the render contract forbids reading
+// the snapshot objects directly, and forbids a getPayload overload that omits
+// those expectations.
+//
+// Emits one LEDGER| line per (quote x active definition), plus one per quote
+// that failed outright.
+
+// Quotes are processed in chunks, not all 19 at once: generate() plus
+// getPayload() costs roughly eight SOQL queries per quote, and the whole roster
+// in one transaction blows the 100-query governor limit.
+List<String> quoteKeys = new List<String>{ __QUOTE_KEYS__ };
+List<SBQQ__Quote__c> quotes = [
+    SELECT Id, SBQQ__Key__c FROM SBQQ__Quote__c
+    WHERE SBQQ__Key__c IN :quoteKeys ORDER BY SBQQ__Key__c
+];
+
+Set<String> sliceCodes = new Set<String>{ __SLICE_CODES__ };
+
+for (SBQQ__Quote__c quote : quotes) {
+    String outcomeLabel;
+    String errorText = '';
+    String requestId = null;
+    String fingerprint = null;
+    Boolean reused = false;
+
+    try {
+        List<QuoteDocumentGenerator.GenerationOutcome> outcomes =
+            QuoteDocumentGenerator.generate(new Set<Id>{ quote.Id });
+        if (outcomes.isEmpty()) {
+            outcomeLabel = 'NO_OUTCOME';
+        } else {
+            requestId = outcomes[0].requestId;
+            fingerprint = outcomes[0].fingerprint;
+            reused = outcomes[0].reused == true;
+            outcomeLabel = 'SUCCESS';
+        }
+    } catch (Exception e) {
+        outcomeLabel = 'ERROR';
+        errorText = e.getMessage();
+    }
+
+    if (outcomeLabel != 'SUCCESS') {
+        // The whole quote failed, so every definition in this slice failed on it.
+        for (String code : sliceCodes) {
+            System.debug('LEDGER|' + code + '|' + quote.SBQQ__Key__c + '|' + outcomeLabel
+                + '|0|0|0|' + errorText.replace('\n', ' ').replace('|', '/').left(300));
+        }
+        continue;
+    }
+
+    // Read back through the render contract, not by querying the snapshot.
+    QuoteDocumentPayload payload;
+    try {
+        payload = QuoteDocumentRenderService.getPayload(quote.Id, requestId, fingerprint);
+    } catch (Exception e) {
+        for (String code : sliceCodes) {
+            System.debug('LEDGER|' + code + '|' + quote.SBQQ__Key__c + '|PAYLOAD_ERROR|0|0|0|'
+                + e.getMessage().replace('\n', ' ').replace('|', '/').left(300));
+        }
+        continue;
+    }
+
+    Map<String, Integer> rowsByCode = new Map<String, Integer>();
+    Map<String, Integer> groupsByCode = new Map<String, Integer>();
+    Map<String, Integer> depthByCode = new Map<String, Integer>();
+    Map<String, String> totalByCode = new Map<String, String>();
+    Map<String, Integer> unnamedByCode = new Map<String, Integer>();
+
+    // The payload interleaves tables and blocks in one `sections` list; a table
+    // section carries sectionType 'Table' and the table code. Row values are
+    // keyed by column CODE, never by field API name - that indirection is the
+    // point of the render contract, so the harness reads COL_NET rather than
+    // any Amount_* field.
+    for (QuoteDocumentPayload.Section section : payload.sections) {
+        if (section.sectionType != 'Table' || !sliceCodes.contains(section.code)) { continue; }
+        Integer rowCount = 0;
+        Integer groupCount = 0;
+        Integer maxDepth = 0;
+        Integer unnamedLabels = 0;
+        String grandTotal = '';
+        if (section.rows != null) {
+            for (QuoteDocumentPayload.Row row : section.rows) {
+                rowCount++;
+                if (row.groupLevel != null && row.groupLevel > maxDepth) { maxDepth = (Integer) row.groupLevel; }
+                if (row.rowType != 'Detail') { groupCount++; }
+                if (row.rowType == 'Grand Total' && row.values != null && row.values.containsKey('COL_NET')) {
+                    grandTotal = String.valueOf(row.values.get('COL_NET'));
+                }
+                // The render contract resolves GROUP_UNNAMED from the locale
+                // dictionary; the literal must never reach a payload. Counted
+                // HERE because the label lives on the row - the ledger's detail
+                // column never carried labels, so the checker could not see it.
+                if (row.label == '(unnamed)') {
+                    unnamedLabels++;
+                }
+            }
+        }
+        rowsByCode.put(section.code, rowCount);
+        groupsByCode.put(section.code, groupCount);
+        depthByCode.put(section.code, maxDepth);
+        totalByCode.put(section.code, grandTotal);
+        unnamedByCode.put(section.code, unnamedLabels);
+    }
+
+    for (String code : sliceCodes) {
+        if (rowsByCode.containsKey(code)) {
+            System.debug('LEDGER|' + code + '|' + quote.SBQQ__Key__c + '|SUCCESS|'
+                + groupsByCode.get(code) + '|' + rowsByCode.get(code) + '|' + depthByCode.get(code)
+                + '|total=' + totalByCode.get(code) + ' unnamed=' + unnamedByCode.get(code)
+                + (reused ? ' reused' : ''));
+        } else {
+            // Generation succeeded but this definition produced no table at all -
+            // which is what suppression looks like from the outside.
+            System.debug('LEDGER|' + code + '|' + quote.SBQQ__Key__c + '|EMPTY|0|0|0|');
+        }
+    }
+}
+System.debug('LEDGER_SLICE_DONE');

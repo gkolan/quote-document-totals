@@ -2,7 +2,7 @@
  * Exercises all three reassignment paths plus the unmapped default, with
  * amounts chosen specifically to land in each bucket - real quote data in
  * this org has no line between $0 and the $1,000 threshold (see
- * docs/quote-document-row-customizer-guide.md §12), so the "stays in its
+ * docs/quote-document-extension-recipes.md), so the "stays in its
  * mapped industry" path can only be proven with synthetic data like this.
  * The zero-total and overflow paths are also proven here, then proven again
  * against a real quote by scripts/apex/industry-allegiance-example.apex.

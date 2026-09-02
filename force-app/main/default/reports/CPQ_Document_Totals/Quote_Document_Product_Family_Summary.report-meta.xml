@@ -15,7 +15,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net__c</field>
     </columns>
-    <description>One row per product family with its own subtotal, plus the One-Time/Recurring section split - docs/product-family-summary-guide.md.</description>
+    <description>One row per product family with its own subtotal, plus the One-Time and Recurring section split. See docs/use-case/01-product-family-summary.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

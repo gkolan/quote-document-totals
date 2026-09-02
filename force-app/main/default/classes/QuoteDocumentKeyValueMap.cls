@@ -11,8 +11,21 @@
  */
 public with sharing class QuoteDocumentKeyValueMap {
 
+    /**
+     * Test-only configuration, because Custom Metadata cannot be inserted in a
+     * test. Without it a config-driven test can only assert what the org
+     * happens to be configured for, which in an unconfigured org is nothing -
+     * so the test passes while proving nothing.
+     */
+    @TestVisible
+    private static Map<String, Map<String, String>> overrides =
+        new Map<String, Map<String, String>>();
+
     /** Every Key__c -> Value__c pair whose Category__c matches, case-sensitive. */
     public static Map<String, String> get(String category) {
+        if (Test.isRunningTest() && overrides.containsKey(category)) {
+            return overrides.get(category);
+        }
         Map<String, String> result = new Map<String, String>();
         for (Quote_Document_Key_Value__mdt row : [
             SELECT Key__c, Value__c

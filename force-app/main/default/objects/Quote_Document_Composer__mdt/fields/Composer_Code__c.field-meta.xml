@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Composer_Code__c</fullName>
+    <description>Stable registry code for an approved Apex document composer.</description>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Composer Code</label>
+    <length>80</length>
+    <type>Text</type>
+</CustomField>

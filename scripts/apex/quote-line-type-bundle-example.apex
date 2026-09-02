@@ -1,5 +1,5 @@
 /**
- * Hand-built example for docs/quote-line-type-bundle-reporting-guide.md §10.
+ * Hand-built example for docs/use-case/20-transaction-change-summary.md through use case 23.
  *
  * Builds the exact "bundle with a Cancellation and a Replacement pair inside
  * it, plus a standalone Net New and a standalone Termination outside it"
@@ -26,18 +26,14 @@
  * quote first (never the illustrative tables from quote-document-sample.apex,
  * which use different codes/content and are left alone).
  *
- *   sf apex run --target-org gkCPQDev --file scripts/apex/quote-line-type-bundle-example.apex
+ *   sf apex run --target-org your-org-alias --file scripts/apex/quote-line-type-bundle-example.apex
  */
 
-// Fallback quote name, used only if no "Ridgeline Manufacturing" quote from
-// quote-document-seed.apex is found (see the query below). Change this if
-// you're running against an org with neither - e.g. the existing gkCPQDev
-// sandbox convention used elsewhere in this repo's scripts. The quote itself
+// If no "Ridgeline Manufacturing" quote from quote-document-seed.apex is
+// found, the script uses the newest Quote in the org. The quote itself
 // is only a hook to hang the tables on - its real lines are untouched, and
 // this script does not need the product names below to match anything that
 // actually exists on it.
-final String QUOTE_NAME = 'Q-00053';
-
 final List<String> TABLE_CODES = new List<String>{
     'TRANSACTION_SUMMARY', 'BUNDLE_PRODUCT_GRID', 'BUNDLE_SUMMARY', 'PRODUCT_SUMMARY'
 };
@@ -104,8 +100,7 @@ class RowSet {
 //
 // Prefers the "Ridgeline Manufacturing" quote from quote-document-seed.apex,
 // so the two scripts compose cleanly in a fresh scratch org without editing
-// anything. Falls back to QUOTE_NAME (the convention used against the
-// existing gkCPQDev sandbox, where the seed script has not necessarily run).
+// anything. Otherwise it uses the newest Quote in the org.
 // ---------------------------------------------------------------------------
 List<SBQQ__Quote__c> seeded = [
     SELECT Id, Name FROM SBQQ__Quote__c
@@ -116,9 +111,21 @@ List<SBQQ__Quote__c> seeded = [
 SBQQ__Quote__c quote = !seeded.isEmpty() ? seeded[0] : [
     SELECT Id, Name
     FROM SBQQ__Quote__c
-    WHERE Name = :QUOTE_NAME
+    ORDER BY CreatedDate DESC
     LIMIT 1
 ];
+
+// CurrencyIsoCode cannot be named in the static SOQL above: the field only
+// exists when multi-currency is on, so a single-currency org would fail to
+// compile it. This script stamps the table with the quote's currency, so
+// re-read the quote through dynamic SOQL that adds the field only when the
+// org actually has it - the same guard QuoteDocumentQuery uses.
+Id qdtdQuoteId = quote.Id;
+quote = (SBQQ__Quote__c) Database.query(
+    'SELECT Id, Name'
+    + (UserInfo.isMultiCurrencyOrganization() ? ', CurrencyIsoCode' : '')
+    + ' FROM SBQQ__Quote__c WHERE Id = :qdtdQuoteId LIMIT 1'
+);
 
 delete [
     SELECT Id FROM Quote_Document_Table__c

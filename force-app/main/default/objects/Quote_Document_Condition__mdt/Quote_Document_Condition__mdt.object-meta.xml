@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>One validated Quote Line condition used to decide whether a Table exists and which lines belong to it. Conditions in one set are AND; ordered sets are OR.</description>
+    <label>Quote Document Condition</label>
+    <pluralLabel>Quote Document Conditions</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

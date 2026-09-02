@@ -15,6 +15,8 @@
             <value><fullName>Paragraph</fullName><default>false</default><label>Paragraph</label></value>
             <value><fullName>Clause</fullName><default>false</default><label>Clause</label></value>
             <value><fullName>Notice</fullName><default>false</default><label>Notice</label></value>
+            <value><fullName>Assumption</fullName><default>false</default><label>Assumption</label></value>
+            <value><fullName>Signature Instruction</fullName><default>false</default><label>Signature Instruction</label></value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

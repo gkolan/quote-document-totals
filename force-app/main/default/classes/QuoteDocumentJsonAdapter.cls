@@ -11,22 +11,30 @@
  * the bypass the contract prohibits, wearing a renderer's clothes.
  */
 public with sharing class QuoteDocumentJsonAdapter {
+  public static String render(
+    Id quoteId,
+    String expectedRequestId,
+    String expectedFingerprint
+  ) {
+    return render(
+      QuoteDocumentRenderService.getPayload(
+        quoteId,
+        expectedRequestId,
+        expectedFingerprint
+      )
+    );
+  }
 
-    public static String render(Id quoteId, String expectedRequestId, String expectedFingerprint) {
-        return render(
-            QuoteDocumentRenderService.getPayload(quoteId, expectedRequestId, expectedFingerprint)
-        );
-    }
-
-    /**
-     * Serializes the payload as it stands.
-     *
-     * Typed values survive as typed JSON: a Decimal is a number, not a
-     * pre-formatted string. A consumer that wants "$1,234.00" has the locale
-     * and the currency code to build it, and building it here would impose
-     * one renderer's formatting choice on every consumer of this output.
-     */
-    public static String render(QuoteDocumentPayload payload) {
-        return JSON.serializePretty(payload, true);
-    }
+  /**
+   * Serializes the payload as it stands.
+   *
+   * Typed values survive as typed JSON: a Decimal is a number, not a
+   * pre-formatted string. A consumer that wants "$1,234.00" has the locale
+   * and the currency code to build it, and building it here would impose
+   * one renderer's formatting choice on every consumer of this output.
+   */
+  public static String render(QuoteDocumentPayload payload) {
+    QuoteDocumentContractVersion.requireSupported(payload);
+    return JSON.serializePretty(payload, true);
+  }
 }

@@ -1,5 +1,5 @@
 /**
- * Hand-built example for docs/family-billing-composite-guide.md.
+ * Hand-built example for docs/use-case/06-family-billing-frequency-summary.md.
  *
  * Recombines the canonical family totals from product-family-summary-example.apex
  * (Hardware 91,800 / Miscellaneous 3,500 / Service 410 / Software 7,200) into
@@ -9,10 +9,8 @@
  * Safe to re-run: deletes only the FAMILY_BILLING_COMPOSITE table for the
  * target quote first.
  *
- *   sf apex run --target-org gkCPQDev --file scripts/apex/family-billing-composite-example.apex
+ *   sf apex run --target-org your-org-alias --file scripts/apex/family-billing-composite-example.apex
  */
-
-final String QUOTE_NAME = 'Q-00053';
 
 List<SBQQ__Quote__c> seeded = [
     SELECT Id, Name FROM SBQQ__Quote__c
@@ -20,8 +18,20 @@ List<SBQQ__Quote__c> seeded = [
     ORDER BY CreatedDate DESC LIMIT 1
 ];
 SBQQ__Quote__c quote = !seeded.isEmpty() ? seeded[0] : [
-    SELECT Id, Name FROM SBQQ__Quote__c WHERE Name = :QUOTE_NAME LIMIT 1
+    SELECT Id, Name FROM SBQQ__Quote__c ORDER BY CreatedDate DESC LIMIT 1
 ];
+
+// CurrencyIsoCode cannot be named in the static SOQL above: the field only
+// exists when multi-currency is on, so a single-currency org would fail to
+// compile it. This script stamps the table with the quote's currency, so
+// re-read the quote through dynamic SOQL that adds the field only when the
+// org actually has it - the same guard QuoteDocumentQuery uses.
+Id qdtdQuoteId = quote.Id;
+quote = (SBQQ__Quote__c) Database.query(
+    'SELECT Id, Name'
+    + (UserInfo.isMultiCurrencyOrganization() ? ', CurrencyIsoCode' : '')
+    + ' FROM SBQQ__Quote__c WHERE Id = :qdtdQuoteId LIMIT 1'
+);
 
 delete [
     SELECT Id FROM Quote_Document_Table__c
@@ -105,4 +115,4 @@ for (Quote_Document_Row__c r : rows) {
     }
 }
 System.assertEquals(102910, table.Amount_Net__c, 'Family and Billing Composite grand total');
-System.debug('Example built for ' + quote.Name + ': ' + rows.size() + ' composite rows, grand total 102,910 (cross-checks docs/product-family-summary-guide.md).');
+System.debug('Example built for ' + quote.Name + ': ' + rows.size() + ' composite rows, grand total 102,910 (cross-checks docs/use-case/01-product-family-summary.md).');

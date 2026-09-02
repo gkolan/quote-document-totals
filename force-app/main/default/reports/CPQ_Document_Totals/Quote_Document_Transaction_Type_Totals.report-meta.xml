@@ -10,7 +10,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net_Change__c</field>
     </columns>
-    <description>Delta by transaction type (Net New, Cancellation, Replacement Removed, Replacement Added, Termination) plus the grand total - docs/quote-line-type-bundle-reporting-guide.md View A.</description>
+    <description>Change amount by transaction type, plus the grand total. See docs/use-case/20-transaction-change-summary.md.</description>
     <filter>
         <criteriaItems>
             <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>

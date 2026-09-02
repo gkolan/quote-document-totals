@@ -4,7 +4,7 @@
  * Use this after a first deployment, or after adding a table definition, when
  * historical quotes need tables they never had.
  *
- *   sf apex run --target-org gkCPQDev --file scripts/apex/quote-document-backfill.apex
+ *   sf apex run --target-org your-org-alias --file scripts/apex/quote-document-backfill.apex
  *
  * WHY generateAsync AND NOT generate
  * ----------------------------------
