@@ -24,11 +24,13 @@ npm run test:ci-gate
 
 | Check                     | What it proves                                                                             |
 | ------------------------- | ------------------------------------------------------------------------------------------ |
-| `npm test`                | Local Lightning Web Component tests run through the repository wrapper                     |
+| `npm test`                | Runs Lightning Web Component tests when present; currently reports an explicit skip        |
 | `npm run lint`            | JavaScript follows the project lint rules                                                  |
 | `npm run prettier:verify` | Current documentation and project configuration files are formatted                        |
 | `npm run test:docs`       | Links, plain language, retired references, runbook structure, and source facts are checked |
-| `npm run test:ci-gate`    | Contributor code and version-token changes stay aligned                                    |
+| `npm run test:ci-gate`    | Unit tests for the contributor version check pass                                          |
+
+Run `npm run ci:contributor-versions` to check actual contributor changes. GitHub Actions supplies the pull-request base or exact pre-push commit. A manual run without a base compares with the repository's root commit. After a history rewrite, CI fetches the exact pre-push commit and fails if it remains unavailable; it never substitutes an unverified comparison.
 
 ## Salesforce test org prerequisites
 
@@ -50,7 +52,27 @@ Read the script before running it. It creates or changes test data and is not a 
 
 ## Apex tests
 
-Run the repository's Quote Document test suites through the Salesforce CLI or the organization's CI pipeline. Do not claim org verification from local source inspection alone.
+Validate the entire source and run all local Apex tests together. Use your authenticated CPQ test-org alias in place of `qdt-test`:
+
+```bash
+sf project deploy start --dry-run --target-org qdt-test --source-dir force-app --test-level RunLocalTests --wait 30
+```
+
+This compiles the source being reviewed and runs its tests without saving metadata changes. It can detect missing objects or dependencies that the JavaScript checks cannot detect. If Salesforce returns a job Id before completion, retrieve the final result:
+
+```bash
+sf project deploy report --target-org qdt-test --job-id YOUR_DEPLOYMENT_ID --wait 30
+```
+
+Require **Succeeded**, zero component errors, and zero test failures. Review coverage and warnings in the result. A queued or in-progress result is not a pass.
+
+After installation, rerun the already deployed code's tests when needed:
+
+```bash
+sf apex run test --target-org qdt-test --test-level RunLocalTests --code-coverage --result-format human --wait 30
+```
+
+An existing org can supply dependencies absent from a clone. Before distribution, also verify installation in a clean CPQ test org and follow the [quick start](quick-start.md) as a user with the documented permissions. Repeat generation after a Product description, unit price, or fractional quantity change and confirm the saved result is refreshed. Do not claim org verification from local source inspection alone.
 
 Record:
 

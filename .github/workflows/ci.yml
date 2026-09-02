@@ -2,6 +2,7 @@ name: Project checks
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches: [main]
 
@@ -46,5 +47,12 @@ jobs:
         run: |
           if [ -n "$GITHUB_BASE_REF" ]; then
             git fetch --no-tags origin "$GITHUB_BASE_REF" || true
+          fi
+          # A history rewrite can orphan the pre-push commit even with full history.
+          # Fetch that exact commit; the gate still fails if it cannot be verified.
+          if [[ "$GITHUB_EVENT_BEFORE" =~ ^[0-9a-f]{40}$ ]] &&
+             [[ ! "$GITHUB_EVENT_BEFORE" =~ ^0+$ ]] &&
+             ! git cat-file -e "$GITHUB_EVENT_BEFORE^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$GITHUB_EVENT_BEFORE"
           fi
           node scripts/ci/check-contributor-versions.js

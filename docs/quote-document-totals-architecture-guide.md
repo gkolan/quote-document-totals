@@ -92,6 +92,10 @@ One record represents document-level prose such as a heading, paragraph, clause,
 
 Generated records are snapshots. Do not correct them by hand. Correct the Quote or configuration and generate again.
 
+### Quote Document Fact
+
+One record stores a typed document value such as Customer, Billing Address, Quote Number, or Quote Expiration Date. Facts are generated and checked with the rest of the document data. See [Dynamic order form composition](dynamic-order-form-composition.md) for the complete document structure.
+
 ## What controls the result
 
 The project has nine Custom Metadata Types:
@@ -105,7 +109,7 @@ The project has nine Custom Metadata Types:
 | Quote Document Key Value         | Label dictionaries and named configuration values                          |
 | Quote Document Product Alias     | Customer-facing product-number or product-name mappings                    |
 | Quote Document Schedule          | Named periods or milestones and their allocation weights                   |
-| Quote Document Condition         | Plain-language rules that decide whether a Table belongs in this document  |
+| Quote Document Condition         | Typed rules that select the Quote Lines included in a Table                |
 | Quote Document Composer          | Approved Apex or Flow that can add complete Tables, Rows, Blocks, or Facts |
 
 Custom Metadata describes the result. It does not itself create generated records.

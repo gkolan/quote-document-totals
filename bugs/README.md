@@ -1,20 +1,5 @@
-# Current known defect
+# Current known defects
 
-This folder contains only defects that remain present in the current source.
+No confirmed open defects are currently recorded in this folder. This is not a guarantee that every CPQ configuration has been verified. Follow the [testing guide](../docs/testing-guide.md) before release and validate the target org's supported use cases.
 
-| ID                                                   | Priority | Current behavior                                             | Impact                                                              |
-| ---------------------------------------------------- | -------- | ------------------------------------------------------------ | ------------------------------------------------------------------- |
-| [BUG-018](018-fingerprint-rounds-to-two-decimals.md) | P4       | The input fingerprint normalizes every Decimal to two places | A third-decimal-only input change can reuse an earlier Ready result |
-
-## Operating guidance
-
-Until BUG-018 is fixed:
-
-- do not use third-decimal-only values as document-significant inputs without forcing a rebuild;
-- use `ALWAYS_REBUILD` for a contributor whose result depends on Decimal precision beyond two places;
-- include a third-decimal test when adding a Decimal field path; and
-- do not treat an unchanged fingerprint as proof that third-decimal inputs are unchanged.
-
-## Close-out rule
-
-When the implementation and regression test fix this defect, move the defect document to the external day-zero archive and remove the row from this index. Do not keep fixed-defect history in the live repository.
+Record newly confirmed defects here with reproduction steps, current source evidence, impact, and operating guidance. Remove a defect entry after its implementation fix and regression tests pass; do not retain fixed-defect history in current documentation.

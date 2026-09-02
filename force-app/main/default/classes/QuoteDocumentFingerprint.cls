@@ -20,7 +20,7 @@ public with sharing class QuoteDocumentFingerprint {
    * definitions themselves are part of the input.
    */
   @TestVisible
-  private static final String PLAN_IDENTITY = 'vendor-neutral-document-composition-v2';
+  private static final String PLAN_IDENTITY = 'vendor-neutral-document-composition-v3';
 
   public static String compute(
     SBQQ__Quote__c quote,
@@ -384,9 +384,13 @@ public with sharing class QuoteDocumentFingerprint {
       // which is exactly the gap the fingerprint exists to close
       // independently of eventual staleness.
       parts.add(encodeDecimal(line.sequence));
+      parts.add(encodeId(line.productId));
       parts.add(encodeString(line.productName));
       parts.add(encodeString(line.productCode));
       parts.add(encodeString(line.productFamily));
+      parts.add(encodeString(line.productDescription));
+      parts.add(encodeDecimal(line.unitPrice));
+      parts.add(encodeId(line.requiredByLineId));
       for (
         String path : QuoteDocumentSectionComposition.lineDependencyPaths()
       ) {
@@ -449,9 +453,8 @@ public with sharing class QuoteDocumentFingerprint {
   }
 
   /**
-   * Fixed scale rather than stripped, so 10.5 and 10.50 - the same amount,
-   * written with different precision - normalize to the same token instead
-   * of producing different digests for no real change.
+   * Normalize trailing zeros without rounding input values. Quantities and
+   * contributor inputs can affect output beyond the second decimal place.
    */
   @TestVisible
   private static String encodeDecimalForTest(Decimal value) {
@@ -465,9 +468,12 @@ public with sharing class QuoteDocumentFingerprint {
 
   @TestVisible
   private static String encodeDecimal(Decimal value) {
-    return value == null
-      ? 'NULL'
-      : 'DECIMAL:' + value.setScale(2).toPlainString();
+    if (value == null) {
+      return 'NULL';
+    }
+    // Apex can retain the scale of zero after stripTrailingZeros().
+    return 'DECIMAL:' +
+      (value == 0 ? '0' : value.stripTrailingZeros().toPlainString());
   }
 
   @TestVisible

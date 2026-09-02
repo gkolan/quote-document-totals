@@ -404,14 +404,14 @@ function tokensAt(commit, definitions) {
  * Which commit this run compares against.
  *
  * A pull request compares with the target branch. A PUSH must compare with
- * the commit that was there BEFORE the push: `origin/master` has already been
+ * the commit that was there BEFORE the push: `origin/main` has already been
  * advanced to the pushed commit by then, so its merge base with HEAD is HEAD
  * and the gate would inspect an empty diff - a direct push could change a
  * customizer without touching its version and sail through.
  *
  * `before` is all-zeros for the first push of a branch, and can name a commit
- * a force-push has since orphaned; `exists` reports that, and the caller
- * falls back to the root commit, where every file reads as newly added.
+ * a force-push has since orphaned. The workflow fetches that exact commit;
+ * if it is still unavailable, the gate fails instead of guessing a base.
  */
 function resolveBase({ baseRef, before, rootCommit, exists }) {
   if (baseRef) {

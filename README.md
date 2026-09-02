@@ -151,7 +151,7 @@ npm run test:ci-gate
 npm run ci:contributor-versions
 ```
 
-GitHub Actions runs local project checks on pull requests and pushes to `master`. It does not deploy to Salesforce or run Apex tests. `npm test` currently skips LWC tests because no LWC test files are present; `npm run test:ci-gate` runs the contributor-version check's unit tests.
+GitHub Actions runs local project checks on pull requests and pushes to `main`. It does not deploy to Salesforce or run Apex tests. `npm test` currently skips LWC tests because no LWC test files are present; `npm run test:ci-gate` runs the contributor-version check's unit tests.
 
 Apex tests and a Salesforce deployment check require a Salesforce CPQ test org. See the [testing guide](docs/testing-guide.md) for release verification. The optional [demo bootstrap script](scripts/scratch-org-bootstrap.sh) requires Bash and a disposable CPQ test org; it creates and replaces sample data. Use the quick start for your first installation.
 

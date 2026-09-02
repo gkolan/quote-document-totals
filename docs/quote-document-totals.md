@@ -9,7 +9,7 @@
 The framework owns four jobs:
 
 1. interpret calculated Salesforce CPQ Quote and Quote Line data;
-2. build deterministic document Tables, Columns, Rows, and Blocks;
+2. build deterministic document Tables, Columns, Rows, Blocks, and Facts;
 3. verify and publish one complete saved result; and
 4. return a result that a renderer can bind by Quote, request Id, and fingerprint.
 
@@ -46,10 +46,13 @@ SBQQ__Quote__c
 ├── Quote_Document_Table__c
 │   ├── Quote_Document_Column__c
 │   └── Quote_Document_Row__c
-└── Quote_Document_Block__c
+├── Quote_Document_Block__c
+└── Quote_Document_Fact__c
 ```
 
 Table to Quote is a lookup with controlled cascade behavior. Row and Column to Table are master-detail relationships. Blocks relate directly to the Quote because they occupy document-level positions between Tables.
+
+Facts store typed document values such as the customer, billing address, Quote number, and expiration date. Whole-document contributors can add Tables, Rows, Blocks, and Facts through the contracts described in [Dynamic order form composition](dynamic-order-form-composition.md).
 
 ### Table invariants
 
@@ -107,6 +110,8 @@ Each active content record resolves by Block Code and locale. Generated Blocks c
 | `Quote_Document_Key_Value__mdt`     | `QuoteDocumentKeyValueMap`, `QuoteDocumentLabels`, `QuoteDocumentLocale` | Label dictionaries, locale configuration, and named maps                                                   |
 | `Quote_Document_Product_Alias__mdt` | Alias expander                                                           | Customer-facing product aliases                                                                            |
 | `Quote_Document_Schedule__mdt`      | Schedule expander                                                        | Named schedule sections and weights                                                                        |
+| `Quote_Document_Condition__mdt`     | `QuoteDocumentCondition`                                                 | Typed conditions that select lines for a Table                                                             |
+| `Quote_Document_Composer__mdt`      | `QuoteDocumentSectionComposition`                                        | Versioned whole-document Apex or Flow contributors                                                         |
 
 Configuration loading fails loudly for ambiguous, incomplete, unsupported, or unsafe combinations.
 
@@ -141,6 +146,8 @@ The framework uses two different hashes:
 | Payload hash      | Did the saved output change after publication? | Retrieval integrity       |
 
 Trigger-based staleness gives users an immediate warning for watched Quote and Quote Line edits. The fingerprint is the final authority during generate-or-reuse because it also covers configured related fields, active metadata, presentation, locale, content versions, columns, and declared extension dependencies.
+
+Numeric inputs retain their full precision in the fingerprint; equivalent trailing zeros do not count as a change. Product identity, description, unit price, and bundle-parent identity are included because they can change saved row content without changing rounded totals. This encoding uses plan identity `vendor-neutral-document-composition-v3`, so an earlier saved fingerprint cannot be reused on the next generation call.
 
 Metadata deployment does not update existing Quotes. Releases that change output must update the relevant version token and run:
 

@@ -51,7 +51,7 @@ if ! sf sobject describe --sobject SBQQ__Quote__c --target-org "$ORG_ALIAS" >/de
 fi
 
 echo "=== 2/6  Deploy all metadata ==="
-sf project deploy start --target-org "$ORG_ALIAS" --source-dir force-app
+sf project deploy start --target-org "$ORG_ALIAS" --source-dir force-app --wait 30
 
 echo "=== 3/6  Assign the CPQ Document Totals permission set ==="
 sf org assign permset --target-org "$ORG_ALIAS" --name CPQ_Document_Totals

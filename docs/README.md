@@ -50,13 +50,13 @@ Each configuration guide states what is already in the source, what must still b
 
 ## Words used in these guides
 
-| Term                    | Meaning here                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| **Generate**            | Build and save document tables from the current Quote Lines                    |
-| **Table definition**    | A Custom Metadata record that controls one table                               |
-| **Saved document data** | The Quote Document Table, Column, Row, and Content records created for a Quote |
-| **Document tool**       | DocuSign CLM or another product that turns the saved data into a document      |
-| **Row adjustment**      | An approved Flow or Apex step that changes rows before Salesforce saves them   |
-| **Change check**        | The stored value Salesforce uses to tell whether relevant Quote data changed   |
+| Term                    | Meaning here                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| **Generate**            | Build and save document tables from the current Quote Lines                        |
+| **Table definition**    | A Custom Metadata record that controls one table                                   |
+| **Saved document data** | The Quote Document Table, Column, Row, Block, and Fact records created for a Quote |
+| **Document tool**       | DocuSign CLM or another product that turns the saved data into a document          |
+| **Row adjustment**      | An approved Flow or Apex step that changes rows before Salesforce saves them       |
+| **Change check**        | The stored value Salesforce uses to tell whether relevant Quote data changed       |
 
 Salesforce object names, field names, and menu labels appear exactly as they do in the org. Code names appear only when they are needed to deploy, configure, test, or troubleshoot the feature.

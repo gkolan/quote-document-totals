@@ -223,6 +223,66 @@ private class QuoteDocumentFingerprintTest {
   }
 
   @IsTest
+  static void decimalChangesBeyondTwoPlacesRemainDistinct() {
+    Assert.areNotEqual(
+      QuoteDocumentFingerprint.encodeDecimal(10.501),
+      QuoteDocumentFingerprint.encodeDecimal(10.502),
+      'Input precision must not be rounded away before the reuse decision'
+    );
+  }
+
+  @IsTest
+  static void zeroScaleVariationsNormalizeToTheSameToken() {
+    Assert.areEqual(
+      QuoteDocumentFingerprint.encodeDecimal(0),
+      QuoteDocumentFingerprint.encodeDecimal(0.000000),
+      'Zero must have one canonical token regardless of its scale'
+    );
+  }
+
+  @IsTest
+  static void changedProductDescriptionChangesTheDigest() {
+    SBQQ__Quote__c q = quote();
+    List<QuoteDocumentLine> lines = normalizedLines(q);
+    List<QuoteDocumentTableDefinition> definitions = QuoteDocumentTableDefinition.getAll();
+    String before = QuoteDocumentFingerprint.compute(q, lines, definitions);
+    lines[0].productDescription = 'Updated customer-facing description';
+    Assert.areNotEqual(
+      before,
+      QuoteDocumentFingerprint.compute(q, lines, definitions),
+      'A Product description edit must invalidate the saved row even without Quote Line DML'
+    );
+  }
+
+  @IsTest
+  static void changedUnitPriceChangesTheDigest() {
+    SBQQ__Quote__c q = quote();
+    List<QuoteDocumentLine> lines = normalizedLines(q);
+    List<QuoteDocumentTableDefinition> definitions = QuoteDocumentTableDefinition.getAll();
+    String before = QuoteDocumentFingerprint.compute(q, lines, definitions);
+    lines[0].unitPrice += 0.001;
+    Assert.areNotEqual(
+      before,
+      QuoteDocumentFingerprint.compute(q, lines, definitions),
+      'Unit price changes must invalidate saved rows even when rounded line totals are unchanged'
+    );
+  }
+
+  @IsTest
+  static void changedQuantityPrecisionChangesTheDigest() {
+    SBQQ__Quote__c q = quote();
+    List<QuoteDocumentLine> lines = normalizedLines(q);
+    List<QuoteDocumentTableDefinition> definitions = QuoteDocumentTableDefinition.getAll();
+    String before = QuoteDocumentFingerprint.compute(q, lines, definitions);
+    lines[0].quantity += 0.001;
+    Assert.areNotEqual(
+      before,
+      QuoteDocumentFingerprint.compute(q, lines, definitions),
+      'Contributors can depend on quantity precision beyond the stored display scale'
+    );
+  }
+
+  @IsTest
   static void decimalNullDiffersFromZero() {
     Assert.areNotEqual(
       QuoteDocumentFingerprint.encodeDecimal(null),
