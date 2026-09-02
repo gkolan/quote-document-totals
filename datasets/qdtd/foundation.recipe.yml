@@ -1,0 +1,77 @@
+# Foundation data for the Quote Document permutation exercise (specs/quote-document-test-data step 02).
+#
+# Accounts, contacts, opportunities and the product catalogue only. Quotes and
+# quote lines are built in Apex (step 03) because they need parent/child shaping
+# a flat loader gets wrong.
+#
+# Everything is marked QDTD- so the teardown can find it, and nothing here
+# touches records it did not create.
+#
+# Deterministic where grouping depends on it: product families, product codes
+# and prices are literal. Faker is used only for names and addresses, and the
+# run is seeded, so re-running reproduces the same dataset.
+
+- object: Account
+  count: 12
+  fields:
+    Name:
+      fake: Company
+    Industry:
+      random_choice:
+        # Three industries deliberately match Quote_Document_Key_Value.Industry_Map_*
+        # records so the industry customizer has hits; the rest deliberately do
+        # not, so the unmapped bucket is exercised too.
+        - Technology
+        - Manufacturing
+        - Healthcare
+        - Financial Services
+        - Retail
+        - Energy
+    BillingStreet:
+      fake: StreetAddress
+    BillingCity:
+      fake: City
+    BillingPostalCode:
+      fake: Postcode
+    BillingCountry:
+      # Two French-billing accounts drive the fr locale quote in step 03.
+      random_choice:
+        - choice:
+            probability: 80%
+            pick: United States
+        - choice:
+            probability: 20%
+            pick: France
+    Phone:
+      fake: PhoneNumber
+    Description: QDTD- permutation fixture account
+
+  friends:
+    - object: Contact
+      count: 2
+      fields:
+        AccountId:
+          reference: Account
+        FirstName:
+          fake: FirstName
+        LastName:
+          fake: LastName
+        Email:
+          fake: Email
+        Phone:
+          fake: PhoneNumber
+        Title: QDTD- signer
+        Description: QDTD- permutation fixture contact
+
+    - object: Opportunity
+      fields:
+        AccountId:
+          reference: Account
+        Name: QDTD- ${{Account.Name}} renewal
+        StageName: Proposal/Price Quote
+        CloseDate:
+          date_between:
+            start_date: +30d
+            end_date: +120d
+        Amount: 100000
+        Description: QDTD- permutation fixture opportunity

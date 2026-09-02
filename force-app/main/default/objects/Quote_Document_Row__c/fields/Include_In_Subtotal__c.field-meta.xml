@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Include_In_Subtotal__c</fullName>
+    <defaultValue>true</defaultValue>
+    <externalId>false</externalId>
+    <inlineHelpText>Whether this row's amounts are included in its group subtotal. Clear for rows that are displayed but not counted, such as optional products or bundled components whose price sits in the package.</inlineHelpText>
+    <label>Include In Subtotal</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

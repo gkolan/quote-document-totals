@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Table_Definition__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>The table definition this grouping belongs to.</inlineHelpText>
+    <label>Table Definition</label>
+    <referenceTo>Quote_Document_Table_Def__mdt</referenceTo>
+    <relationshipLabel>Groupings</relationshipLabel>
+    <relationshipName>Groupings</relationshipName>
+    <required>true</required>
+    <type>MetadataRelationship</type>
+</CustomField>

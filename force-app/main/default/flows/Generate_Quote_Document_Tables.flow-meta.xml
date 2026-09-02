@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Generate_Tables</name>
+        <label>Generate Tables</label>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <actionName>QuoteDocumentGenerator</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>Confirmation</targetReference>
+        </connector>
+        <faultConnector>
+            <targetReference>Unexpected_Error</targetReference>
+        </faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>quoteId</name>
+            <value>
+                <elementReference>recordId</elementReference>
+            </value>
+        </inputParameters>
+        <nameSegment>QuoteDocumentGenerator</nameSegment>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
+    <apiVersion>67.0</apiVersion>
+    <description>Rebuilds the document tables and rows for this Quote, then reports what was generated. The Apex records success or failure on the Quote itself, so this screen only has to show the outcome.</description>
+    <environments>Default</environments>
+    <interviewLabel>Generate Quote Document Tables {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Generate Quote Document Tables</label>
+    <processType>Flow</processType>
+    <screens>
+        <name>Confirmation</name>
+        <label>Document Tables Generated</label>
+        <locationX>176</locationX>
+        <locationY>278</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>Outcome_Message</name>
+            <fieldText>&lt;p&gt;{!Generate_Tables.message}&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+    <screens>
+        <name>Unexpected_Error</name>
+        <label>Generation Failed</label>
+        <locationX>440</locationX>
+        <locationY>278</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>Error_Message</name>
+            <fieldText>&lt;p&gt;The document tables could not be generated. Nothing was changed on this Quote.&lt;/p&gt;&lt;p&gt;{!$Flow.FaultMessage}&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Generate_Tables</targetReference>
+        </connector>
+    </start>
+    <status>Active</status>
+    <variables>
+        <name>recordId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

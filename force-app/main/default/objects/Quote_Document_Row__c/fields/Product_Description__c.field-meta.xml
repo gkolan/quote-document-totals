@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Product_Description__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Customer-facing product or service description carried as Row data so it can appear beneath the product name.</inlineHelpText>
+    <label>Product Description</label>
+    <length>32768</length>
+    <type>LongTextArea</type>
+    <visibleLines>4</visibleLines>
+</CustomField>

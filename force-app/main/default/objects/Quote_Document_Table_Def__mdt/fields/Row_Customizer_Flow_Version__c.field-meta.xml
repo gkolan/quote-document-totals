@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Row_Customizer_Flow_Version__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>CONTENT IDENTITY, NOT DOCUMENTATION. Required when Row Customizer Flow is set. Any value - only whether it CHANGED matters. Hashed into the quote fingerprint, so bumping it is what makes quotes regenerate after you edit the Flow. Editing a Flow leaves its API name unchanged and is invisible to the fingerprint, so if you do not bump this, quotes stay Ready and reuse a snapshot your edited Flow would never have produced. Bump it whenever you activate a new Flow version.</inlineHelpText>
+    <label>Row Customizer Flow Version</label>
+    <length>40</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

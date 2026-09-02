@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Block_Type__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>What kind of content this is, and therefore how a renderer styles it. This is where a renderer gets bold from - NOT from markup smuggled through the body. Heading: a section heading between tables. Paragraph: ordinary prose. Clause: versioned contractual text. Notice: something the reader must not miss.</inlineHelpText>
+    <label>Block Type</label>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>Heading</fullName><default>false</default><label>Heading</label></value>
+            <value><fullName>Paragraph</fullName><default>false</default><label>Paragraph</label></value>
+            <value><fullName>Clause</fullName><default>false</default><label>Clause</label></value>
+            <value><fullName>Notice</fullName><default>false</default><label>Notice</label></value>
+            <value><fullName>Assumption</fullName><default>false</default><label>Assumption</label></value>
+            <value><fullName>Signature Instruction</fullName><default>false</default><label>Signature Instruction</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

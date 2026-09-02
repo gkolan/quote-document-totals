@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Format_Role__c</fullName><description>Business meaning used by every renderer, such as Product, Description, Unit Price, Line Total, Date, or Identifier.</description><fieldManageability>DeveloperControlled</fieldManageability><label>Format Role</label><length>80</length><type>Text</type>
+</CustomField>

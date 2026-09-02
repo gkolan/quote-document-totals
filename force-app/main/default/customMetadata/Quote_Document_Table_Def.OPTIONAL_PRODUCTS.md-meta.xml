@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <label>Optional Products</label>
+    <protected>false</protected>
+    <values>
+        <field>Table_Code__c</field>
+        <value xsi:type="xsd:string">OPTIONAL_PRODUCTS</value>
+    </values>
+    <values>
+        <field>Table_Name__c</field>
+        <value xsi:type="xsd:string">Optional Products</value>
+    </values>
+    <values>
+        <field>Amount_Basis__c</field>
+        <value xsi:type="xsd:string">Final Value</value>
+    </values>
+    <values>
+        <field>Line_Filter__c</field>
+        <value xsi:type="xsd:string">OPTIONAL_ONLY</value>
+    </values>
+    <values>
+        <field>Measure_Set__c</field>
+        <value xsi:type="xsd:string">PRICE_WATERFALL</value>
+    </values>
+    <values>
+        <field>Show_Details__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Show_Section_Totals__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>Is_Active__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Display_Order__c</field>
+        <value xsi:type="xsd:double">50</value>
+    </values>
+    <values><field>Display_Title__c</field><value xsi:type="xsd:string">Optional Products</value></values>
+    <values><field>Intro_Text__c</field><value xsi:type="xsd:string">These products are optional and are NOT included in the quote's committed total. The amounts below are provided for information only; nothing in this table has been ordered or priced into the agreement.</value></values>
+</CustomMetadata>
+

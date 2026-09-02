@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Label_Key__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Dictionary key for the printed heading of this section, resolved through Quote_Document_Key_Value__mdt. Not the heading itself: no printable string is authored here, so the same schedule prints in any locale that has the entry.</inlineHelpText>
+    <label>Label Key</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

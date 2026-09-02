@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Period_One_Time_Placement__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Where a one-time charge (hardware, setup) lands on a period axis. FIRST_PERIOD (default) puts it in period 1; EFFECTIVE_DATE puts it in the period containing its own start date; SPREAD divides it across the whole term. SPREAD must be chosen deliberately - spreading a setup fee prints a recurring charge that does not exist.</inlineHelpText>
+    <label>Period One-Time Placement</label>
+    <length>20</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Document_Data_Request_Id__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Correlation ID of the request currently generating (or that last generated) this Quote's document data. Lets a second request tell an abandoned generation apart from one that is still live, and lets a support case reference a specific attempt.</inlineHelpText>
+    <label>Document Data Request Id</label>
+    <length>64</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

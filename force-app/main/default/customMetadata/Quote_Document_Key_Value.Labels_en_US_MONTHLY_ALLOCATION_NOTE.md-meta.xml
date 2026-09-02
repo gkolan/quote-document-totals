@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomMetadata
+  xmlns="http://soap.sforce.com/2006/04/metadata"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+>
+    <label>Labels en_US - MONTHLY_ALLOCATION_NOTE</label>
+    <protected>false</protected>
+    <values><field>Category__c</field><value
+      xsi:type="xsd:string"
+    >LABELS_en_US</value></values>
+    <values><field>Key__c</field><value
+      xsi:type="xsd:string"
+    >MONTHLY_ALLOCATION_NOTE</value></values>
+    <values><field>Value__c</field><value
+      xsi:type="xsd:string"
+    >Monthly amounts spread each subscription evenly across the months it is active. Products that do not run for the full term appear only in the months they run in, and the monthly totals add up to the quote total.</value></values>
+</CustomMetadata>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Display_Label__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Transaction_Type__c</field>
+    </columns>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net_Change__c</field>
+    </columns>
+    <description>Change amount by transaction type, plus the grand total. See docs/use-case/20-transaction-change-summary.md.</description>
+    <filter>
+        <criteriaItems>
+            <column>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>true</isUnlocked>
+            <operator>equals</operator>
+            <value>TRANSACTION_SUMMARY</value>
+        </criteriaItems>
+        <criteriaItems>
+            <column>SBQQ__Quote__c.DocumentTables__r.Rows__r$Row_Type__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>true</isUnlocked>
+            <operator>notEqual</operator>
+            <value>Detail</value>
+        </criteriaItems>
+    </filter>
+    <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>SBQQ__Quote__c$Name</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Quote Document - Transaction Type Totals</name>
+    <reportType>Quote_Document_Tables_and_Rows__c</reportType>
+    <showDetails>true</showDetails>
+    <sortColumn>SBQQ__Quote__c.DocumentTables__r.Rows__r$Display_Label__c</sortColumn>
+    <sortOrder>Asc</sortOrder>
+</Report>

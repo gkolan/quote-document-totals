@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>Source_Identity__c</fullName><description>Stable identity of the metadata, Apex, or Flow source that created this Table.</description><label>Source Identity</label><length>255</length><type>Text</type></CustomField>

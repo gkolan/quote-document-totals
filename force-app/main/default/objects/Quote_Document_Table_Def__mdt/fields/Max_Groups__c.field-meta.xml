@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Max_Groups__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Ceiling on how many groups this table may produce. Composite grouping multiplies - two dimensions of five and four values can reach twenty groups, each adding a header and a subtotal. Exceeding this fails generation rather than emitting an unreadable document. Defaults to 50 when blank.</inlineHelpText>
+    <label>Max Groups</label>
+    <precision>4</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

@@ -1,0 +1,11 @@
+// Read one generated table the way a document would: in render order.
+// Swap the Table_Code__c value for PRODUCT_FAMILY_SUMMARY, BUNDLE_DETAIL,
+// TRANSACTION_SUMMARY, CHARGE_TYPE_SUMMARY, GROUP_FAMILY_DETAIL or OPTIONAL_PRODUCTS.
+//
+// Run it by selecting the query text in VS Code, or paste it into:
+//     sf data query --target-org your-org-alias --query "..." --result-format human
+
+SELECT Display_Order__c, Row_Type__c, Group_Level__c, Display_Label__c, Is_Displayed__c, Include_In_Grand_Total__c, Amount_List__c, Amount_Discount__c, Amount_Net__c, Quantity__c
+FROM Quote_Document_Row__c
+WHERE Quote_Document_Table__r.Quote__r.Name = 'REPLACE_WITH_QUOTE_NAME' AND Quote_Document_Table__r.Table_Code__c = 'BUNDLE_DETAIL'
+ORDER BY Display_Order__c

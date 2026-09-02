@@ -1,0 +1,496 @@
+# Product catalogue for the permutation exercise - literal, never faked, because
+# every grouping in the matrix keys off Family and ProductCode. Prices span the
+# shapes the matrix needs: whole dollars, three-decimal values, zero, a negative
+# credit, and a value that thirds badly (333.333) for the rounding cases.
+#
+# One long-name / unicode product is appended for the escaping quote (18); the
+# quote-line name is a formula off Product2, so the long string has to live here.
+
+- object: Product2
+  fields:
+    Name: QDTD Hardware 1
+    ProductCode: QDTD-HW-1
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1200
+- object: Product2
+  fields:
+    Name: QDTD Hardware 2
+    ProductCode: QDTD-HW-2
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 899.995
+- object: Product2
+  fields:
+    Name: QDTD Hardware 3
+    ProductCode: QDTD-HW-3
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 0
+- object: Product2
+  fields:
+    Name: QDTD Hardware 4
+    ProductCode: QDTD-HW-4
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: -450
+- object: Product2
+  fields:
+    Name: QDTD Hardware 5
+    ProductCode: QDTD-HW-5
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 333.333
+- object: Product2
+  fields:
+    Name: QDTD Hardware 6
+    ProductCode: QDTD-HW-6
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 75.25
+- object: Product2
+  fields:
+    Name: QDTD Hardware 7
+    ProductCode: QDTD-HW-7
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 4999
+- object: Product2
+  fields:
+    Name: QDTD Hardware 8
+    ProductCode: QDTD-HW-8
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 12.005
+- object: Product2
+  fields:
+    Name: QDTD Hardware 9
+    ProductCode: QDTD-HW-9
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 250
+- object: Product2
+  fields:
+    Name: QDTD Hardware 10
+    ProductCode: QDTD-HW-10
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1000
+- object: Product2
+  fields:
+    Name: QDTD Software 1
+    ProductCode: QDTD-SW-1
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1200
+- object: Product2
+  fields:
+    Name: QDTD Software 2
+    ProductCode: QDTD-SW-2
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 899.995
+- object: Product2
+  fields:
+    Name: QDTD Software 3
+    ProductCode: QDTD-SW-3
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 0
+- object: Product2
+  fields:
+    Name: QDTD Software 4
+    ProductCode: QDTD-SW-4
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: -450
+- object: Product2
+  fields:
+    Name: QDTD Software 5
+    ProductCode: QDTD-SW-5
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 333.333
+- object: Product2
+  fields:
+    Name: QDTD Software 6
+    ProductCode: QDTD-SW-6
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 75.25
+- object: Product2
+  fields:
+    Name: QDTD Software 7
+    ProductCode: QDTD-SW-7
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 4999
+- object: Product2
+  fields:
+    Name: QDTD Software 8
+    ProductCode: QDTD-SW-8
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 12.005
+- object: Product2
+  fields:
+    Name: QDTD Software 9
+    ProductCode: QDTD-SW-9
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 250
+- object: Product2
+  fields:
+    Name: QDTD Software 10
+    ProductCode: QDTD-SW-10
+    Family: Software
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1000
+- object: Product2
+  fields:
+    Name: QDTD Subscription 1
+    ProductCode: QDTD-SUB-1
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1200
+- object: Product2
+  fields:
+    Name: QDTD Subscription 2
+    ProductCode: QDTD-SUB-2
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 899.995
+- object: Product2
+  fields:
+    Name: QDTD Subscription 3
+    ProductCode: QDTD-SUB-3
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 0
+- object: Product2
+  fields:
+    Name: QDTD Subscription 4
+    ProductCode: QDTD-SUB-4
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: -450
+- object: Product2
+  fields:
+    Name: QDTD Subscription 5
+    ProductCode: QDTD-SUB-5
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 333.333
+- object: Product2
+  fields:
+    Name: QDTD Subscription 6
+    ProductCode: QDTD-SUB-6
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 75.25
+- object: Product2
+  fields:
+    Name: QDTD Subscription 7
+    ProductCode: QDTD-SUB-7
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 4999
+- object: Product2
+  fields:
+    Name: QDTD Subscription 8
+    ProductCode: QDTD-SUB-8
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 12.005
+- object: Product2
+  fields:
+    Name: QDTD Subscription 9
+    ProductCode: QDTD-SUB-9
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 250
+- object: Product2
+  fields:
+    Name: QDTD Subscription 10
+    ProductCode: QDTD-SUB-10
+    Family: Subscription
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1000
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 1
+    ProductCode: QDTD-IMP-1
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1200
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 2
+    ProductCode: QDTD-IMP-2
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 899.995
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 3
+    ProductCode: QDTD-IMP-3
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 0
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 4
+    ProductCode: QDTD-IMP-4
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: -450
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 5
+    ProductCode: QDTD-IMP-5
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 333.333
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 6
+    ProductCode: QDTD-IMP-6
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 75.25
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 7
+    ProductCode: QDTD-IMP-7
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 4999
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 8
+    ProductCode: QDTD-IMP-8
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 12.005
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 9
+    ProductCode: QDTD-IMP-9
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 250
+- object: Product2
+  fields:
+    Name: QDTD Implementation Services 10
+    ProductCode: QDTD-IMP-10
+    Family: Implementation Services
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1000
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 1
+    ProductCode: QDTD-SUP-1
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1200
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 2
+    ProductCode: QDTD-SUP-2
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 899.995
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 3
+    ProductCode: QDTD-SUP-3
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 0
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 4
+    ProductCode: QDTD-SUP-4
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: -450
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 5
+    ProductCode: QDTD-SUP-5
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 333.333
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 6
+    ProductCode: QDTD-SUP-6
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 75.25
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 7
+    ProductCode: QDTD-SUP-7
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 4999
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 8
+    ProductCode: QDTD-SUP-8
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 12.005
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 9
+    ProductCode: QDTD-SUP-9
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 250
+- object: Product2
+  fields:
+    Name: QDTD Premier Support 10
+    ProductCode: QDTD-SUP-10
+    Family: Premier Support
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1000
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 1
+    ProductCode: QDTD-TRN-1
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1200
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 2
+    ProductCode: QDTD-TRN-2
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 899.995
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 3
+    ProductCode: QDTD-TRN-3
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 0
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 4
+    ProductCode: QDTD-TRN-4
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: -450
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 5
+    ProductCode: QDTD-TRN-5
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 333.333
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 6
+    ProductCode: QDTD-TRN-6
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 75.25
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 7
+    ProductCode: QDTD-TRN-7
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 4999
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 8
+    ProductCode: QDTD-TRN-8
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 12.005
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 9
+    ProductCode: QDTD-TRN-9
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 250
+- object: Product2
+  fields:
+    Name: QDTD Onsite Training 10
+    ProductCode: QDTD-TRN-10
+    Family: Onsite Training
+    IsActive: true
+    Description: QDTD- permutation fixture product
+    __list_price: 1000
+- object: Product2
+  fields:
+    Name: QDTD Ünïcøde & <Escaping> Test Product — a deliberately long product name used to prove the renderers do not truncate, escape wrongly, or corrupt non-ASCII characters anywhere in the payload chain
+    ProductCode: QDTD-UNI-1
+    Family: Hardware
+    IsActive: true
+    Description: QDTD- unicode and length fixture
+    __list_price: 1234.567

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A generic Category/Key/Value config store for the Quote Document framework, so a new small lookup table (a product-to-label map, a rate table, a name override) never needs its own Custom Metadata Type or Apex change - it needs a Category and some rows. Read with QuoteDocumentKeyValueMap.get(category), which returns Key__c -&gt; Value__c for every active row in that category. Not a replacement for Quote_Document_Table_Def__mdt or Quote_Document_Grouping__mdt - those stay their own types because their structure is fixed and richer than Category/Key/Value.</description>
+    <label>Quote Document Key Value</label>
+    <pluralLabel>Quote Document Key Values</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

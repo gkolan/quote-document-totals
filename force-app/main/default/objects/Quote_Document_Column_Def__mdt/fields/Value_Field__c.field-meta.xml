@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Value_Field__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>The Quote_Document_Row__c API name this column reads, e.g. Amount_Net__c or Product_Code__c. ANY readable field qualifies, including one your org added itself - that is how a subscriber prints their own data with no core change. Leave BLANK for the label column, which prints the row's Display Label. A measure belonging to a different measure set than the table fails with COLUMN_MEASURE_MISMATCH.</inlineHelpText>
+    <label>Value Field</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

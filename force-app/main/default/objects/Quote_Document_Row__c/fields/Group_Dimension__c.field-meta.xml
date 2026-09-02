@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Group_Dimension__c</fullName>
+    <caseSensitive>false</caseSensitive>
+    <externalId>false</externalId>
+    <inlineHelpText>The classification this row is grouped by, such as PRODUCT_FAMILY or CHARGE_TYPE. A label alone does not identify what kind of grouping it represents. Text rather than a picklist so a new dimension does not require a deployment.</inlineHelpText>
+    <label>Group Dimension</label>
+    <length>80</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

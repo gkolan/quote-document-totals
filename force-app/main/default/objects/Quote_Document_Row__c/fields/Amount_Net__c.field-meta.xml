@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Amount_Net__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Total after all discounts. Sum of SBQQ__NetTotal__c. On a grand total row of a table that excludes optional products, this reconciles to the Quote's Net Amount.</inlineHelpText>
+    <label>Net Amount</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Currency</type>
+</CustomField>

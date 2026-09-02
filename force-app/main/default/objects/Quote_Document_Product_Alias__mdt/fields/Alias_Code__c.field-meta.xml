@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Alias_Code__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>The customer own part number, printed exactly as entered. This is the one place a printable string is authored as data rather than resolved from the label dictionary, because it is the customer identifier their purchasing system expects - translating or reformatting it would defeat the purpose.</inlineHelpText>
+    <label>Alias Code</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

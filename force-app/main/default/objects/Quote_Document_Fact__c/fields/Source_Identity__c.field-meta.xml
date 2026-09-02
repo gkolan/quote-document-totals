@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Source_Identity__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Stable description of the approved source and version used to produce this fact.</inlineHelpText>
+    <label>Source Identity</label>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

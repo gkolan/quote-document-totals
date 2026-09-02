@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Row_Customizer_Flow__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>LEAVE BLANK unless this table's rows come from an autolaunched Flow. API name of that Flow. It takes a Quote_Document_Row__c collection named rows plus Text inputs quoteId, tableCode, locale, currencyIsoCode, and must return a collection named rows. IMPORTANT: a Flow loop variable is a COPY - collect edited rows into a second collection and assign that back to rows, or your edits are silently discarded. Runs AFTER the Apex customizer and can overwrite it.</inlineHelpText>
+    <label>Row Customizer Flow</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

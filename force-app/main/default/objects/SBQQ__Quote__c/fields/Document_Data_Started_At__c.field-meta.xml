@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Document_Data_Started_At__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>When the current Document_Data_Request_Id__c began generating. Compared against the abandonment window to decide whether a Quote stuck on Generating is still a live request or safe to take over.</inlineHelpText>
+    <label>Document Data Started At</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

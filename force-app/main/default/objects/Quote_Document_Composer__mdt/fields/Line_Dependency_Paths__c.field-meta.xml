@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Line_Dependency_Paths__c</fullName>
+    <description
+  >Quote Line field paths read by this composer in addition to the standard document context. Separate paths with commas, semicolons, or new lines.</description>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Line Dependency Paths</label>
+    <length>32768</length>
+    <type>LongTextArea</type>
+    <visibleLines>4</visibleLines>
+</CustomField>

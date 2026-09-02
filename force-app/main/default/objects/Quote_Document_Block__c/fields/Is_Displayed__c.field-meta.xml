@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Displayed__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>FALSE means this block was generated but must not print. A hidden block is excluded from the payload AND from the payload hash, so hiding one genuinely changes the document rather than merely styling it away.</inlineHelpText>
+    <label>Is Displayed</label>
+    <defaultValue>true</defaultValue>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

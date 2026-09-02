@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Total_Role__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>The commercial meaning of a total or adjustment Row. Keeps line extension, allowance, charge, tax-exclusive, tax-inclusive, prepaid, rounding, and payable amounts distinct.</inlineHelpText>
+    <label>Total Role</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>Line Extension</fullName><default>false</default><label>Line Extension</label></value>
+            <value><fullName>Subtotal</fullName><default>false</default><label>Subtotal</label></value>
+            <value><fullName>Allowance</fullName><default>false</default><label>Allowance</label></value>
+            <value><fullName>Charge</fullName><default>false</default><label>Charge</label></value>
+            <value><fullName>Tax Exclusive</fullName><default>false</default><label>Tax Exclusive</label></value>
+            <value><fullName>Tax</fullName><default>false</default><label>Tax</label></value>
+            <value><fullName>Tax Inclusive</fullName><default>false</default><label>Tax Inclusive</label></value>
+            <value><fullName>Prepaid</fullName><default>false</default><label>Prepaid</label></value>
+            <value><fullName>Rounding</fullName><default>false</default><label>Rounding</label></value>
+            <value><fullName>Payable</fullName><default>false</default><label>Payable</label></value>
+            <value><fullName>Informational</fullName><default>false</default><label>Informational</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

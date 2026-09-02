@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Display_Label__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>The printed column heading, already resolved for this table's locale. A renderer prints this verbatim and must never construct, translate, or abbreviate a heading of its own.</inlineHelpText>
+    <label>Display Label</label>
+    <length>255</length>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

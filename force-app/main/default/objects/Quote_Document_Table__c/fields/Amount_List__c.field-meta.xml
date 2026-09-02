@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Amount_List__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>Total list price before any discount. Sum of SBQQ__ListTotal__c across the lines this row covers.</inlineHelpText>
+    <label>List Amount</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Currency</type>
+</CustomField>

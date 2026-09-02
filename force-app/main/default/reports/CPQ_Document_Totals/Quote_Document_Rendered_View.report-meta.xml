@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Display_Order__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Row_Type__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Group_Level__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Display_Label__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Quantity__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_List__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Discount__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Amount_Net__c</field>
+    </columns>
+    <columns>
+        <field>SBQQ__Quote__c.DocumentTables__r.Rows__r$Include_In_Grand_Total__c</field>
+    </columns>
+    <description>Every generated row in the order a document will print it, grouped by Quote and table. Amounts are deliberately not summed - the rows already contain subtotals and grand totals.</description>
+    <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>SBQQ__Quote__c$Name</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>SBQQ__Quote__c.DocumentTables__r$Table_Code__c</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Quote Document - Rendered View</name>
+    <reportType>Quote_Document_Tables_and_Rows__c</reportType>
+    <showDetails>true</showDetails>
+    <sortColumn>SBQQ__Quote__c.DocumentTables__r.Rows__r$Display_Order__c</sortColumn>
+    <sortOrder>Asc</sortOrder>
+</Report>

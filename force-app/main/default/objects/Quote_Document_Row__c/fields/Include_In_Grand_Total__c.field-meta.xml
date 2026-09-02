@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Include_In_Grand_Total__c</fullName>
+    <defaultValue>true</defaultValue>
+    <externalId>false</externalId>
+    <inlineHelpText>Whether this row's amounts are included in the table grand total.</inlineHelpText>
+    <label>Include In Grand Total</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

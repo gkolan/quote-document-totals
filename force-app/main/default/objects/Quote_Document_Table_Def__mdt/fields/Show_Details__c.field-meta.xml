@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Show_Details__c</fullName>
+    <defaultValue>false</defaultValue>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Whether the table prints a row per quote line, or only group subtotals and the grand total.</inlineHelpText>
+    <label>Show Details</label>
+    <type>Checkbox</type>
+</CustomField>

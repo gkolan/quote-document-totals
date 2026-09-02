@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Value_Field__c</fullName>
+    <externalId>false</externalId>
+    <inlineHelpText>The Quote_Document_Row__c API name this column reads, e.g. Amount_Net__c. Any readable field on the row qualifies, including one a subscriber added in their own org - that is the cheapest flexibility lever in the design and an allowlist would close it. Blank means the column prints the row's own Display Label rather than a field.</inlineHelpText>
+    <label>Value Field</label>
+    <length>80</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

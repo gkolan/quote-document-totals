@@ -1,0 +1,50 @@
+name: Project checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  project-checks:
+    name: Documentation and project checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The contributor check compares the change with the earlier version.
+          # It needs the full history to make that comparison correctly.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install project tools
+        run: npm ci
+
+      - name: Run JavaScript tests
+        run: npm test
+
+      - name: Check JavaScript
+        run: npm run lint
+
+      - name: Check documentation formatting
+        run: npm run prettier:verify
+
+      - name: Check documentation links, language, structure, and source facts
+        run: npm run test:docs
+
+      - name: Test the contributor version check
+        run: npm run test:ci-gate
+
+      - name: Check contributor versions
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$GITHUB_BASE_REF" ]; then
+            git fetch --no-tags origin "$GITHUB_BASE_REF" || true
+          fi
+          node scripts/ci/check-contributor-versions.js
