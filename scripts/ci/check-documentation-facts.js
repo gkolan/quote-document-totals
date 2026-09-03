@@ -244,14 +244,14 @@ const registry = read(
   "force-app/main/default/classes/QuoteDocumentRowCustomizerRegistry.cls"
 );
 const registeredCodes = [...registry.matchAll(/when\s+'[A-Z_]+'/gu)];
-if (registeredCodes.length !== 7) {
+if (registeredCodes.length !== 6) {
   failures.push(
-    `QuoteDocumentRowCustomizerRegistry.cls: expected 7 registered codes, found ${registeredCodes.length}`
+    `QuoteDocumentRowCustomizerRegistry.cls: expected 6 registered codes, found ${registeredCodes.length}`
   );
 }
 if (
   !read("docs/use-case/43-registered-apex-row-adjustment.md").includes(
-    "seven registered"
+    "six registered"
   )
 ) {
   failures.push(

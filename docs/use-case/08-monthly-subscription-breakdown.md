@@ -2,7 +2,9 @@
 
 ## Status and scope
 
-**Repository status:** The inactive `MONTHLY_SUBSCRIPTION_SUMMARY` definition, Label and Net columns, localization examples, registered monthly adjustment, and `scripts/apex/monthly-subscription-example.apex` ship. A Quantity column and dedicated report do not ship; this guide creates the Quantity column and uses **Quote Document - Rendered View**.
+**Repository status:** The inactive `MONTHLY_SUBSCRIPTION_SUMMARY` definition, its `EXPANSION` grouping, Label and Net columns, the `MONTHLY_ALLOCATION` assumptions block in English and French, and `scripts/apex/monthly-subscription-example.apex` ship. A Quantity column and dedicated report do not ship; this guide creates the Quantity column and uses **Quote Document - Rendered View**.
+
+The table runs on the `PERIOD` expander with one-month buckets. It used a registered row customizer until the expansion seam landed; that class is retired, and the bespoke grouping, subtotal and ordering code it carried went with it.
 
 **Org verification status:** Automated tests cover monthly allocation and peak Quantity. Target-org deployment and execution are not verified here.
 
@@ -39,29 +41,41 @@ Salesforce creates one `Quote_Document_Table__c` record for this view and `Quote
 2. Open **Custom Metadata Types**, find **Quote Document Table Definition**, and select **Manage Records**.
 3. Open **Monthly Subscription Summary**. Enter or confirm these values:
 
-| Field                  | Value                               |
-| ---------------------- | ----------------------------------- |
-| Active                 | `Select only after sandbox testing` |
-| Table Code             | `MONTHLY_SUBSCRIPTION_SUMMARY`      |
-| Display Title          | `Monthly Subscription Costs`        |
-| Line Filter            | `EXCLUDE_OPTIONAL`                  |
-| Measure Set            | `PRICE_WATERFALL`                   |
-| Amount Basis           | `Final Value`                       |
-| Show Details           | `Selected`                          |
-| Show Section Totals    | `Cleared`                           |
-| Row Customizer Code    | `MONTHLY_SUBSCRIPTION`              |
-| Row Customizer Version | `1`                                 |
-| Cache Policy           | `STANDARD`                          |
-| Max Groups             | `24`                                |
-| Display Order          | `95`                                |
+| Field                     | Value                               |
+| ------------------------- | ----------------------------------- |
+| Active                    | `Select only after sandbox testing` |
+| Table Code                | `MONTHLY_SUBSCRIPTION_SUMMARY`      |
+| Display Title             | `Monthly Subscription Costs`        |
+| Line Filter               | `EXCLUDE_OPTIONAL`                  |
+| Measure Set               | `PRICE_WATERFALL`                   |
+| Amount Basis              | `Final Value`                       |
+| Show Details              | `Selected`                          |
+| Show Section Totals       | `Cleared`                           |
+| Expander Code             | `PERIOD`                            |
+| Expander Version          | `1`                                 |
+| Period Months             | `1`                                 |
+| Period One Time Placement | `EFFECTIVE_DATE`                    |
+| Allocation Basis          | `EVEN`                              |
+| Allocation Scale          | `2`                                 |
+| Sort Groups By            | `EXPANSION_ORDER`                   |
+| Assumptions Block Code    | `MONTHLY_ALLOCATION`                |
+| Cache Policy              | `STANDARD`                          |
+| Max Groups                | `24`                                |
+| Display Order             | `95`                                |
 
-4. Save the table definition.
-5. Return to **Custom Metadata Types**, find **Quote Document Column Definition**, and select **Manage Records**.
-6. Confirm **MSS - Label** is active with Table Definition `MONTHLY_SUBSCRIPTION_SUMMARY`, Column Code `COL_LABEL`, Display Order `10`, and Data Type `Text`.
-7. Confirm **MSS - Net** is active with the same Table Definition, Column Code `COL_NET`, Display Order `20`, Data Type `Currency`, and Value Field `Amount_Net__c`.
-8. Create **MSS - Quantity** with Table Definition `MONTHLY_SUBSCRIPTION_SUMMARY`, Column Code `COL_QUANTITY`, Display Order `15`, Data Type `Number`, Value Field `Quantity__c`, Aggregation Rule `MAX`, and Active selected. Leave Aggregation Numerator and Aggregation Denominator blank.
-9. Do not create a Quote Document Grouping record for this example. The registered monthly adjustment creates and orders the month rows.
-10. Return to **Monthly Subscription Summary**, select **Active**, save, and generate the worked-example Quote. If the result is wrong, clear **Active** before making corrections.
+**Charge type decides whether a line spreads.** Only `Recurring` lines are divided across the months their window covers. Anything else is a one-off and prints in a single month: the month of its start date, or month 1 when it has no dates. A subscription quoted without a charge type piles into one month rather than spreading, which this table makes visible instead of averaging away.
+
+**Sort Groups By must be `EXPANSION_ORDER`.** Sorted alphabetically, `Month 10` prints before `Month 2`.
+
+4. Under **Quote Document Grouping**, confirm **MSS - Expansion** is present with Table Definition `MONTHLY_SUBSCRIPTION_SUMMARY`, Dimension `EXPANSION`, Level `1`, and Sequence `1`. The expander stamps each line with the month it belongs to; this record is what turns that stamp into sections.
+
+5. Save the table definition.
+6. Return to **Custom Metadata Types**, find **Quote Document Column Definition**, and select **Manage Records**.
+7. Confirm **MSS - Label** is active with Table Definition `MONTHLY_SUBSCRIPTION_SUMMARY`, Column Code `COL_LABEL`, Display Order `10`, and Data Type `Text`.
+8. Confirm **MSS - Net** is active with the same Table Definition, Column Code `COL_NET`, Display Order `20`, Data Type `Currency`, and Value Field `Amount_Net__c`.
+9. Create **MSS - Quantity** with Table Definition `MONTHLY_SUBSCRIPTION_SUMMARY`, Column Code `COL_QUANTITY`, Display Order `15`, Data Type `Number`, Value Field `Quantity__c`, Aggregation Rule `MAX`, and Active selected. Leave Aggregation Numerator and Aggregation Denominator blank.
+10. Do not create a Quote Document Grouping record for this example. The registered monthly adjustment creates and orders the month rows.
+11. Return to **Monthly Subscription Summary**, select **Active**, save, and generate the worked-example Quote. If the result is wrong, clear **Active** before making corrections.
 
 ## Worked example
 

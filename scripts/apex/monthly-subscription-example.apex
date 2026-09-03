@@ -10,14 +10,19 @@
  *
  * The scenario is the one the feature was asked for:
  *
- *   Platform Subscription     12,000   whole 12-month term (no dates of its own)
- *   Product A                  1,000   months 1-3
- *   Data Migration               500   11 days inside month 5
- *   Security Review              750   month 6
- *   Training Day                 300   one day in month 7
- *   Onboarding Accelerator     2,000   months 7-10
+ *   Platform Subscription     12,000   recurring, whole 12-month term
+ *   Product A                  1,000   recurring, months 1-3
+ *   Onboarding Accelerator     2,000   recurring, months 7-10
+ *   Data Migration               500   one-off, delivered in month 5
+ *   Security Review              750   one-off, delivered in month 6
+ *   Training Day                 300   one-off, delivered in month 7
+ *   Setup Fee                    600   one-off, undated - falls to month 1
  *                             ------
- *                             16,550   = the quote's own SBQQ__NetAmount__c
+ *                             17,150   = the quote's own SBQQ__NetAmount__c
+ *
+ * The table runs on the PERIOD expander (one-month buckets, EVEN allocation),
+ * not on a row customizer - QuoteDocumentMonthlyRowCustomizer was retired when
+ * the expansion seam landed, and its bespoke grouping went with it.
  *
  * PREREQUISITE - the table definition ships INACTIVE, because activating it
  * changes every document in the org and it needs every quote to carry a term.
@@ -80,7 +85,8 @@ for (List<String> spec : new List<List<String>>{
     new List<String>{ 'MSX_MIGRATION',  'Data Migration',         'Service'  },
     new List<String>{ 'MSX_SECURITY',   'Security Review',        'Service'  },
     new List<String>{ 'MSX_TRAINING',   'Training Day',           'Service'  },
-    new List<String>{ 'MSX_ONBOARDING', 'Onboarding Accelerator', 'Service'  }
+    new List<String>{ 'MSX_ONBOARDING', 'Onboarding Accelerator', 'Service'  },
+    new List<String>{ 'MSX_SETUP',      'Setup Fee',              'Service'  }
 }) {
     if (!products.containsKey(spec[0])) {
         missing.add(new Product2(
@@ -108,20 +114,28 @@ insert quote;
 List<SBQQ__QuoteLine__c> lines = new List<SBQQ__QuoteLine__c>();
 Integer lineNumber = 0;
 
-// productCode => {net price, start, end}. A null window means the whole term,
-// which is what CPQ's own effective-date formulas mean by a blank start date.
+// productCode => {net price, charge type, start, end}.
+//
+// Charge type is not decoration here. The PERIOD expander spreads a Recurring
+// line across the months its window covers and PLACES anything else in a single
+// month - so a one-off service prints in the month it is delivered rather than
+// as twelve equal instalments nobody agreed to. A null window on a Recurring
+// line means the whole term, which is what CPQ's own effective-date formulas
+// mean by a blank start date.
 List<List<Object>> plan = new List<List<Object>>{
-    new List<Object>{ 'MSX_PLATFORM',   12000, null, null },
-    new List<Object>{ 'MSX_PRODUCT_A',   1000, TERM_START, TERM_START.addMonths(3).addDays(-1) },
-    new List<Object>{ 'MSX_MIGRATION',    500, TERM_START.addMonths(4).addDays(9), TERM_START.addMonths(4).addDays(19) },
-    new List<Object>{ 'MSX_SECURITY',     750, TERM_START.addMonths(5), TERM_START.addMonths(6).addDays(-1) },
-    new List<Object>{ 'MSX_TRAINING',     300, TERM_START.addMonths(6).addDays(14), TERM_START.addMonths(6).addDays(14) },
-    new List<Object>{ 'MSX_ONBOARDING',  2000, TERM_START.addMonths(6), TERM_START.addMonths(10).addDays(-1) }
+    new List<Object>{ 'MSX_PLATFORM',   12000, 'Recurring', null, null },
+    new List<Object>{ 'MSX_PRODUCT_A',   1000, 'Recurring', TERM_START, TERM_START.addMonths(3).addDays(-1) },
+    new List<Object>{ 'MSX_ONBOARDING',  2000, 'Recurring', TERM_START.addMonths(6), TERM_START.addMonths(10).addDays(-1) },
+    new List<Object>{ 'MSX_MIGRATION',    500, null, TERM_START.addMonths(4).addDays(9), TERM_START.addMonths(4).addDays(19) },
+    new List<Object>{ 'MSX_SECURITY',     750, null, TERM_START.addMonths(5), TERM_START.addMonths(6).addDays(-1) },
+    new List<Object>{ 'MSX_TRAINING',     300, null, TERM_START.addMonths(6).addDays(14), TERM_START.addMonths(6).addDays(14) },
+    new List<Object>{ 'MSX_SETUP',        600, null, null, null }
 };
 
 for (List<Object> row : plan) {
     lineNumber++;
     Decimal price = (Decimal) row[1];
+    String chargeType = (String) row[2];
     lines.add(new SBQQ__QuoteLine__c(
         SBQQ__Quote__c = quote.Id,
         SBQQ__Product__c = products.get((String) row[0]).Id,
@@ -131,8 +145,11 @@ for (List<Object> row : plan) {
         SBQQ__RegularPrice__c = price,
         SBQQ__NetPrice__c = price,
         SBQQ__CustomerPrice__c = price,
-        SBQQ__StartDate__c = (Date) row[2],
-        SBQQ__EndDate__c = (Date) row[3]
+        SBQQ__ChargeType__c = chargeType,
+        // CPQ rejects a recurring charge without one.
+        SBQQ__BillingType__c = 'Recurring'.equals(chargeType) ? 'Advance' : null,
+        SBQQ__StartDate__c = (Date) row[3],
+        SBQQ__EndDate__c = (Date) row[4]
     ));
 }
 insert lines;

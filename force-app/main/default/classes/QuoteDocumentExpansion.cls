@@ -37,10 +37,9 @@ public with sharing class QuoteDocumentExpansion {
   public static final String ERR_UNKNOWN_BUCKET = 'EXPANSION_BUCKET_UNKNOWN';
 
   /**
-   * An axis this long is a data error, not a document. Mirrors the ceiling
-   * QuoteDocumentMonthlyRowCustomizer already applies to months, for the same
-   * reason: a table with hundreds of sections is unreadable either way, and
-   * lines x buckets is what actually blows a governor limit.
+   * An axis this long is a data error, not a document: a table with hundreds
+   * of sections is unreadable either way, and lines x buckets is what actually
+   * blows a governor limit.
    */
   public static final Integer MAX_BUCKETS = 120;
 

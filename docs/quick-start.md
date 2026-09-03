@@ -13,7 +13,7 @@ You need:
 - A sandbox or disposable test org with Salesforce CPQ installed and configured, supporting Salesforce API version 67.0.
 - Salesforce CLI (`sf`) and Git available in your terminal.
 - Permission to deploy metadata, edit page layouts, assign permission sets, and access CPQ Quotes.
-- An existing calculated test Quote with non-optional Quote Lines and a Product Family on each included Product.
+- A calculated test Quote with non-optional Quote Lines and a Product Family on each included Product. If you do not have one, you do not need to build it by hand: `scripts/apex/quote-document-seed.apex` ships in this repository and creates accounts, products and quotes shaped to exercise every table. Step 2 runs it.
 
 **Stop here if** CPQ is not installed. This project depends on CPQ's `SBQQ__` objects and does not include CPQ installation or licenses. A standard Trailhead Playground cannot run it without that dependency.
 
@@ -52,6 +52,16 @@ sf org open --target-org qdt-test
 ```
 
 This permission set does not replace the user's Salesforce CPQ license and permissions. Assign it separately to any other user who will generate tables.
+
+If you do not already have a calculated Quote to work from, create one now:
+
+```bash
+sf apex run --target-org qdt-test --file scripts/apex/quote-document-seed.apex
+```
+
+This builds accounts, products and quotes shaped to exercise every table this project generates, including bundles, optional products and recurring charges. It is safe to re-run: it deletes only the records it created. Use any of the quotes it reports for the rest of this guide.
+
+To reproduce every worked example in the documentation rather than only the seed data, run `scripts/scratch-org-bootstrap.sh`, which chains deploy, permission set assignment, the seed, and each example script in order.
 
 ## 3. Add the action and review fields
 
