@@ -156,6 +156,11 @@ private class QuoteDocumentMonthlyScheduleTest {
         definition.allocationScale = 2;
         definition.sortGroupsBy = QuoteDocumentTableDefinition.SORT_EXPANSION_ORDER;
         definition.maxGroups = 24;
+        // Generation refuses to publish without this block. Set here rather
+        // than in the one test that asserts it, so every test below runs the
+        // configuration the metadata record actually ships - a fixture that
+        // omits it would pass while the real table failed to generate.
+        definition.assumptionsBlockCode = 'MONTHLY_ALLOCATION';
         return definition;
     }
 
@@ -349,11 +354,7 @@ private class QuoteDocumentMonthlyScheduleTest {
      */
     @IsTest
     static void theAllocationIsExplainedByABlockTheTableCannotPublishWithout() {
-        QuoteDocumentTableDefinition definition = shippedDefinition();
-        definition.assumptionsBlockCode = 'MONTHLY_ALLOCATION';
-        QuoteDocumentTableDefinition.useDefinitions(
-            new List<QuoteDocumentTableDefinition>{ definition }
-        );
+        useShippedTable();
 
         Test.startTest();
         QuoteDocumentGenerator.generate(new Set<Id>{ quoteId() });
