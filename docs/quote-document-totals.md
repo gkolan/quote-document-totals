@@ -269,7 +269,7 @@ npm run test:ci-gate
 - Target-org CPQ formulas, pricing rules, fields, sharing, and page layouts can change observed results.
 - A custom document adapter is responsible for styling and delivery, but may not recalculate or select content independently.
 - One-click Quote-scoped report links are planned and do not currently ship.
-- Open defects and proposed improvements are listed only in the live `bugs/` and `enhancements/` indexes.
+- Proposed improvements are listed only in the live `enhancements/` index. Open defects are worked in a local `bugs/` folder that is excluded from Git; a defect that outlives a release is recorded as a limit here or in [Current roadmap](roadmap.md).
 
 ## File map
 

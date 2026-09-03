@@ -79,5 +79,11 @@ $RECYCLE.BIN/
 **/.venv/
 **/venv/
 
+# Local defect ledger. Like specs/, this is a working folder: entries are
+# recorded and worked while an issue is live, then removed once the fix and its
+# regression tests land. Shipping it would publish a defect list that goes stale
+# the moment a fix is released. Confirmed limits belong in docs/roadmap.md.
+bugs/
+
 # Shared source, tests, CI, scripts, documentation, and test-org definitions
 # remain versioned so another contributor can reproduce and validate changes.
