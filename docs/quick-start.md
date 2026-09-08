@@ -31,12 +31,14 @@ sf org login web --instance-url https://test.salesforce.com --alias qdt-test
 
 The login command opens your browser. Sign in to the intended CPQ sandbox. For a CPQ test org that uses a different login host, replace `https://test.salesforce.com` with that org's login URL. `qdt-test` is a local alias used by the remaining commands.
 
-Confirm the CPQ Quote object is accessible, then deploy:
+Run the read-only prerequisite check, then deploy only when it reports `"ready": true`:
 
 ```bash
-sf sobject describe --sobject SBQQ__Quote__c --target-org qdt-test
+npm run preflight:install -- --target-org qdt-test --output artifacts/install-preflight.json
 sf project deploy start --target-org qdt-test --source-dir force-app --wait 30
 ```
+
+The preflight records the installed CPQ version and required object and field availability. It uploads no source and changes no org data. See the [install, upgrade, and removal contract](install-upgrade-removal.md) before a production rollout.
 
 Continue only when the deployment reports **Succeeded**. If it is still running, use the job ID printed by the command:
 
@@ -47,11 +49,11 @@ sf project deploy report --target-org qdt-test --job-id YOUR_DEPLOYMENT_ID --wai
 Assign project access to the user you authenticated and open the org:
 
 ```bash
-sf org assign permset --target-org qdt-test --name CPQ_Document_Totals
+sf org assign permset --target-org qdt-test --name CPQ_Document_Totals_Generator
 sf org open --target-org qdt-test
 ```
 
-This permission set does not replace the user's Salesforce CPQ license and permissions. Assign it separately to any other user who will generate tables.
+This permission set includes Run Flows, access to the `QuoteDocumentGenerator` invocable entry class, and read-only review of generated output. It does not grant the JSON retrieval adapter, diagnostics, recovery tools, a Salesforce CPQ license, CPQ permissions, or access to the target Quote. Assign it separately to any other user who will generate tables. Existing installations can migrate from `CPQ_Document_Totals`; see [Access roles](access-model.md).
 
 If you do not already have a calculated Quote to work from, create one now:
 
@@ -59,7 +61,7 @@ If you do not already have a calculated Quote to work from, create one now:
 sf apex run --target-org qdt-test --file scripts/apex/quote-document-seed.apex
 ```
 
-This builds accounts, products and quotes shaped to exercise every table this project generates, including bundles, optional products and recurring charges. It is safe to re-run: it deletes only the records it created. Use any of the quotes it reports for the rest of this guide.
+Run this only in a disposable test org. It builds accounts, products and quotes shaped to exercise every table this project generates, including bundles, optional products and recurring charges. On every run it deletes accounts tagged `[SEED]`, their CPQ Quotes, and products whose Product Code starts with `SEED-`, then recreates the sample. Do not run it in an org where those identifiers may belong to other data. Use any of the quotes it reports for the rest of this guide.
 
 To reproduce every worked example in the documentation rather than only the seed data, run `scripts/scratch-org-bootstrap.sh`, which chains deploy, permission set assignment, the seed, and each example script in order.
 
@@ -108,7 +110,7 @@ Save and calculate the Quote, select **Generate Document Tables**, and review th
 | API version is unsupported               | The org does not support the project's API version                      | Use an org supporting 67.0. Do not lower the version without validating compatibility.                                           |
 | Deployment is still running or failed    | Installation is not complete                                            | Run the deployment report command and resolve its listed errors before continuing.                                               |
 | The Quote action is missing              | The assigned layout or Dynamic Actions configuration does not expose it | Check step 3 and confirm you opened `SBQQ__Quote__c`.                                                                            |
-| Access is denied                         | The user lacks required project or CPQ access                           | Confirm the `CPQ_Document_Totals` permission set, CPQ access, and access to this Quote.                                          |
+| Access is denied                         | The user lacks required project or CPQ access                           | Confirm the `CPQ_Document_Totals_Generator` permission set, CPQ access, and access to this Quote.                                |
 | Status is Failed                         | Generation could not complete its checks                                | Read **Document Data Error**, correct the named data or configuration problem, and generate again.                               |
 | Status is not Ready yet                  | Generation or subsequent CPQ changes may still be processing            | Refresh and inspect the status. Use the [status guide](use-case/38-quote-generation-status-and-errors.md) if it does not settle. |
 | The summary is missing or amounts differ | Definition settings, optional lines, or calculated values may differ    | Confirm the definition is active and compare against the [Product Family Summary guide](use-case/01-product-family-summary.md).  |

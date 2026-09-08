@@ -895,6 +895,76 @@ private class QuoteDocumentReviewFindingsTest {
     );
   }
 
+  /**
+   * Generation permits a document containing Blocks and no Tables. Retention
+   * must therefore discover work from the Quote lifecycle rather than from a
+   * Table child that this valid document shape does not have.
+   */
+  @IsTest
+  static void retentionPurgesABlockOnlySnapshot() {
+    Id quoteId = QuoteDocumentTestData.quoteId();
+    QuoteDocumentGenerator.generate(new Set<Id>{ quoteId });
+
+    delete [
+      SELECT Id
+      FROM Quote_Document_Table__c
+      WHERE Quote__c = :quoteId
+    ];
+    insert new Quote_Document_Block__c(
+      Quote__c = quoteId,
+      Block_Code__c = 'BLOCK_ONLY_RETENTION_PROBE',
+      Block_Type__c = 'Paragraph',
+      Display_Order__c = 999,
+      Locale__c = 'en_US',
+      Body__c = 'Block-only output must remain discoverable by retention.',
+      Source_Version__c = '1',
+      Placement__c = 'Document Level',
+      Is_Displayed__c = true
+    );
+    update new SBQQ__Quote__c(Id = quoteId, SBQQ__Status__c = 'Rejected');
+
+    Test.startTest();
+    Database.executeBatch(new QuoteDocumentRetention(), 200);
+    Test.stopTest();
+
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM Quote_Document_Block__c WHERE Quote__c = :quoteId],
+      'A block-only snapshot must not escape retention because it has no Table child.'
+    );
+    SBQQ__Quote__c retainedQuote = [
+      SELECT
+        Document_Data_Status__c,
+        Document_Data_Generated_On__c,
+        Document_Data_Started_At__c,
+        Document_Data_Fingerprint__c,
+        Document_Payload_Hash__c
+      FROM SBQQ__Quote__c
+      WHERE Id = :quoteId
+    ];
+    Assert.areEqual(
+      'Not Generated',
+      retainedQuote.Document_Data_Status__c,
+      'The Quote gate must close after its block-only output is removed.'
+    );
+    Assert.isNull(
+      retainedQuote.Document_Data_Generated_On__c,
+      'A purged Quote must not retain a successful generation timestamp.'
+    );
+    Assert.isNull(
+      retainedQuote.Document_Data_Started_At__c,
+      'A purged Quote has no generation in progress.'
+    );
+    Assert.isNull(
+      retainedQuote.Document_Data_Fingerprint__c,
+      'A purged Quote has no current input fingerprint.'
+    );
+    Assert.isNull(
+      retainedQuote.Document_Payload_Hash__c,
+      'A purged Quote has no output payload to hash.'
+    );
+  }
+
   // -----------------------------------------------------------------------
   // QDT-004 - a hyphenated locale silently dropped every block
   // -----------------------------------------------------------------------

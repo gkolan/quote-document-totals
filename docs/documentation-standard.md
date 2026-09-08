@@ -62,7 +62,7 @@ The live repository does not retain:
 - analyzer logs; or
 - withdrawn proposals.
 
-Those items belong in the external day-zero archive. Current open defects are worked in `bugs/`, a local folder excluded from Git like `specs/`, because a published defect list goes stale the moment a fix ships; current proposed improvements remain in `enhancements/`; current unimplemented product work remains in `docs/roadmap.md`. A defect that survives a release is a limit, and belongs in `docs/roadmap.md` where a reader will find it.
+Those items belong in an external archive or an ignored local working folder. Research, implementation evidence, development plans, and open defect notes stay outside the published repository. Current unimplemented product work and release-relevant limits belong in `docs/roadmap.md`, where a reader will find them.
 
 ## Validation
 

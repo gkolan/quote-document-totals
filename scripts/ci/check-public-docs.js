@@ -13,11 +13,12 @@ function markdownFiles(directory) {
 }
 
 // Public checks must work in a clone without local specs or assistant setup.
-const markdownRoots = ["docs", "bugs", "enhancements"];
+const markdownRoots = ["docs"];
 const files = [
   path.join(root, "README.md"),
   path.join(root, "CONTRIBUTING.md"),
   path.join(root, "SECURITY.md"),
+  path.join(root, "SUPPORT.md"),
   path.join(root, ".github", "PULL_REQUEST_TEMPLATE.md"),
   ...markdownRoots.flatMap((directory) =>
     markdownFiles(path.join(root, directory))

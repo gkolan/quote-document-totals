@@ -1,0 +1,8 @@
+# Normalize to LF in the repository and on checkout, so prettier:verify
+# passes on Windows clones where core.autocrlf=true.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.pdf binary

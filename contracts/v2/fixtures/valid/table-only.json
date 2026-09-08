@@ -1,0 +1,70 @@
+{
+  "contractVersion": "2.0",
+  "requestId": "REQ-TABLE-001",
+  "quoteId": "a0Q000000000001AAA",
+  "quoteNumber": "Q-00001",
+  "locale": "en-US",
+  "currencyIsoCode": "USD",
+  "generatedOn": "2026-09-07T20:00:00.000Z",
+  "fingerprint": "fixture-table-only-v1",
+  "status": "Ready",
+  "facts": [],
+  "sections": [
+    {
+      "sectionType": "Table",
+      "key": "a0Q000000000001AAA:PRODUCT_FAMILY_SUMMARY",
+      "code": "PRODUCT_FAMILY_SUMMARY",
+      "displayOrder": 10,
+      "locale": "en-US",
+      "currencyIsoCode": "USD",
+      "title": "Product family summary",
+      "columns": [
+        {
+          "code": "COL_LABEL",
+          "label": "Product family",
+          "displayOrder": 10,
+          "dataType": "Text",
+          "formatRole": "Label"
+        },
+        {
+          "code": "COL_NET",
+          "label": "Net amount",
+          "displayOrder": 20,
+          "dataType": "Currency",
+          "formatRole": "Amount",
+          "totalRule": "SUM"
+        }
+      ],
+      "rows": [
+        {
+          "key": "SUBTOTAL:HARDWARE",
+          "rowType": "Subtotal",
+          "displayOrder": 10,
+          "label": "Hardware",
+          "labelKey": "HARDWARE",
+          "values": { "COL_LABEL": "Hardware", "COL_NET": 54000 },
+          "blocks": []
+        },
+        {
+          "key": "SUBTOTAL:SERVICES",
+          "rowType": "Subtotal",
+          "displayOrder": 20,
+          "label": "Services",
+          "labelKey": "SERVICES",
+          "values": { "COL_LABEL": "Services", "COL_NET": 48910 },
+          "blocks": []
+        },
+        {
+          "key": "GRAND_TOTAL",
+          "rowType": "Grand Total",
+          "totalRole": "Grand Total",
+          "displayOrder": 30,
+          "label": "Total",
+          "labelKey": "TOTAL",
+          "values": { "COL_LABEL": "Total", "COL_NET": 102910 },
+          "blocks": []
+        }
+      ]
+    }
+  ]
+}

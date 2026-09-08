@@ -1,0 +1,17 @@
+{
+  "manifestVersion": "1.0",
+  "contractVersion": "2.0",
+  "quoteId": "a0Q000000000003AAA",
+  "requestId": "REQ-MIXED-001",
+  "fingerprint": "fixture-mixed-v1",
+  "sourcePayloadSha256": "7690f75ab8347a46b314f239b3e62fe48eed965423b97bda3185f1034937c561",
+  "renderer": {
+    "name": "quote-document-totals-reference-html",
+    "version": "1.0.0"
+  },
+  "output": {
+    "mediaType": "text/html; charset=utf-8",
+    "bytes": 1083,
+    "sha256": "5394f70801a5412009f1ad4096bbd53ba862ac37dd06fbacc9f7428bc09ff6e8"
+  }
+}

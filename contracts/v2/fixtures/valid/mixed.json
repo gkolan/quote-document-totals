@@ -1,0 +1,97 @@
+{
+  "contractVersion": "2.0",
+  "requestId": "REQ-MIXED-001",
+  "quoteId": "a0Q000000000003AAA",
+  "quoteNumber": "Q-00003",
+  "documentType": "Order Form",
+  "revision": 1,
+  "locale": "en-GB",
+  "currencyIsoCode": "GBP",
+  "generatedOn": "2026-09-07T20:02:00.000Z",
+  "fingerprint": "fixture-mixed-v1",
+  "contentVersion": "2026.09",
+  "status": "Ready",
+  "facts": [
+    {
+      "code": "VALID_UNTIL",
+      "label": "Valid until",
+      "displayOrder": 10,
+      "dataType": "Date",
+      "value": "2026-10-07",
+      "sourceIdentity": "QUOTE_EXPIRATION"
+    },
+    {
+      "code": "CONTRACT_VALUE",
+      "label": "Contract value",
+      "displayOrder": 20,
+      "dataType": "Currency",
+      "value": 1250.5,
+      "currencyIsoCode": "GBP",
+      "sourceIdentity": "QUOTE_NET"
+    }
+  ],
+  "sections": [
+    {
+      "sectionType": "Block",
+      "key": "a0Q000000000003AAA:INTRO",
+      "code": "INTRO",
+      "displayOrder": 10,
+      "heading": "Order summary",
+      "body": "The products below are included.",
+      "blockType": "Narrative"
+    },
+    {
+      "sectionType": "Table",
+      "key": "a0Q000000000003AAA:PRODUCTS",
+      "code": "PRODUCTS",
+      "displayOrder": 20,
+      "title": "Products",
+      "columns": [
+        {
+          "code": "LABEL",
+          "label": "Product",
+          "displayOrder": 10,
+          "dataType": "Text"
+        },
+        {
+          "code": "NET",
+          "label": "Net",
+          "displayOrder": 20,
+          "dataType": "Currency",
+          "totalRule": "SUM"
+        }
+      ],
+      "rows": [
+        {
+          "key": "DETAIL:SECURE",
+          "rowType": "Detail",
+          "sourceLineId": "a1Q000000000001AAA",
+          "displayOrder": 10,
+          "label": "Secure <Gateway>",
+          "labelKey": "SECURE_GATEWAY",
+          "values": { "LABEL": "Secure <Gateway>", "NET": 1250.5 },
+          "blocks": [
+            {
+              "code": "ROW_NOTE",
+              "blockType": "Notice",
+              "heading": "Deployment",
+              "body": "Includes setup & validation.",
+              "displayOrder": 10,
+              "placement": "After Row"
+            }
+          ]
+        },
+        {
+          "key": "GRAND_TOTAL",
+          "rowType": "Grand Total",
+          "totalRole": "Grand Total",
+          "displayOrder": 20,
+          "label": "Total",
+          "labelKey": "TOTAL",
+          "values": { "LABEL": "Total", "NET": 1250.5 },
+          "blocks": []
+        }
+      ]
+    }
+  ]
+}

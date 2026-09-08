@@ -1,7 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
     <deploymentStatus>Deployed</deploymentStatus>
-    <description>A typed, persisted document header or party value. Facts use semantic codes instead of Salesforce field API names so any output service can render the same validated snapshot.</description>
+    <description
+  >A typed, persisted document header or party value. Facts use semantic codes instead of Salesforce field API names so any output service can render the same validated snapshot.</description>
     <enableActivities>false</enableActivities>
     <enableHistory>false</enableHistory>
     <enableReports>true</enableReports>
@@ -13,6 +14,6 @@
         <type>AutoNumber</type>
     </nameField>
     <pluralLabel>Quote Document Facts</pluralLabel>
-    <sharingModel>ReadWrite</sharingModel>
+    <sharingModel>Private</sharingModel>
     <visibility>Public</visibility>
 </CustomObject>

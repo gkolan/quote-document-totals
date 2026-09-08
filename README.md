@@ -44,6 +44,20 @@ The expected net total is **$15,800**, with the optional $2,000 kept separate. T
 
 These are illustrative values from the [worked example](docs/use-case/01-product-family-summary.md), not a screenshot or a recorded test run. The installation does not create this Quote automatically.
 
+### Run the document example locally
+
+You can validate a complete sample payload and render a deterministic HTML document without a Salesforce org:
+
+```bash
+npm ci
+npm run test:renderer-contract
+npm run render:reference-document -- --input contracts/v2/fixtures/valid/mixed.json --output-dir artifacts/reference-document --expected-request-id REQ-MIXED-001 --expected-fingerprint fixture-mixed-v1
+```
+
+Open `artifacts/reference-document/quote-document.html`. It contains tables and content blocks from the checked fixture. The accompanying manifest records the input and output hashes. Read the [document contract and reference output guide](docs/document-integration-contract.md) for the data contract, expected values, and current limits.
+
+After deploying to a CPQ test org, the [live document export guide](docs/document-integration-contract.md#export-a-live-generated-document) uses the supplied read-only REST endpoint to retrieve the exact generated result, validate it, and render the same HTML example. Live payloads stay under the ignored `artifacts/` directory.
+
 ## How it works
 
 **The Quote supplies the values. Custom Metadata defines how to organize them. Apex builds and checks the result before it is made available for a document.**
@@ -83,7 +97,7 @@ Saving document records makes the result reviewable, but adds storage, permissio
 
 ## Scope and current status
 
-The repository includes a Quote action and Flow, Apex generation and tests, Custom Metadata, generated-record objects, a permission set, and review reports. Table examples cover product families, charge types, bundles, discounts, optional products, schedules, and Quote changes. Some examples ship inactive and require configuration or org-specific validation; check the status in each [use-case guide](docs/use-case/README.md).
+The repository includes a Quote action and Flow, Apex generation and tests, Custom Metadata, generated-record objects, separate access roles, and review reports. Table examples cover product families, charge types, bundles, discounts, optional products, schedules, and Quote changes. Some examples ship inactive and require configuration or org-specific validation; check the status in each [use-case guide](docs/use-case/README.md).
 
 Salesforce CPQ remains responsible for commercial pricing. This project prepares document data; it does not install CPQ, provide a complete DocuSign CLM integration, create or send a PDF from the Quote action, or collect signatures. A document tool must be connected separately.
 
@@ -107,8 +121,9 @@ The project uses Salesforce API version 67.0; the target org must support it. It
 git clone https://github.com/gkolan/quote-document-totals.git
 cd quote-document-totals
 sf org login web --instance-url https://test.salesforce.com --alias qdt-test
+npm run preflight:install -- --target-org qdt-test --output artifacts/install-preflight.json
 sf project deploy start --target-org qdt-test --source-dir force-app --wait 30
-sf org assign permset --target-org qdt-test --name CPQ_Document_Totals
+sf org assign permset --target-org qdt-test --name CPQ_Document_Totals_Generator
 ```
 
 These commands use a sandbox login. For another CPQ test org, use its login URL as described in the [quick start](docs/quick-start.md). Wait for deployment to succeed before assigning access.
@@ -118,22 +133,27 @@ Next, follow the [quick start](docs/quick-start.md#3-add-the-action-and-review-f
 ## Start here
 
 - [Quick start](docs/quick-start.md) - installation, first use, expected results, and common problems.
+- [Install, upgrade, and removal contract](docs/install-upgrade-removal.md) - version identities, prerequisite evidence, rollout, and safe disablement.
+- [Configuration diagnostics](docs/configuration-diagnostics.md) - read-only setup health for administrators and release operators.
+- [Access roles](docs/access-model.md) - generation, retrieval, diagnostics, operations, and compatibility permissions.
+- [License and support decision record](docs/governance-decision-record.md) - concrete owner choices required before a supported release.
 - [Documentation home](docs/README.md) - choose the shortest guide for the task at hand.
 - [Available table examples](docs/use-case/README.md) - what ships and what each example shows.
 - [Configuration and maintenance guide](docs/quote-document-totals-architecture-guide.md) - fields, settings, access, checks, and support steps.
 - [Testing guide](docs/testing-guide.md) - local checks, Salesforce checks, and release evidence.
+- [GitHub publication checklist](docs/github-publication-checklist.md) - repository visibility, branch protection, licensing, release, and post-publication checks.
 - [Roadmap](docs/roadmap.md) - work that is not implemented yet.
 
 ## Explore the implementation
 
 Start with the [architecture view](docs/use-case/architecture-and-flow.md), then follow these parts of the source:
 
-| Area                                      | Code and supporting tests                                                                                                                                                             |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Building and saving a complete result     | [QuoteDocumentGenerator](force-app/main/default/classes/QuoteDocumentGenerator.cls) and [failure-boundary tests](force-app/main/default/classes/QuoteDocumentFailureBoundaryTest.cls) |
-| Reconciling rows and totals               | [QuoteDocumentVerification](force-app/main/default/classes/QuoteDocumentVerification.cls) and [aggregation tests](force-app/main/default/classes/QuoteDocumentAggregationTest.cls)    |
-| Managing overlapping requests             | [QuoteDocumentLifecycle](force-app/main/default/classes/QuoteDocumentLifecycle.cls) and [concurrency tests](force-app/main/default/classes/QuoteDocumentLifecycleConcurrencyTest.cls) |
-| Reading the checked result for a document | [QuoteDocumentRenderService](force-app/main/default/classes/QuoteDocumentRenderService.cls) and [integrity tests](force-app/main/default/classes/QuoteDocumentIntegrityTest.cls)      |
+| Area                                      | Code and supporting tests                                                                                                                                                                                                                                                  |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Building and saving a complete result     | [QuoteDocumentGenerator](force-app/main/default/classes/QuoteDocumentGenerator.cls) and [failure-boundary tests](force-app/main/default/classes/QuoteDocumentFailureBoundaryTest.cls)                                                                                      |
+| Reconciling rows and totals               | [QuoteDocumentVerification](force-app/main/default/classes/QuoteDocumentVerification.cls) and [aggregation tests](force-app/main/default/classes/QuoteDocumentAggregationTest.cls)                                                                                         |
+| Managing overlapping requests             | [QuoteDocumentLifecycle](force-app/main/default/classes/QuoteDocumentLifecycle.cls) and [concurrency tests](force-app/main/default/classes/QuoteDocumentLifecycleConcurrencyTest.cls)                                                                                      |
+| Reading the checked result for a document | [QuoteDocumentRestResource](force-app/main/default/classes/QuoteDocumentRestResource.cls), [QuoteDocumentRenderService](force-app/main/default/classes/QuoteDocumentRenderService.cls), and [REST tests](force-app/main/default/classes/QuoteDocumentRestResourceTest.cls) |
 
 These areas demonstrate Salesforce data modeling, configurable behavior, transaction handling, validation, and automated testing. The tests are available for inspection; their presence alone does not establish a successful run in your org.
 
@@ -143,6 +163,7 @@ The checks that do not require a Salesforce org run with Node.js 20:
 
 ```bash
 npm ci
+npm run audit:dependencies
 npm test
 npm run lint
 npm run prettier:verify
@@ -151,7 +172,7 @@ npm run test:ci-gate
 npm run ci:contributor-versions
 ```
 
-GitHub Actions runs local project checks on pull requests and pushes to `main`. It does not deploy to Salesforce or run Apex tests. `npm test` currently skips LWC tests because no LWC test files are present; `npm run test:ci-gate` runs the contributor-version check's unit tests.
+GitHub Actions runs local project checks on pull requests and pushes to `main`. It does not deploy to Salesforce or run Apex tests. `npm run audit:dependencies` rejects high or critical dependency findings. `npm test` currently skips LWC tests because no LWC test files are present. `npm run test:ci-gate` tests release tooling, permission boundaries, contributor version checks, publication hygiene, the exact Salesforce manifest, and the protected validation command; it then checks the current tracked files and all 525 non-test metadata components.
 
 Apex tests and a Salesforce deployment check require a Salesforce CPQ test org. See the [testing guide](docs/testing-guide.md) for release verification. The optional [demo bootstrap script](scripts/scratch-org-bootstrap.sh) requires Bash and a disposable CPQ test org; it creates and replaces sample data. Use the quick start for your first installation.
 
@@ -165,6 +186,7 @@ Apex tests and a Salesforce deployment check require a Salesforce CPQ test org. 
 ## Contributing and support
 
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
+- Use [SUPPORT.md](SUPPORT.md) and the structured issue forms for public support requests.
 - Report a security concern using [SECURITY.md](SECURITY.md).
 - Use the pull request template and state which Salesforce org checks were completed.
 

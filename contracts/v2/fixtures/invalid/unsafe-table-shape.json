@@ -1,0 +1,46 @@
+{
+  "contractVersion": "2.0",
+  "requestId": "REQ-BAD-002",
+  "quoteId": "a0Q000000000005AAA",
+  "quoteNumber": "Q-00005",
+  "locale": "en-US",
+  "currencyIsoCode": "USD",
+  "generatedOn": "2026-09-07T20:04:00.000Z",
+  "fingerprint": "fixture-invalid-shape",
+  "status": "Ready",
+  "facts": [],
+  "sections": [
+    {
+      "sectionType": "Table",
+      "key": "DUPLICATE",
+      "code": "BAD_TABLE",
+      "displayOrder": 20,
+      "columns": [
+        {
+          "code": "NET",
+          "label": "Net",
+          "displayOrder": 10,
+          "dataType": "Currency"
+        }
+      ],
+      "rows": [
+        {
+          "key": "ROW",
+          "rowType": "Detail",
+          "displayOrder": 10,
+          "label": "Bad",
+          "labelKey": "BAD",
+          "values": { "NET": "125.00" },
+          "blocks": []
+        }
+      ]
+    },
+    {
+      "sectionType": "Block",
+      "key": "DUPLICATE",
+      "code": "BAD_BLOCK",
+      "displayOrder": 10,
+      "body": "Missing block type"
+    }
+  ]
+}

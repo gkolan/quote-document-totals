@@ -131,7 +131,7 @@ See [Apex row adjustment guide](use-case/43-registered-apex-row-adjustment.md) o
 
 ## Access and page setup
 
-Assign the **CPQ Document Totals** permission set to anyone who needs to generate or review the saved tables.
+Assign **CPQ Document Totals - Generator** to people who generate and review saved tables. Assign the separate Retrieval role only to the document integration principal. See [Access roles](access-model.md).
 
 On the Quote page, add:
 
@@ -141,7 +141,7 @@ On the Quote page, add:
 - **Document Data Error**; and
 - the **Quote Document Tables** related list.
 
-The permission set gives broad access to Quote Document Table and Quote Document Row records. Review the sharing needs of the org before assigning it broadly.
+The Generator permission set exposes the action and grants read-only access to generated records. Generated Tables, Blocks, and Facts use private sharing. Verify ownership and sharing with representative generating and retrieving users before production rollout.
 
 ## Review the result
 
@@ -161,7 +161,7 @@ The Salesforce report and the document should show the same saved values.
 | What you see                         | What to do                                                                                            |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | The action is missing                | Add **Generate Document Tables** to the Quote page layout and check Flow access                       |
-| Access error                         | Assign the **CPQ Document Totals** permission set and review object and field access                  |
+| Access error                         | Assign **CPQ Document Totals - Generator** and review object, field, and Quote record access          |
 | Status is Failed                     | Read **Document Data Error**, correct the named Quote data or setting, and generate again             |
 | Status is Stale                      | Save all Quote changes and generate again                                                             |
 | A table is missing                   | Confirm its Quote Document Table Def record is active and deployed                                    |

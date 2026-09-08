@@ -3,6 +3,11 @@
 #
 
 **/staticresources/**
+# The XML formatter rewrites Flow API names in these permission sets into
+# invalid values ending in a semicolon. Keep this deployable XML hand-formatted.
+force-app/main/default/permissionsets/CPQ_Document_Totals.permissionset-meta.xml
+force-app/main/default/permissionsets/CPQ_Document_Totals_Generator.permissionset-meta.xml
+contracts/v2/golden/*.html
 .localdevserver
 .sfdx
 .sf
@@ -12,6 +17,19 @@ coverage/
 
 # Local planning, editor, and AI-assistant files
 specs/
+bugs/
+enhancements/
+repository-review/
+implementation-evidence/
+research/
+internal/
+development/
+scripts/ci/check-repository-review.js
+scripts/ci/check-repository-review.test.js
+reports/
+test-results/
+results/
+tmp/
 .idea/
 *.code-workspace
 .claude/

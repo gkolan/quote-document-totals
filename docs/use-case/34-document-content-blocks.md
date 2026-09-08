@@ -19,7 +19,7 @@ One ordered, versioned **Quote Document Block** record per active **Quote Docume
 You need:
 
 - this package deployed to a sandbox;
-- the `CPQ_Document_Totals` permission set;
+- the `CPQ_Document_Totals_Generator` permission set;
 - access to **Setup → Custom Metadata Types**;
 - a calculated test Quote with the **Generate Document Tables** action;
 - the language that the test Quote will use; and

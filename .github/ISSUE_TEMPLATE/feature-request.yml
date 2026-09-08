@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose a supported outcome with a concrete adoption need.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Needed outcome
+      description: Describe what an installer or document user needs to accomplish.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current limitation
+      description: Link current documentation and explain where the supported path stops.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Acceptance evidence
+      description: State the fixture, expected result, access boundary, and operational proof that would establish completion.
+    validations:
+      required: true
+  - type: dropdown
+    id: demand
+    attributes:
+      label: Adoption evidence
+      description: Select the strongest evidence currently available.
+      options:
+        - Required by an active pilot
+        - Required by an evaluated organization
+        - Repeated maintainer request
+        - Proposed for investigation
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Data handling
+      options:
+        - label: This request contains no credentials, customer data, org URLs, or private record identifiers.
+          required: true

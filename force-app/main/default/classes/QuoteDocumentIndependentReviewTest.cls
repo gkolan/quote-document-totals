@@ -148,14 +148,19 @@ private class QuoteDocumentIndependentReviewTest {
     QuoteDocumentGenerator.generate(new Set<Id>{ quoteId });
     Test.stopTest();
 
-    List<Quote_Document_Table__c> scope = [
+    List<SBQQ__Quote__c> scope = [
       SELECT Id
+      FROM SBQQ__Quote__c
+      WHERE Id = :quoteId
+    ];
+    Integer tableCountBeforeRetention = [
+      SELECT COUNT()
       FROM Quote_Document_Table__c
       WHERE Quote__c = :quoteId
     ];
     Assert.isFalse(
       scope.isEmpty(),
-      'The fixture must have generated something to retain.'
+      'The generated Quote must be available to the retention scope.'
     );
 
     // The status changes AFTER the scope was captured - the race the fix is about.
@@ -164,7 +169,7 @@ private class QuoteDocumentIndependentReviewTest {
     new QuoteDocumentRetention().execute(null, scope);
 
     Assert.areEqual(
-      scope.size(),
+      tableCountBeforeRetention,
       [SELECT COUNT() FROM Quote_Document_Table__c WHERE Quote__c = :quoteId],
       'An accepted quote must never be purged, even when it was eligible at selection time.'
     );
@@ -190,10 +195,10 @@ private class QuoteDocumentIndependentReviewTest {
 
     update new SBQQ__Quote__c(Id = quoteId, SBQQ__Status__c = 'Rejected');
 
-    List<Quote_Document_Table__c> scope = [
+    List<SBQQ__Quote__c> scope = [
       SELECT Id
-      FROM Quote_Document_Table__c
-      WHERE Quote__c = :quoteId
+      FROM SBQQ__Quote__c
+      WHERE Id = :quoteId
     ];
     new QuoteDocumentRetention().execute(null, scope);
 

@@ -9,9 +9,10 @@
  *
  *   sf apex run --target-org <alias> --file scripts/apex/quote-document-seed.apex
  *
- * Re-runnable. Everything it creates is tagged with SEED_TAG on the Account
- * name, and the script deletes prior seed data before rebuilding. It will not
- * touch records it did not create.
+ * Re-runnable in a disposable test org. The script deletes accounts tagged
+ * with SEED_TAG, their CPQ Quotes, and every product whose Product Code starts
+ * with SEED- before rebuilding. Do not run it where those identifiers may
+ * belong to data created outside this script.
  *
  * It does NOT call the CPQ Calculate API. Prices are set directly on the lines
  * and CPQ's formula fields compute the totals, which is all the generator
@@ -19,7 +20,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// Teardown - only ever removes previously seeded records.
+// Teardown - removes records identified by the reserved demo markers.
 // ---------------------------------------------------------------------------
 final String SEED_TAG = '[SEED]';
 

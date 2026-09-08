@@ -19,7 +19,7 @@ Salesforce creates one `Quote_Document_Table__c` record for this view and `Quote
 ## Before you start
 
 - Test in a sandbox with a Quote that contains the required Salesforce CPQ data.
-- Confirm the `CPQ_Document_Totals` permission set is assigned.
+- Confirm the `CPQ_Document_Totals_Generator` permission set is assigned.
 - Keep **Active** cleared while completing the configuration. Select it only for a controlled sandbox test.
 - Use a calculated subscription Quote with a start date, end date, and term that agree.
 

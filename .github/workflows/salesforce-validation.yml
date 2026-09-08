@@ -1,0 +1,69 @@
+name: Salesforce release validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quote-document-totals-salesforce-validation
+  cancel-in-progress: false
+
+jobs:
+  validate-salesforce:
+    name: Compile, test, and analyze Salesforce source
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: salesforce-validation
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install project tools
+        run: npm ci
+
+      - name: Install pinned Salesforce tools
+        run: |
+          npm install --global @salesforce/cli@2.146.3
+          echo y | sf plugins install code-analyzer@5.15.0
+
+      - name: Authenticate protected CPQ validation org
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: |
+          if [ -z "$SFDX_AUTH_URL" ]; then
+            echo "The salesforce-validation environment must provide SFDX_AUTH_URL." >&2
+            exit 1
+          fi
+          printf '%s' "$SFDX_AUTH_URL" |
+            sf org login sfdx-url --sfdx-url-stdin --alias qdt-ci --set-default
+
+      - name: Verify CPQ prerequisite
+        run: sf sobject describe --sobject SBQQ__Quote__c --target-org qdt-ci --json
+
+      - name: Validate exact source with every repository Apex test
+        run: npm run validate:salesforce -- --target-org qdt-ci --output-dir artifacts/salesforce
+
+      - name: Run Salesforce Code Analyzer
+        run: |
+          mkdir -p artifacts/code-analyzer
+          sf code-analyzer run \
+            --workspace force-app/main/default/classes \
+            --severity-threshold 3 \
+            --output-file artifacts/code-analyzer/results.json \
+            --output-file artifacts/code-analyzer/results.sarif
+
+      - name: Retain release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salesforce-validation-${{ github.sha }}
+          path: artifacts
+          if-no-files-found: warn
+          retention-days: 30
