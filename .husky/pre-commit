@@ -1,1 +1,2 @@
-npm run precommit
+# Use Node directly so Windows Git clients do not need npm's Bash launcher.
+node node_modules/lint-staged/bin/lint-staged.js

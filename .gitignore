@@ -34,6 +34,9 @@ code-analyzer-results-*.log
 
 # Local test and review output
 review-artifacts/
+/artifacts/
+/implementation-evidence/
+/repository-review/
 **/testresults/
 scripts/qdtd/run-slice.generated.apex
 robot/**/results/
