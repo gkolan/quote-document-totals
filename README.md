@@ -1,34 +1,45 @@
 # Quote Document Totals for Salesforce CPQ
 
-**Turn Salesforce quote line items into checked summaries for proposals and order forms.**
+**Build and check customer document tables from Salesforce CPQ Quote Lines.**
 
-A priced Quote still needs a readable customer summary. This project groups products, separates optional items, and checks totals in Salesforce, so each document template does not have to repeat those rules.
+A customer may need a summary by product family, a payment schedule, or a separate list of optional products. Quote Document Totals builds these tables from a priced Quote and saves them in Salesforce. You can review the rows and totals before your document tool uses them in a proposal or order form.
 
-**Priced Quote → Generate Document Tables → Review saved summaries → Create a document with your connected tool**
+**[Explore use cases](docs/use-case/README.md)** · **[Find your scenario](#find-your-scenario)** · **[See an example](#a-concrete-example)** · **[Quick start](docs/quick-start.md)** · **[Documentation](docs/README.md)**
 
-**[Quick start](docs/quick-start.md)** · **[See an example](#a-concrete-example)** · **[How it works](docs/how-quote-document-totals-works.md)** · **[Explore the code](#explore-the-implementation)**
+Salesforce CPQ (Configure, Price, Quote) calculates the prices. This project prepares and checks the data for proposals and order forms. Creating a PDF, sending a document, and collecting signatures require a separate document tool and integration.
 
-Requires a Salesforce CPQ test org. Produces document data; connect a document tool separately to create the final file.
+> **Status: Active development.** Start in a Salesforce CPQ sandbox or disposable test org. Updates may break existing setups; validate your use cases before production use.
 
-> **Status: Active development.** Updates may break existing setups, and bugs or incomplete behavior are possible. Try it in a sandbox or disposable CPQ test org and validate your use cases before production use.
+## What makes this project useful
 
-## Why this project exists
+If several document templates use the same Quote data, maintaining filters and totals in each template takes time. This project lets you keep those rules in Salesforce and reuse the saved results.
 
-Salesforce CPQ (Configure, Price, Quote) holds the products, quantities, discounts, and calculated prices for a deal. Customer documents need those values arranged into summaries, bundle details, optional items, or schedules.
+- Create a product-family summary, bundle details, and optional-product list from the same Quote. Choose the lines, grouping, and columns for each table.
+- Change labels, filters, display order, and wording through Custom Metadata. These are configuration records in Salesforce Setup. New business rules may still need Flow or Apex code.
+- Check totals before creating a document. The project checks which rows contribute to each total and compares payable tables with the CPQ Quote amount.
+- Include only the sections the Quote needs. For example, an order form can omit Hardware when there are no matching lines. Follow the [dynamic order-form guide](docs/dynamic-order-form-composition.md) to configure sections and notes.
+- Review saved tables, rows, and text in Salesforce related lists and reports. Generation status shows whether the result is ready or needs attention.
 
-Getting the price right is only part of preparing a customer document. The document also has to answer questions such as:
+## Find your scenario
 
-- How much is the customer buying in each product family?
-- Which charges recur, and which are one-time?
-- Which products belong to a bundle?
-- Which items are optional and must stay out of the payable total?
-- Do the displayed subtotals agree with the underlying Quote Lines?
+Start with the customer question you need the document to answer. These guides include Salesforce setup steps, worked examples, checks, and troubleshooting.
 
-When each document template defines its own grouping, filters, and totals, those rules can be duplicated across templates. A change then requires checking every affected template, and a mismatched number can be difficult to trace back to Salesforce.
+| Customer question or requirement                        | Start with                                                                                                                                 | What is included                                                 |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| A short summary by product family                       | [Product Family Summary](docs/use-case/01-product-family-summary.md)                                                                       | Active table definition; a good first example                    |
+| One-time and recurring charges separately               | [Charge Type Summary](docs/use-case/02-charge-type-summary.md)                                                                             | Active table definition                                          |
+| A package and the products inside it                    | [Bundle Detail](docs/use-case/04-bundle-detail.md)                                                                                         | Active table definition                                          |
+| Optional add-ons kept separate from the purchase total  | [Optional Products](docs/use-case/07-optional-products.md)                                                                                 | Active table definition                                          |
+| Prices broken down by month or year                     | [Monthly Breakdown](docs/use-case/08-monthly-subscription-breakdown.md) · [Multi-Year Schedule](docs/use-case/09-multi-year-schedule.md)   | Inactive examples to configure and test                          |
+| Payments at signing, delivery, and acceptance           | [Payment Installments](docs/use-case/10-payment-installments.md)                                                                           | Schedule records included; table setup required                  |
+| Costs divided among departments or locations            | [Cost Allocation](docs/use-case/15-cost-allocation.md)                                                                                     | Allocation support included; table setup required                |
+| Basic, recommended, and premium options                 | [Alternative Proposals](docs/use-case/27-alternative-proposals.md)                                                                         | Separate-table support included; option and table setup required |
+| What changed in an amendment or renewal                 | [Amendment Before-and-After](docs/use-case/17-amendment-before-after.md) · [Renewal Schedule](docs/use-case/18-renewal-coterm-schedule.md) | Provisional; validate with real CPQ amendment or renewal data    |
+| An order form with only the relevant sections and notes | [Dynamic Order Form](docs/dynamic-order-form-composition.md)                                                                               | Configuration walkthrough                                        |
 
-**The goal is to define and check the document's data in Salesforce, then let the document tool handle presentation.** A saved table can be inspected before it reaches a customer. Its grouping, labels, and amounts have an explicit source that can be configured and tested.
+**[All 43 use-case guides and 57 additional design patterns](docs/use-case/README.md)**
 
-This is useful when a Quote needs several commercial views of the same line items, or when document rules need to be maintained separately from document layout.
+The catalog also covers discounts, usage tiers, customer product numbers, translated labels, and document text. Each guide lists the included records, required setup, and checks to run. Test active definitions in your sandbox too. The additional design patterns describe possible configurations; they are not installed features.
 
 ## A concrete example
 
@@ -44,23 +55,11 @@ The expected net total is **$15,800**, with the optional $2,000 kept separate. T
 
 These are illustrative values from the [worked example](docs/use-case/01-product-family-summary.md), not a screenshot or a recorded test run. The installation does not create this Quote automatically.
 
-### Run the document example locally
-
-You can validate a complete sample payload and render a deterministic HTML document without a Salesforce org:
-
-```bash
-npm ci
-npm run test:renderer-contract
-npm run render:reference-document -- --input contracts/v2/fixtures/valid/mixed.json --output-dir artifacts/reference-document --expected-request-id REQ-MIXED-001 --expected-fingerprint fixture-mixed-v1
-```
-
-Open `artifacts/reference-document/quote-document.html`. It contains tables and content blocks from the checked fixture. The accompanying manifest records the input and output hashes. Read the [document contract and reference output guide](docs/document-integration-contract.md) for the data contract, expected values, and current limits.
-
-After deploying to a CPQ test org, the [live document export guide](docs/document-integration-contract.md#export-a-live-generated-document) uses the supplied read-only REST endpoint to retrieve the exact generated result, validate it, and render the same HTML example. Live payloads stay under the ignored `artifacts/` directory.
-
 ## How it works
 
-**The Quote supplies the values. Custom Metadata defines how to organize them. Apex builds and checks the result before it is made available for a document.**
+**Priced Quote → Generate Document Tables → Review saved summaries → Create a document with your connected tool**
+
+The Quote supplies the values, and Custom Metadata defines how to organize them. A Flow starts generation. The included Apex code builds the tables and checks the result. Apex is the programming language used for this work in Salesforce.
 
 ```mermaid
 flowchart TD
@@ -82,26 +81,17 @@ After relevant Quote changes, generate again. Correct the Quote or its settings 
 
 Read **[How Quote Document Totals works](docs/how-quote-document-totals-works.md)** for the Salesforce walkthrough, status meanings, configuration, and troubleshooting. See **[Architecture and Flow diagrams](docs/use-case/architecture-and-flow.md)** for the saved data model and generation flow, or use the **[quick start](docs/quick-start.md)** to try it.
 
-## Design challenges and decisions
+## Choose your next step
 
-| Challenge                                                             | How the project addresses it                                                                                                                                                       |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| One Quote needs several different summaries                           | Table definitions separate line selection, grouping, columns, and display order. Common changes use Custom Metadata instead of a new Apex implementation.                          |
-| Detail rows, subtotals, and optional items can be counted incorrectly | Row roles and inclusion rules distinguish contributions from calculated totals. Verification reconciles rows and totals, with comparison to the CPQ Quote amount where applicable. |
-| A failure could leave only part of a document's data updated          | Generation saves the result together and rolls back failed work. A partial result must not become Ready.                                                                           |
-| Saved output can become outdated or be changed after generation       | Input change checks and saved-output integrity checks determine whether an existing result can be reused. Document reads validate the expected generation identity.                |
-| Two requests can try to generate the same Quote                       | Generation ownership checks reject competing or superseded requests, with handling for abandoned work.                                                                             |
-| Different document tools could interpret the same Quote differently   | Salesforce saves ordered content and exposes a shared read service. Each integration is responsible for formatting and delivery using that result.                                 |
+| Task                                              | Read this                                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Install and generate your first table             | [Quick start](docs/quick-start.md)                                                      |
+| Understand the process before changing Salesforce | [How Quote Document Totals works](docs/how-quote-document-totals-works.md)              |
+| Configure fields, rules, access, and checks       | [Configuration and maintenance guide](docs/quote-document-totals-architecture-guide.md) |
+| Find another guide                                | [Documentation home](docs/README.md)                                                    |
+| See what is still planned                         | [Roadmap](docs/roadmap.md)                                                              |
 
-Saving document records makes the result reviewable, but adds storage, permissions, and regeneration responsibilities. Configurable rules cover supported cases; new business behavior can still require Apex and additional tests. These are design choices implemented in source, not a claim that every CPQ configuration has been verified.
-
-## Scope and current status
-
-The repository includes a Quote action and Flow, Apex generation and tests, Custom Metadata, generated-record objects, separate access roles, and review reports. Table examples cover product families, charge types, bundles, discounts, optional products, schedules, and Quote changes. Some examples ship inactive and require configuration or org-specific validation; check the status in each [use-case guide](docs/use-case/README.md).
-
-Salesforce CPQ remains responsible for commercial pricing. This project prepares document data; it does not install CPQ, provide a complete DocuSign CLM integration, create or send a PDF from the Quote action, or collect signatures. A document tool must be connected separately.
-
-Without a CPQ org, you can review the example, explore the source below, and run local checks. Running the Salesforce feature requires a CPQ test org.
+For installation planning and ongoing support, see [install, upgrade, and removal](docs/install-upgrade-removal.md), [access roles](docs/access-model.md), and [configuration diagnostics](docs/configuration-diagnostics.md). Release owners can use the [license and support decisions](docs/governance-decision-record.md) and [publication checklist](docs/github-publication-checklist.md).
 
 ## Before you install
 
@@ -130,19 +120,40 @@ These commands use a sandbox login. For another CPQ test org, use its login URL 
 
 Next, follow the [quick start](docs/quick-start.md#3-add-the-action-and-review-fields) to add the Quote action and **Document Tables** related list, generate your first table, and check the report. The active Custom Metadata records decide which tables Salesforce creates.
 
-## Start here
+## Scope and current status
 
-- [Quick start](docs/quick-start.md) - installation, first use, expected results, and common problems.
-- [Install, upgrade, and removal contract](docs/install-upgrade-removal.md) - version identities, prerequisite evidence, rollout, and safe disablement.
-- [Configuration diagnostics](docs/configuration-diagnostics.md) - read-only setup health for administrators and release operators.
-- [Access roles](docs/access-model.md) - generation, retrieval, diagnostics, operations, and compatibility permissions.
-- [License and support decision record](docs/governance-decision-record.md) - concrete owner choices required before a supported release.
-- [Documentation home](docs/README.md) - choose the shortest guide for the task at hand.
-- [Available table examples](docs/use-case/README.md) - what ships and what each example shows.
-- [Configuration and maintenance guide](docs/quote-document-totals-architecture-guide.md) - fields, settings, access, checks, and support steps.
-- [Testing guide](docs/testing-guide.md) - local checks, Salesforce checks, and release evidence.
-- [GitHub publication checklist](docs/github-publication-checklist.md) - repository visibility, branch protection, licensing, release, and post-publication checks.
-- [Roadmap](docs/roadmap.md) - work that is not implemented yet.
+The repository includes a Quote action and Flow, Apex generation and tests, Custom Metadata, generated-record objects, separate access roles, and review reports. Installation deploys Salesforce source; the Quote action generates document data. It does not install CPQ or provide a complete DocuSign CLM integration.
+
+A connected document tool must use the saved values and handle layout and delivery. It should not calculate pricing or totals again. Without a CPQ org, you can explore the examples and source and run the local checks below.
+
+Test with your own products, pricing rules, and document tool before production use. Some advanced Quote-change examples need validation against real amendment and renewal data. Report links open saved Salesforce reports; one-click Quote filtering is still planned where a guide says so.
+
+## Design challenges and decisions
+
+| Challenge                                                             | How the project addresses it                                                                                                                                                       |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One Quote needs several different summaries                           | Table definitions separate line selection, grouping, columns, and display order. Common changes use Custom Metadata instead of a new Apex implementation.                          |
+| Detail rows, subtotals, and optional items can be counted incorrectly | Row roles and inclusion rules distinguish contributions from calculated totals. Verification reconciles rows and totals, with comparison to the CPQ Quote amount where applicable. |
+| A failure could leave only part of a document's data updated          | Generation saves the result together and rolls back failed work. A partial result must not become Ready.                                                                           |
+| Saved output can become outdated or be changed after generation       | Input change checks and saved-output integrity checks determine whether an existing result can be reused. Document reads validate the expected generation identity.                |
+| Two requests can try to generate the same Quote                       | Generation ownership checks reject competing or superseded requests, with handling for abandoned work.                                                                             |
+| Different document tools could interpret the same Quote differently   | Salesforce saves ordered content and exposes a shared read service. Each integration is responsible for formatting and delivery using that result.                                 |
+
+Saving document records makes the result reviewable, but adds storage, permissions, and regeneration responsibilities. Configurable rules cover supported cases; new business behavior can still require Apex and additional tests. These are design choices implemented in source, not a claim that every CPQ configuration has been verified.
+
+### Run the document example locally
+
+You can validate a complete sample payload and render a deterministic HTML document without a Salesforce org:
+
+```bash
+npm ci
+npm run test:renderer-contract
+npm run render:reference-document -- --input contracts/v2/fixtures/valid/mixed.json --output-dir artifacts/reference-document --expected-request-id REQ-MIXED-001 --expected-fingerprint fixture-mixed-v1
+```
+
+Open `artifacts/reference-document/quote-document.html`. It contains tables and content blocks from the checked fixture. The accompanying manifest records the input and output hashes. Read the [document contract and reference output guide](docs/document-integration-contract.md) for the data contract, expected values, and current limits.
+
+After deploying to a CPQ test org, the [live document export guide](docs/document-integration-contract.md#export-a-live-generated-document) uses the supplied read-only REST endpoint to retrieve the exact generated result, validate it, and render the same HTML example. Live payloads stay under the ignored `artifacts/` directory.
 
 ## Explore the implementation
 
@@ -155,7 +166,7 @@ Start with the [architecture view](docs/use-case/architecture-and-flow.md), then
 | Managing overlapping requests             | [QuoteDocumentLifecycle](force-app/main/default/classes/QuoteDocumentLifecycle.cls) and [concurrency tests](force-app/main/default/classes/QuoteDocumentLifecycleConcurrencyTest.cls)                                                                                      |
 | Reading the checked result for a document | [QuoteDocumentRestResource](force-app/main/default/classes/QuoteDocumentRestResource.cls), [QuoteDocumentRenderService](force-app/main/default/classes/QuoteDocumentRenderService.cls), and [REST tests](force-app/main/default/classes/QuoteDocumentRestResourceTest.cls) |
 
-These areas demonstrate Salesforce data modeling, configurable behavior, transaction handling, validation, and automated testing. The tests are available for inspection; their presence alone does not establish a successful run in your org.
+The linked tests show the cases covered in source. Run the Salesforce checks in your own CPQ test org before relying on the results.
 
 ## Test the project
 
@@ -175,13 +186,6 @@ npm run ci:contributor-versions
 GitHub Actions runs local project checks on pull requests and pushes to `main`. It does not deploy to Salesforce or run Apex tests. `npm run audit:dependencies` rejects high or critical dependency findings. `npm test` currently skips LWC tests because no LWC test files are present. `npm run test:ci-gate` tests release tooling, permission boundaries, contributor version checks, publication hygiene, the exact Salesforce manifest, and the protected validation command; it then checks the current tracked files and all 525 non-test metadata components.
 
 Apex tests and a Salesforce deployment check require a Salesforce CPQ test org. See the [testing guide](docs/testing-guide.md) for release verification. The optional [demo bootstrap script](scripts/scratch-org-bootstrap.sh) requires Bash and a disposable CPQ test org; it creates and replaces sample data. Use the quick start for your first installation.
-
-## Important limits
-
-- Test in your own CPQ org before production use. CPQ fields, pricing rules, document tools, and page layouts differ between orgs.
-- Some advanced Quote-change examples require validation against real amendment and renewal data. Each use-case guide states its current status.
-- A document tool must read the saved Quote Document Table and Quote Document Row records. It should not calculate the totals again.
-- Report links open saved Salesforce reports; one-click Quote filtering is still planned where a guide says so.
 
 ## Contributing and support
 
