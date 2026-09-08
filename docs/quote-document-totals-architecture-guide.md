@@ -32,7 +32,7 @@ You need:
 
 - Salesforce CPQ installed and configured;
 - this project deployed to a sandbox;
-- the `CPQ_Document_Totals` permission set;
+- the `CPQ_Document_Totals_Generator` permission set;
 - permission to manage Custom Metadata when changing definitions;
 - a calculated Quote with representative Quote Lines; and
 - an agreed result that can be checked against Salesforce.
@@ -98,7 +98,7 @@ One record stores a typed document value such as Customer, Billing Address, Quot
 
 ## What controls the result
 
-The project has nine Custom Metadata Types:
+The project has ten Custom Metadata Types:
 
 | Custom Metadata Type             | Purpose                                                                    |
 | -------------------------------- | -------------------------------------------------------------------------- |
@@ -111,6 +111,7 @@ The project has nine Custom Metadata Types:
 | Quote Document Schedule          | Named periods or milestones and their allocation weights                   |
 | Quote Document Condition         | Typed rules that select the Quote Lines included in a Table                |
 | Quote Document Composer          | Approved Apex or Flow that can add complete Tables, Rows, Blocks, or Facts |
+| Quote Document Watched Field     | Subscriber-owned direct Quote fields added to staleness and fingerprints   |
 
 Custom Metadata describes the result. It does not itself create generated records.
 
@@ -208,7 +209,7 @@ Reports do not calculate document totals. They display the saved result.
 
 ## Access and ownership
 
-Assign `CPQ_Document_Totals` to users who generate or support document data. Limit Custom Metadata changes, Flow activation, Apex deployment, and legal wording changes through the organization's normal release controls.
+Assign `CPQ_Document_Totals_Generator` to users who generate document data. Assign Retrieval, Admin, and Operations only to the principals responsible for those actions; see [Access roles](access-model.md). Limit Custom Metadata changes, Flow activation, Apex deployment, and legal wording changes through the organization's normal release controls.
 
 | Change                                              | Required owner                                   |
 | --------------------------------------------------- | ------------------------------------------------ |

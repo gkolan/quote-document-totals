@@ -1,0 +1,29 @@
+{
+  "renderer": {
+    "name": "quote-document-totals-reference-html",
+    "version": "1.0.0"
+  },
+  "contractVersions": ["2.0"],
+  "mediaTypes": ["text/html; charset=utf-8"],
+  "capabilities": {
+    "multipleTables": true,
+    "nestedGrouping": "displayed through row order and group level; no visual indentation guarantee",
+    "blocks": true,
+    "rowBlocks": true,
+    "unicode": true,
+    "rightToLeftLayout": false,
+    "accessibleTaggedPdf": false,
+    "semanticHtml": true,
+    "images": false,
+    "currencyLocalization": true,
+    "dateLocalization": false,
+    "digitalSignatures": false,
+    "passwordProtection": false,
+    "pagination": false
+  },
+  "limits": {
+    "maximumPayloadBytes": null,
+    "maximumOutputBytes": null,
+    "status": "unmeasured"
+  }
+}

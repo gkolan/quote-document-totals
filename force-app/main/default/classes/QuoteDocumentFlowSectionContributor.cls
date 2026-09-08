@@ -46,26 +46,31 @@ public with sharing class QuoteDocumentFlowSectionContributor {
     return output;
   }
 
+  @TestVisible
   private static List<Quote_Document_Table__c> tables(Object value) {
     return value == null
       ? new List<Quote_Document_Table__c>()
       : (List<Quote_Document_Table__c>) value;
   }
+  @TestVisible
   private static List<Quote_Document_Column__c> columns(Object value) {
     return value == null
       ? new List<Quote_Document_Column__c>()
       : (List<Quote_Document_Column__c>) value;
   }
+  @TestVisible
   private static List<Quote_Document_Row__c> rows(Object value) {
     return value == null
       ? new List<Quote_Document_Row__c>()
       : (List<Quote_Document_Row__c>) value;
   }
+  @TestVisible
   private static List<Quote_Document_Block__c> blocks(Object value) {
     return value == null
       ? new List<Quote_Document_Block__c>()
       : (List<Quote_Document_Block__c>) value;
   }
+  @TestVisible
   private static List<Quote_Document_Fact__c> facts(Object value) {
     return value == null
       ? new List<Quote_Document_Fact__c>()

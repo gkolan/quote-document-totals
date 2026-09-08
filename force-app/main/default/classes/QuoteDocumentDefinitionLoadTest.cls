@@ -116,7 +116,9 @@ private class QuoteDocumentDefinitionLoadTest {
   @IsTest
   static void aTableWithNoGroupingLoadsWhenAContributorBuildsItsRows() {
     Quote_Document_Table_Def__mdt record = def('LOAD_CONTRIBUTOR_ONLY');
-    record.Row_Customizer_Code__c = QuoteDocumentMonthlyRowCustomizer.CODE;
+    // Any registered customizer proves the point; this test is about the
+    // grouping exemption, not about which contributor claims it.
+    record.Row_Customizer_Code__c = 'ESTIMATED_TAX';
     record.Row_Customizer_Version__c = '1';
     record.Cache_Policy__c = QuoteDocumentTableDefinition.CACHE_STANDARD;
 

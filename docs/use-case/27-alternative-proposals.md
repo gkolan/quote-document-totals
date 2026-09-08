@@ -17,7 +17,7 @@ Salesforce creates one or more `Quote_Document_Table__c` records and the related
 ## Before you start
 
 - Test in a sandbox with a Quote that contains the required Salesforce CPQ data.
-- Assign the `CPQ_Document_Totals` permission set.
+- Assign the `CPQ_Document_Totals_Generator` permission set.
 - Keep **Active** cleared while completing the configuration. Select it only for a controlled sandbox test.
 - Create a Quote Line picklist named **Proposal Option** with API name `Proposal_Option__c` and values Basic, Recommended, and Premium; populate every option line.
 

@@ -28,7 +28,7 @@ Grand Total                  $17,000      ($1,200)     $15,800
 You need:
 
 - Salesforce CPQ and this package deployed to a sandbox;
-- the `CPQ_Document_Totals` permission set;
+- the `CPQ_Document_Totals_Generator` permission set;
 - the **Generate Document Tables** action on the Quote page;
 - at least one calculated Quote with non-optional Quote Lines; and
 - a Product Family value on every Product used by the test Quote.

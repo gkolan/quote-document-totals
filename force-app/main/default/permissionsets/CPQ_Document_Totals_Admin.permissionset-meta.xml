@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses>
+        <apexClass>QuoteDocumentConfigurationDiagnostics</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <description
+  >Run read-only Quote Document Totals configuration diagnostics. Assign only to administrators and release operators who already have access to the referenced CPQ and project metadata.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>CPQ Document Totals Admin</label>
+</PermissionSet>

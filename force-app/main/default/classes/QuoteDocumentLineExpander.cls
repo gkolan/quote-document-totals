@@ -12,9 +12,12 @@
  * An expander runs BEFORE QuoteDocumentRowBuilder and hands it a longer list
  * of lines, each stamped with the bucket it belongs to. Everything downstream -
  * grouping, subtotals, ordering, labels, verification - is untouched code.
- * QuoteDocumentMonthlyRowCustomizer took the other route, replacing the
- * builder's rows entirely, and paid for it by re-implementing grouping,
- * subtotals and ordering that already existed.
+ *
+ * MONTHLY_SUBSCRIPTION_SUMMARY took the other route first, as a row customizer
+ * that replaced the builder's rows entirely, and paid for it by re-implementing
+ * grouping, subtotals and ordering that already existed - and by having no
+ * concept of a charge type, so an undated setup fee printed as twelve equal
+ * monthly instalments. It runs on this seam now and that class is gone.
  *
  * The practical consequence: because the bucket is an ordinary grouping
  * dimension (EXPANSION), "year then product family" and "product family then

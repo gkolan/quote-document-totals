@@ -1,0 +1,27 @@
+{
+  "contractVersion": "2.0",
+  "requestId": "REQ-BLOCK-001",
+  "quoteId": "a0Q000000000002AAA",
+  "quoteNumber": "Q-00002",
+  "locale": "en-US",
+  "currencyIsoCode": "USD",
+  "generatedOn": "2026-09-07T20:01:00.000Z",
+  "fingerprint": "fixture-block-only-v1",
+  "status": "Ready",
+  "facts": [],
+  "sections": [
+    {
+      "sectionType": "Block",
+      "key": "a0Q000000000002AAA:TERMS",
+      "code": "TERMS",
+      "displayOrder": 10,
+      "locale": "en-US",
+      "sourceVersion": "1",
+      "sourceIdentity": "TERMS:en-US:1",
+      "approvalIdentity": "LEGAL-2026-01",
+      "heading": "Commercial terms",
+      "body": "Payment is due within 30 days.",
+      "blockType": "Terms"
+    }
+  ]
+}

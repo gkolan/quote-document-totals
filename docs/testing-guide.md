@@ -10,6 +10,7 @@ Install Node.js 20 dependencies once:
 
 ```bash
 npm ci
+npm run audit:dependencies
 ```
 
 Run:
@@ -22,13 +23,14 @@ npm run test:docs
 npm run test:ci-gate
 ```
 
-| Check                     | What it proves                                                                             |
-| ------------------------- | ------------------------------------------------------------------------------------------ |
-| `npm test`                | Runs Lightning Web Component tests when present; currently reports an explicit skip        |
-| `npm run lint`            | JavaScript follows the project lint rules                                                  |
-| `npm run prettier:verify` | Current documentation and project configuration files are formatted                        |
-| `npm run test:docs`       | Links, plain language, retired references, runbook structure, and source facts are checked |
-| `npm run test:ci-gate`    | Unit tests for the contributor version check pass                                          |
+| Check                        | What it proves                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| `npm run audit:dependencies` | The installed dependency tree has no known high or critical npm advisory                         |
+| `npm test`                   | Runs Lightning Web Component tests when present; currently reports an explicit skip              |
+| `npm run lint`               | JavaScript follows the project lint rules                                                        |
+| `npm run prettier:verify`    | Current documentation and project configuration files are formatted                              |
+| `npm run test:docs`          | Links, plain language, retired references, runbook structure, and source facts are checked       |
+| `npm run test:ci-gate`       | Release tools, repository hygiene, exact manifest coverage, and protected validation are checked |
 
 Run `npm run ci:contributor-versions` to check actual contributor changes. GitHub Actions supplies the pull-request base or exact pre-push commit. A manual run without a base compares with the repository's root commit. After a history rewrite, CI fetches the exact pre-push commit and fails if it remains unavailable; it never substitutes an unverified comparison.
 
@@ -40,7 +42,9 @@ You need:
 - permission to deploy metadata and run Apex tests;
 - a non-production org;
 - the project metadata deployed; and
-- the `CPQ_Document_Totals` permission set assigned to the test operator.
+- the `CPQ_Document_Totals_Generator` permission set assigned to the test operator.
+
+After correctness and access checks pass, use the [capacity benchmark](capacity-benchmark.md) in a disposable CPQ org. Its fixture command mutates synthetic records and its report deliberately refuses to declare a supported envelope from one observation.
 
 Use the shared bootstrap script when its prerequisites match the org:
 
@@ -63,6 +67,8 @@ This compiles the source being reviewed and runs its tests without saving metada
 ```bash
 sf project deploy report --target-org qdt-test --job-id YOUR_DEPLOYMENT_ID --wait 30
 ```
+
+For candidate releases, use the protected [Salesforce release validation](release-validation.md). It enumerates every test class in the candidate checkout, rejects nonterminal jobs and coverage warnings, retains machine-readable results, and runs the checked-in Code Analyzer policy.
 
 Require **Succeeded**, zero component errors, and zero test failures. Review coverage and warnings in the result. A queued or in-progress result is not a pass.
 

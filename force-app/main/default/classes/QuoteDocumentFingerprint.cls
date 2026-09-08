@@ -288,6 +288,13 @@ public with sharing class QuoteDocumentFingerprint {
     parts.add(
       encodeString(QuoteDocumentEnvelope.priorDocumentReference(quote))
     );
+    for (
+      String subscriberPart : QuoteDocumentSubscriberFields.fingerprintParts(
+        quote
+      )
+    ) {
+      parts.add(encodeString(subscriberPart));
+    }
     parts.add(
       encodeString(stringValueIfQueried(quote, 'SBQQ__ExpirationDate__c'))
     );

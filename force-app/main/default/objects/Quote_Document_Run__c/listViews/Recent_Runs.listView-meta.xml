@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Recent_Runs</fullName>
+    <columns>NAME</columns>
+    <columns>Operation_Type__c</columns>
+    <columns>Status__c</columns>
+    <columns>Started_At__c</columns>
+    <columns>Completed_At__c</columns>
+    <columns>Processed_Count__c</columns>
+    <columns>Failed_Count__c</columns>
+    <columns>Platform_Error_Count__c</columns>
+    <filterScope>Everything</filterScope>
+    <label>Recent Runs</label>
+</ListView>

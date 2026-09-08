@@ -34,6 +34,7 @@ code-analyzer-results-*.log
 
 # Local test and review output
 review-artifacts/
+artifacts/
 **/testresults/
 scripts/qdtd/run-slice.generated.apex
 robot/**/results/
@@ -41,6 +42,26 @@ datasets/qdtd/out-*.json
 
 # Local planning and implementation notes (not required by a clone/install)
 /specs/
+/bugs/
+/enhancements/
+/repository-review/
+/implementation-evidence/
+/research/
+/internal/
+/development/
+/scripts/ci/check-repository-review.js
+/scripts/ci/check-repository-review.test.js
+
+# Local reports and temporary working directories. Salesforce report metadata
+# remains versioned under force-app/main/default/reports/.
+/reports/
+/test-results/
+/results/
+/tmp/
+/.tmp-*/
+*.sarif
+junit*.xml
+lcov.info
 
 # Personal editor and AI-assistant setup
 /.vscode/

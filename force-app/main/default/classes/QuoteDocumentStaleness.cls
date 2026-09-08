@@ -109,15 +109,27 @@ public with sharing class QuoteDocumentStaleness {
       if (prior == null) {
         continue;
       }
-      for (String field : WATCHED_QUOTE_FIELDS) {
-        if (quote.get(field) != prior.get(field)) {
-          quoteIds.add(quote.Id);
-          break;
-        }
+      if (hasRelevantQuoteChange(quote, prior)) {
+        quoteIds.add(quote.Id);
       }
     }
 
     markStale(quoteIds);
+  }
+
+  @TestVisible
+  private static Boolean hasRelevantQuoteChange(
+    SBQQ__Quote__c updated,
+    SBQQ__Quote__c prior
+  ) {
+    Set<String> watchedFields = new Set<String>(WATCHED_QUOTE_FIELDS);
+    watchedFields.addAll(QuoteDocumentSubscriberFields.quoteFieldPaths());
+    for (String field : watchedFields) {
+      if (updated.get(field) != prior.get(field)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Accounts: customer name and billing address are published header facts. */

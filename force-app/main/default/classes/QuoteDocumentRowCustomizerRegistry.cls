@@ -13,7 +13,6 @@ public with sharing class QuoteDocumentRowCustomizerRegistry {
             when 'INDUSTRY_ALLEGIANCE'   { return new QuoteDocumentIndustryRowCustomizer(); }
             when 'ROUNDING_EXAMPLE'      { return new QuoteDocumentRoundingRowCustomizer(); }
             when 'ESTIMATED_TAX'         { return new QuoteDocumentEstimatedTaxRowCustomizer(); }
-            when 'MONTHLY_SUBSCRIPTION'  { return new QuoteDocumentMonthlyRowCustomizer(); }
             when 'PACKAGE_COMPOSITION'   { return new QuoteDocumentCompositionCustomizer(); }
             // The Flow bridge. Reachable this way for a table whose only
             // contributor is a Flow referenced through Row_Customizer_Code__c,

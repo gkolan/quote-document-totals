@@ -16,8 +16,17 @@ Use [Build an order form with only the Tables it needs](dynamic-order-form-compo
 ## I want to install or configure it
 
 - [Quick start](quick-start.md) gets the first Product Family Summary working and explains common installation problems.
+- [Install, upgrade, and removal contract](install-upgrade-removal.md) defines version evidence, CPQ preflight, upgrade rehearsal, disablement, and removal boundaries.
+- [Configuration diagnostics](configuration-diagnostics.md) checks active definitions, dependency paths, and registered extensions without generating a Quote.
+- [Access roles](access-model.md) explains the separate generation, retrieval, diagnostics, operations, and compatibility permission sets.
+- [Subscriber-safe configuration](subscriber-configuration.md) adds direct Quote dependencies without editing the stock query, staleness, or fingerprint classes.
+- [Document integration contract and live reference export](document-integration-contract.md) publishes the v2 schema, canonical examples, identity-bound REST endpoint, strict live exporter, compatibility checks, and deterministic HTML manifest.
+- [Operations and recovery](operations-recovery.md) explains the private run ledger, sanitized failures, and guarded invalidation retries.
+- [License and support decision record](governance-decision-record.md) presents the owner choices and release gate without selecting terms.
 - [Configuration and maintenance guide](quote-document-totals-architecture-guide.md) explains objects, fields, Custom Metadata, access, checks, and support steps.
 - [Testing guide](testing-guide.md) explains the local checks, Salesforce checks, and evidence to record before release.
+- [Capacity benchmark](capacity-benchmark.md) creates versioned synthetic 10/100/500/1,000-line fixtures and records sanitized governor, output, payload, and retrieval measurements.
+- [GitHub publication checklist](github-publication-checklist.md) covers repository settings, branch protection, licensing, and a release rehearsal.
 - [Product Family Summary](use-case/01-product-family-summary.md)
 - [Charge Type Summary](use-case/02-charge-type-summary.md)
 - [Discount Summary](use-case/03-discount-summary.md)

@@ -19,7 +19,7 @@ Unchanged Quotes reuse current saved document data; relevant changes make it Sta
 You need:
 
 - this repository's current Quote and Quote Line triggers, generation classes, and Custom Metadata deployed;
-- the `CPQ_Document_Totals` permission set;
+- the `CPQ_Document_Totals_Generator` permission set;
 - one calculated sandbox Quote with a successful generated result;
 - the API name of every field read by an active custom Flow or Apex row adjustment; and
 - a developer for Execute Anonymous and Apex-owned changes.

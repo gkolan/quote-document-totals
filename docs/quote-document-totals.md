@@ -217,7 +217,7 @@ Supported cache policies are:
 
 ## Sharing and permissions
 
-Production classes use sharing-aware access. The `CPQ_Document_Totals` permission set grants the packaged object, field, Flow, Apex, tab, report, and quick-action access required to operate the feature.
+Production classes use sharing-aware access. The `CPQ_Document_Totals_Generator` permission set grants the generation Flow and Apex entry point plus read-only lifecycle and generated-output access. Page action visibility, CPQ access, Quote sharing, and report-folder sharing remain organization responsibilities. Retrieval, diagnostics, and recovery use separate roles described in [Access roles](access-model.md).
 
 The package permission set is not an approval model. Organizations should control:
 
@@ -269,7 +269,7 @@ npm run test:ci-gate
 - Target-org CPQ formulas, pricing rules, fields, sharing, and page layouts can change observed results.
 - A custom document adapter is responsible for styling and delivery, but may not recalculate or select content independently.
 - One-click Quote-scoped report links are planned and do not currently ship.
-- Open defects and proposed improvements are listed only in the live `bugs/` and `enhancements/` indexes.
+- Internal research, implementation evidence, development plans, and defect notes are excluded from Git. A release-relevant limitation or unimplemented product capability is recorded here or in [Current roadmap](roadmap.md).
 
 ## File map
 

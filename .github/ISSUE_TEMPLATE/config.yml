@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Possible security problem
+    url: https://github.com/gkolan/quote-document-totals/security/advisories/new
+    about: Use private security reporting. Do not place secrets or customer data in an issue.

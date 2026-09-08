@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gkolan/quote-document-totals/contracts/v2/quote-document-payload.schema.json",
+  "title": "Quote Document Totals payload v2",
+  "description": "Vendor-neutral, request-bound document snapshot returned by QuoteDocumentRenderService.",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "requestId",
+    "quoteId",
+    "quoteNumber",
+    "locale",
+    "currencyIsoCode",
+    "generatedOn",
+    "fingerprint",
+    "status",
+    "facts",
+    "sections"
+  ],
+  "properties": {
+    "contractVersion": { "const": "2.0" },
+    "requestId": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "quoteId": { "$ref": "#/$defs/salesforceId" },
+    "quoteNumber": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "documentType": { "type": "string", "maxLength": 80 },
+    "revision": { "type": "integer", "minimum": 0 },
+    "priorDocumentReference": { "type": "string", "maxLength": 255 },
+    "locale": { "$ref": "#/$defs/locale" },
+    "currencyIsoCode": { "$ref": "#/$defs/currency" },
+    "generatedOn": { "type": "string", "format": "date-time" },
+    "fingerprint": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "contentVersion": { "type": "string", "maxLength": 80 },
+    "status": { "const": "Ready" },
+    "facts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fact" }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/section" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "salesforceId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9]{15}([A-Za-z0-9]{3})?$"
+    },
+    "locale": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})*$"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "typedValue": {
+      "type": ["string", "number", "integer", "boolean", "null"]
+    },
+    "fact": {
+      "type": "object",
+      "required": ["code", "label", "displayOrder", "dataType", "value"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "displayOrder": { "type": "number" },
+        "dataType": {
+          "enum": [
+            "Text",
+            "Number",
+            "Currency",
+            "Date",
+            "DateTime",
+            "Boolean",
+            "Address"
+          ]
+        },
+        "value": { "$ref": "#/$defs/typedValue" },
+        "currencyIsoCode": { "$ref": "#/$defs/currency" },
+        "sourceIdentity": { "type": "string", "maxLength": 255 }
+      },
+      "additionalProperties": false
+    },
+    "column": {
+      "type": "object",
+      "required": ["code", "label", "displayOrder", "dataType"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "displayOrder": { "type": "number" },
+        "dataType": {
+          "enum": ["Text", "Number", "Currency", "Date", "DateTime", "Boolean"]
+        },
+        "formatRole": { "type": "string", "maxLength": 80 },
+        "totalRule": { "type": "string", "maxLength": 80 }
+      },
+      "additionalProperties": false
+    },
+    "block": {
+      "type": "object",
+      "required": ["code", "blockType", "body", "displayOrder", "placement"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "blockType": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "heading": { "type": "string", "maxLength": 255 },
+        "body": { "type": "string", "maxLength": 32768 },
+        "displayOrder": { "type": "number" },
+        "locale": { "$ref": "#/$defs/locale" },
+        "sourceVersion": { "type": "string", "maxLength": 80 },
+        "sourceIdentity": { "type": "string", "maxLength": 255 },
+        "approvalIdentity": { "type": "string", "maxLength": 255 },
+        "placement": {
+          "enum": ["Before Row", "After Row", "Full Width After Row"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "row": {
+      "type": "object",
+      "required": [
+        "key",
+        "rowType",
+        "displayOrder",
+        "label",
+        "labelKey",
+        "values",
+        "blocks"
+      ],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "rowType": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "totalRole": { "type": "string", "maxLength": 80 },
+        "sourceLineId": { "$ref": "#/$defs/salesforceId" },
+        "groupLevel": { "type": "number" },
+        "displayOrder": { "type": "number" },
+        "label": { "type": "string", "maxLength": 255 },
+        "labelKey": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "values": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/typedValue" }
+        },
+        "blocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/block" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "section": {
+      "type": "object",
+      "required": ["sectionType", "key", "code", "displayOrder"],
+      "properties": {
+        "partitionValue": { "type": "string", "maxLength": 255 },
+        "crossPartitionTotal": { "enum": ["NONE", "SUM"] },
+        "sectionType": { "enum": ["Table", "Block"] },
+        "key": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "code": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "displayOrder": { "type": "number" },
+        "locale": { "$ref": "#/$defs/locale" },
+        "currencyIsoCode": { "$ref": "#/$defs/currency" },
+        "sourceVersion": { "type": "string", "maxLength": 80 },
+        "sourceIdentity": { "type": "string", "maxLength": 255 },
+        "approvalIdentity": { "type": "string", "maxLength": 255 },
+        "relatedSectionKey": { "type": "string", "maxLength": 255 },
+        "relatedRowKey": { "type": "string", "maxLength": 255 },
+        "placement": { "type": "string", "maxLength": 80 },
+        "title": { "type": "string", "maxLength": 255 },
+        "subtitle": { "type": "string", "maxLength": 255 },
+        "introText": { "type": "string", "maxLength": 32768 },
+        "footerText": { "type": "string", "maxLength": 32768 },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/column" } },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } },
+        "heading": { "type": "string", "maxLength": 255 },
+        "body": { "type": "string", "maxLength": 32768 },
+        "blockType": { "type": "string", "maxLength": 80 }
+      },
+      "additionalProperties": false
+    }
+  }
+}
