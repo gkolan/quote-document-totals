@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Operation_Type__c</fullName>
+    <description
+  >Stable operation family. It contains no Quote or customer content.</description>
+    <label>Operation Type</label>
+    <required>true</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>Generation</fullName><default>false</default><label
+        >Generation</label></value>
+            <value><fullName>Invalidation</fullName><default
+        >false</default><label>Invalidation</label></value>
+            <value><fullName>Retention</fullName><default>false</default><label
+        >Retention</label></value>
+            <value><fullName>Document Delivery</fullName><default
+        >false</default><label>Document Delivery</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

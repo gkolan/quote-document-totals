@@ -15,6 +15,7 @@ Thank you for improving Quote Document Totals.
 
 ```bash
 npm ci
+npm run audit:dependencies
 npm test
 npm run lint
 npm run prettier:verify
@@ -46,6 +47,6 @@ Keep generated test output, local review files, credentials, and org-specific da
 
 ## What belongs in Git
 
-Commit source, automated tests, shared scripts, CI configuration, test-org definitions, and public documentation. Keep known defects and proposed improvements available so others can understand the current limitations and contribute.
+Commit source, automated tests, shared scripts, CI configuration, test-org definitions, and public documentation. Record current product limitations and unimplemented capabilities in `docs/roadmap.md` so users can make an informed installation decision.
 
-The `specs/` directory contains local planning material and is ignored. Personal editor settings, AI-assistant instructions and installed skills, authentication state, dependencies, and generated results are also ignored. None of these local files should be required to install the project or run its public checks.
+Keep research, implementation evidence, development plans, open defect notes, customer data, org exports, analyzer output, generated reports, and temporary results out of Git. The ignored local folders include `research/`, `repository-review/`, `implementation-evidence/`, `development/`, `enhancements/`, `bugs/`, `specs/`, and root-level `reports/`. Salesforce report metadata under `force-app/main/default/reports/` is product source and remains versioned. Personal editor settings, AI-assistant instructions, authentication state, dependencies, and generated results are also ignored. None of these local files should be required to install the project or run its public checks.

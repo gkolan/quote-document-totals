@@ -1,0 +1,4 @@
+engines:
+  eslint:
+    # Use the repository's checked-in flat configuration whenever JavaScript is scanned.
+    auto_discover_eslint_config: true

@@ -44,7 +44,7 @@ Identify the administrator Quote and Table layouts and confirm the permission se
 6. Configure Block columns such as Block Code, Placement, Related Table, Related Row, Source Version, and Approval Identity.
 7. In **Object Manager → Quote Document Table → Page Layouts**, add the **Rows** and **Columns** related lists.
 8. Configure Row columns such as Display Order, Row Type, Total Role, Display Label, Product Code, Quantity, Unit Price, displayed amount fields, Include in Grand Total, and Is Displayed.
-9. Assign the `CPQ_Document_Totals` permission set and confirm the **Quote Document Tables** and **Quote Document Rows** tabs are visible to administrators who need direct access.
+9. Assign the `CPQ_Document_Totals_Generator` permission set and confirm the **Quote Document Tables** and **Quote Document Rows** tabs are visible to administrators who need direct access.
 
 ## Worked example
 

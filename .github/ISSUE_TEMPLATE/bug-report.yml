@@ -1,0 +1,71 @@
+name: Bug report
+description: Report reproducible behavior that differs from the documented contract.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Use synthetic or redacted information. Do not include credentials,
+        customer wording, org URLs, record exports, or debug logs containing
+        customer data.
+  - type: input
+    id: release
+    attributes:
+      label: Repository release or commit
+      description: Give the tag or full commit SHA that was installed.
+      placeholder: v1.0.0 or a full commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Salesforce environment
+      description: State the org type, Salesforce API version, and Salesforce CPQ version without naming the org.
+      placeholder: Scratch org; API 67.0; CPQ 240.5.0.1
+    validations:
+      required: true
+  - type: textarea
+    id: trigger
+    attributes:
+      label: Reproduction steps
+      description: Describe the smallest synthetic Quote and action that reproduces the behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Link the documented contract or state the independently checked expected value.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include safe status codes, request identity, and redacted output when relevant.
+    validations:
+      required: true
+  - type: dropdown
+    id: path
+    attributes:
+      label: Affected path
+      options:
+        - Installation or upgrade
+        - Generation or reuse
+        - Saved totals or rows
+        - Document payload or renderer
+        - Retention
+        - Permissions or sharing
+        - Configuration diagnostics
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Data handling
+      options:
+        - label: I removed credentials, customer data, org URLs, user names, and private record identifiers.
+          required: true

@@ -91,6 +91,8 @@ Read **[How Quote Document Totals works](docs/how-quote-document-totals-works.md
 | Find another guide                                | [Documentation home](docs/README.md)                                                    |
 | See what is still planned                         | [Roadmap](docs/roadmap.md)                                                              |
 
+For installation planning and ongoing support, see [install, upgrade, and removal](docs/install-upgrade-removal.md), [access roles](docs/access-model.md), and [configuration diagnostics](docs/configuration-diagnostics.md). Release owners can use the [license and support decisions](docs/governance-decision-record.md) and [publication checklist](docs/github-publication-checklist.md).
+
 ## Before you install
 
 You need:
@@ -109,8 +111,9 @@ The project uses Salesforce API version 67.0; the target org must support it. It
 git clone https://github.com/gkolan/quote-document-totals.git
 cd quote-document-totals
 sf org login web --instance-url https://test.salesforce.com --alias qdt-test
+npm run preflight:install -- --target-org qdt-test --output artifacts/install-preflight.json
 sf project deploy start --target-org qdt-test --source-dir force-app --wait 30
-sf org assign permset --target-org qdt-test --name CPQ_Document_Totals
+sf org assign permset --target-org qdt-test --name CPQ_Document_Totals_Generator
 ```
 
 These commands use a sandbox login. For another CPQ test org, use its login URL as described in the [quick start](docs/quick-start.md). Wait for deployment to succeed before assigning access.
@@ -119,7 +122,7 @@ Next, follow the [quick start](docs/quick-start.md#3-add-the-action-and-review-f
 
 ## Scope and current status
 
-The repository includes a Quote action and Flow, Apex generation and tests, Custom Metadata, generated-record objects, a permission set, and review reports. Installation deploys Salesforce source; the Quote action generates document data. It does not install CPQ or provide a complete DocuSign CLM integration.
+The repository includes a Quote action and Flow, Apex generation and tests, Custom Metadata, generated-record objects, separate access roles, and review reports. Installation deploys Salesforce source; the Quote action generates document data. It does not install CPQ or provide a complete DocuSign CLM integration.
 
 A connected document tool must use the saved values and handle layout and delivery. It should not calculate pricing or totals again. Without a CPQ org, you can explore the examples and source and run the local checks below.
 
@@ -138,16 +141,30 @@ Test with your own products, pricing rules, and document tool before production 
 
 Saving document records makes the result reviewable, but adds storage, permissions, and regeneration responsibilities. Configurable rules cover supported cases; new business behavior can still require Apex and additional tests. These are design choices implemented in source, not a claim that every CPQ configuration has been verified.
 
+### Run the document example locally
+
+You can validate a complete sample payload and render a deterministic HTML document without a Salesforce org:
+
+```bash
+npm ci
+npm run test:renderer-contract
+npm run render:reference-document -- --input contracts/v2/fixtures/valid/mixed.json --output-dir artifacts/reference-document --expected-request-id REQ-MIXED-001 --expected-fingerprint fixture-mixed-v1
+```
+
+Open `artifacts/reference-document/quote-document.html`. It contains tables and content blocks from the checked fixture. The accompanying manifest records the input and output hashes. Read the [document contract and reference output guide](docs/document-integration-contract.md) for the data contract, expected values, and current limits.
+
+After deploying to a CPQ test org, the [live document export guide](docs/document-integration-contract.md#export-a-live-generated-document) uses the supplied read-only REST endpoint to retrieve the exact generated result, validate it, and render the same HTML example. Live payloads stay under the ignored `artifacts/` directory.
+
 ## Explore the implementation
 
 Start with the [architecture view](docs/use-case/architecture-and-flow.md), then follow these parts of the source:
 
-| Area                                      | Code and supporting tests                                                                                                                                                             |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Building and saving a complete result     | [QuoteDocumentGenerator](force-app/main/default/classes/QuoteDocumentGenerator.cls) and [failure-boundary tests](force-app/main/default/classes/QuoteDocumentFailureBoundaryTest.cls) |
-| Reconciling rows and totals               | [QuoteDocumentVerification](force-app/main/default/classes/QuoteDocumentVerification.cls) and [aggregation tests](force-app/main/default/classes/QuoteDocumentAggregationTest.cls)    |
-| Managing overlapping requests             | [QuoteDocumentLifecycle](force-app/main/default/classes/QuoteDocumentLifecycle.cls) and [concurrency tests](force-app/main/default/classes/QuoteDocumentLifecycleConcurrencyTest.cls) |
-| Reading the checked result for a document | [QuoteDocumentRenderService](force-app/main/default/classes/QuoteDocumentRenderService.cls) and [integrity tests](force-app/main/default/classes/QuoteDocumentIntegrityTest.cls)      |
+| Area                                      | Code and supporting tests                                                                                                                                                                                                                                                  |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Building and saving a complete result     | [QuoteDocumentGenerator](force-app/main/default/classes/QuoteDocumentGenerator.cls) and [failure-boundary tests](force-app/main/default/classes/QuoteDocumentFailureBoundaryTest.cls)                                                                                      |
+| Reconciling rows and totals               | [QuoteDocumentVerification](force-app/main/default/classes/QuoteDocumentVerification.cls) and [aggregation tests](force-app/main/default/classes/QuoteDocumentAggregationTest.cls)                                                                                         |
+| Managing overlapping requests             | [QuoteDocumentLifecycle](force-app/main/default/classes/QuoteDocumentLifecycle.cls) and [concurrency tests](force-app/main/default/classes/QuoteDocumentLifecycleConcurrencyTest.cls)                                                                                      |
+| Reading the checked result for a document | [QuoteDocumentRestResource](force-app/main/default/classes/QuoteDocumentRestResource.cls), [QuoteDocumentRenderService](force-app/main/default/classes/QuoteDocumentRenderService.cls), and [REST tests](force-app/main/default/classes/QuoteDocumentRestResourceTest.cls) |
 
 The linked tests show the cases covered in source. Run the Salesforce checks in your own CPQ test org before relying on the results.
 
@@ -157,6 +174,7 @@ The checks that do not require a Salesforce org run with Node.js 20:
 
 ```bash
 npm ci
+npm run audit:dependencies
 npm test
 npm run lint
 npm run prettier:verify
@@ -165,13 +183,14 @@ npm run test:ci-gate
 npm run ci:contributor-versions
 ```
 
-GitHub Actions runs local project checks on pull requests and pushes to `main`. It does not deploy to Salesforce or run Apex tests. `npm test` currently skips LWC tests because no LWC test files are present; `npm run test:ci-gate` runs the contributor-version check's unit tests.
+GitHub Actions runs local project checks on pull requests and pushes to `main`. It does not deploy to Salesforce or run Apex tests. `npm run audit:dependencies` rejects high or critical dependency findings. `npm test` currently skips LWC tests because no LWC test files are present. `npm run test:ci-gate` tests release tooling, permission boundaries, contributor version checks, publication hygiene, the exact Salesforce manifest, and the protected validation command; it then checks the current tracked files and all 525 non-test metadata components.
 
 Apex tests and a Salesforce deployment check require a Salesforce CPQ test org. See the [testing guide](docs/testing-guide.md) for release verification. The optional [demo bootstrap script](scripts/scratch-org-bootstrap.sh) requires Bash and a disposable CPQ test org; it creates and replaces sample data. Use the quick start for your first installation.
 
 ## Contributing and support
 
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
+- Use [SUPPORT.md](SUPPORT.md) and the structured issue forms for public support requests.
 - Report a security concern using [SECURITY.md](SECURITY.md).
 - Use the pull request template and state which Salesforce org checks were completed.
 

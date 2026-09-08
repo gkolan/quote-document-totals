@@ -1,0 +1,41 @@
+name: Configuration help
+description: Ask about a documented setup or diagnostics result.
+title: "[Configuration]: "
+labels:
+  - question
+body:
+  - type: input
+    id: guide
+    attributes:
+      label: Guide and step
+      description: Link the public guide and identify the exact step that is unclear or failing.
+    validations:
+      required: true
+  - type: input
+    id: release
+    attributes:
+      label: Repository release or commit
+      placeholder: v1.0.0 or a full commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Safe diagnostic result
+      description: Give status codes and redacted diagnostic findings. Do not paste Quote payloads or customer data.
+    validations:
+      required: true
+  - type: textarea
+    id: attempted
+    attributes:
+      label: Steps already tried
+      description: List the documented recovery steps you completed and their result.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Data handling
+      options:
+        - label: I removed credentials, customer data, org URLs, user names, and private record identifiers.
+          required: true

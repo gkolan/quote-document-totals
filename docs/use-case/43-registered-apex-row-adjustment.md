@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-**Repository status:** Ready for an Apex extension. The inactive `DISCOUNT_EXAMPLE` table definition, required Apex class shape, approved-code list, generation connection, seven registered examples, and automated tests are included.
+**Repository status:** Ready for an Apex extension. The inactive `DISCOUNT_EXAMPLE` table definition, required Apex class shape, approved-code list, generation connection, six registered examples, and automated tests are included.
 
 **Org verification status:** Not verified in your Salesforce org. A developer must deploy and test the code, and an administrator must complete the output checks in this guide before the table is activated for users.
 
@@ -69,15 +69,14 @@ The value `MY_ORG_TAX` is only an example. The administrator must use the exact 
 
 The repository currently registers these exact codes:
 
-| Registered code        | Shipped class                            |
-| ---------------------- | ---------------------------------------- |
-| `DISCOUNT_EXAMPLE`     | `QuoteDocumentDiscountRowCustomizer`     |
-| `INDUSTRY_ALLEGIANCE`  | `QuoteDocumentIndustryRowCustomizer`     |
-| `ROUNDING_EXAMPLE`     | `QuoteDocumentRoundingRowCustomizer`     |
-| `ESTIMATED_TAX`        | `QuoteDocumentEstimatedTaxRowCustomizer` |
-| `MONTHLY_SUBSCRIPTION` | `QuoteDocumentMonthlyRowCustomizer`      |
-| `PACKAGE_COMPOSITION`  | `QuoteDocumentCompositionCustomizer`     |
-| `FLOW`                 | `QuoteDocumentFlowRowCustomizer`         |
+| Registered code       | Shipped class                            |
+| --------------------- | ---------------------------------------- |
+| `DISCOUNT_EXAMPLE`    | `QuoteDocumentDiscountRowCustomizer`     |
+| `INDUSTRY_ALLEGIANCE` | `QuoteDocumentIndustryRowCustomizer`     |
+| `ROUNDING_EXAMPLE`    | `QuoteDocumentRoundingRowCustomizer`     |
+| `ESTIMATED_TAX`       | `QuoteDocumentEstimatedTaxRowCustomizer` |
+| `PACKAGE_COMPOSITION` | `QuoteDocumentCompositionCustomizer`     |
+| `FLOW`                | `QuoteDocumentFlowRowCustomizer`         |
 
 An unknown code stops generation. This prevents metadata from running an arbitrary class or silently skipping a required rule.
 

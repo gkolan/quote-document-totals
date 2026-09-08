@@ -27,12 +27,27 @@
     <values><field>Show_Section_Totals__c</field><value
       xsi:type="xsd:boolean"
     >false</value></values>
-    <values><field>Row_Customizer_Code__c</field><value
+    <values><field>Expander_Code__c</field><value
       xsi:type="xsd:string"
-    >MONTHLY_SUBSCRIPTION</value></values>
-    <values><field>Row_Customizer_Version__c</field><value
+    >PERIOD</value></values>
+    <values><field>Expander_Version__c</field><value
       xsi:type="xsd:string"
     >1</value></values>
+    <values><field>Period_Months__c</field><value
+      xsi:type="xsd:double"
+    >1</value></values>
+    <values><field>Period_One_Time_Placement__c</field><value
+      xsi:type="xsd:string"
+    >EFFECTIVE_DATE</value></values>
+    <values><field>Allocation_Basis__c</field><value
+      xsi:type="xsd:string"
+    >EVEN</value></values>
+    <values><field>Allocation_Scale__c</field><value
+      xsi:type="xsd:double"
+    >2</value></values>
+    <values><field>Sort_Groups_By__c</field><value
+      xsi:type="xsd:string"
+    >EXPANSION_ORDER</value></values>
     <values><field>Cache_Policy__c</field><value
       xsi:type="xsd:string"
     >STANDARD</value></values>
@@ -45,6 +60,9 @@
     <values><field>Display_Title__c</field><value
       xsi:type="xsd:string"
     >Monthly Subscription Costs</value></values>
+    <values><field>Assumptions_Block_Code__c</field><value
+      xsi:type="xsd:string"
+    >MONTHLY_ALLOCATION</value></values>
     <values><field>Is_Active__c</field><value
       xsi:type="xsd:boolean"
     >false</value></values>

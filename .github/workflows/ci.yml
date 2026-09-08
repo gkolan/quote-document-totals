@@ -25,6 +25,9 @@ jobs:
       - name: Install project tools
         run: npm ci
 
+      - name: Audit dependencies for high or critical findings
+        run: npm run audit:dependencies
+
       - name: Run JavaScript tests
         run: npm test
 

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName
+  >Safe_Message__c</fullName><description
+  >Allowlisted remediation text containing no copied exception or customer content.</description><label
+  >Safe Message</label><length>255</length><required>true</required><type
+  >Text</type></CustomField>

@@ -46,7 +46,7 @@ In **Setup → Object Manager → Quote → Page Layouts**, add these fields to 
 | `Document Data Fingerprint`    | Support/admin     | Saved change check for source records and setup      |
 | `Document Payload Hash`        | Support/admin     | Saved check that identifies an unexpected data edit  |
 
-Assign `CPQ_Document_Totals` to users who operate or troubleshoot the feature. Consider making system-managed fields read-only on layouts even though the packaged permission set allows the package to update them.
+Assign `CPQ_Document_Totals_Generator` to users who generate document data. Its system-managed lifecycle and output fields are read-only to the user; Apex performs the controlled updates. Assign diagnostics or operations access separately when troubleshooting requires those actions.
 
 ### Quote status meanings
 

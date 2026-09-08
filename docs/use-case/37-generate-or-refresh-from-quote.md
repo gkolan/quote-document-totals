@@ -29,7 +29,7 @@ The action does not send, sign, or create a document. It prepares the Salesforce
 You need:
 
 - Salesforce CPQ and this package deployed to a sandbox;
-- the `CPQ_Document_Totals` permission set assigned to the test user;
+- the `CPQ_Document_Totals_Generator` permission set assigned to the test user;
 - an active Quote page layout or Lightning record page used by that user;
 - at least one active Quote Document Table Definition; and
 - a calculated test Quote with Quote Lines.
@@ -108,7 +108,7 @@ For a custom document launch, a developer must run the shipped generate-or-reuse
 
 | Problem                            | What it means                                                                                                    | What to do                                                                                                                            |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Action is missing                  | It is not on the assigned page layout or Dynamic Actions list, or the user lacks access.                         | Check page assignment, Dynamic Actions, and the `CPQ_Document_Totals` permission-set assignment.                                      |
+| Action is missing                  | It is not on the assigned page layout or Dynamic Actions list, or the user lacks access.                         | Check page assignment, Dynamic Actions, and the `CPQ_Document_Totals_Generator` permission-set assignment.                            |
 | Flow says no Quote Id was supplied | The action was launched without Quote record context.                                                            | Confirm the quick action uses `Generate_Quote_Document_Tables` and is placed on the Quote object.                                     |
 | Status remains Generating          | A request is still running or stopped before completing.                                                         | Wait for a live request. If it exceeds the configured abandonment window, run the action again and retain the request Id for support. |
 | Status becomes Failed              | Salesforce rejected data, configuration, permissions, or an extension result.                                    | Read **Document Data Error**, correct the named cause, and run the action again. Do not create a document from the failed attempt.    |
@@ -127,7 +127,7 @@ For a custom document launch, a developer must run the shipped generate-or-reuse
 ## Production checklist
 
 - [ ] The action is on every intended Quote page layout or Dynamic Actions assignment.
-- [ ] The intended users have the `CPQ_Document_Totals` permission set.
+- [ ] The intended users have the `CPQ_Document_Totals_Generator` permission set.
 - [ ] A first sandbox run generates Tables, Columns, Rows, and Blocks successfully.
 - [ ] An unchanged second run reports reuse.
 - [ ] A relevant Quote Line change causes a rebuild.

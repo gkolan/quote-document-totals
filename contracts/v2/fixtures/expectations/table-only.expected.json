@@ -1,0 +1,11 @@
+{
+  "fixture": "../valid/table-only.json",
+  "checks": [
+    {
+      "sectionCode": "PRODUCT_FAMILY_SUMMARY",
+      "rowKey": "GRAND_TOTAL",
+      "columnCode": "COL_NET",
+      "expectedValue": 102910
+    }
+  ]
+}

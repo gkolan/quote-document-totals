@@ -136,6 +136,9 @@ public with sharing class QuoteDocumentQuery {
       validateDependencyPath(path);
       quoteFields.add(path);
     }
+    for (String path : QuoteDocumentSubscriberFields.quoteFieldPaths()) {
+      quoteFields.add(path);
+    }
     // The configured locale path is a QUOTE field and has to be selected
     // like any other, or readPath finds nothing and every quote falls back
     // to the default - which looks exactly like "nobody configured one".
