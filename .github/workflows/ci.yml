@@ -11,7 +11,7 @@ jobs:
     name: Documentation and project checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The contributor check compares the change with the earlier version.
           # It needs the full history to make that comparison correctly.
